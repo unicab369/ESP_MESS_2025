@@ -16,7 +16,7 @@ typedef enum {
 typedef void (*button_event_callback_t)(button_event_t event, uint64_t duration);
 
 // Function prototypes
-void button_click_init(gpio_num_t button_gpio, button_event_callback_t callback);
+void button_click_setup(gpio_num_t button_gpio, button_event_callback_t callback);
 void button_click_run(void);
 
 #endif // BUTTON_DETECTOR_H

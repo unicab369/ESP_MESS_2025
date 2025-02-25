@@ -19,7 +19,9 @@
         "usb_serial_jtag.h": "c",
         "button_click.h": "c",
         "cdc_driver.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "esp_timer.h": "c",
+        "espnow_driver.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

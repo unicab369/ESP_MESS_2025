@@ -10,7 +10,7 @@
 typedef void (*uart_read_callback_t)(uint8_t* data, size_t len);
 
 // Function prototypes
-void uart_init(uint8_t tx_pin, uint8_t rx_pin, uart_read_callback_t callback);
+void uart_setup(uint8_t tx_pin, uint8_t rx_pin, uart_read_callback_t callback);
 void uart_run(void);
 
 #endif // UART_CONTROLLER_H

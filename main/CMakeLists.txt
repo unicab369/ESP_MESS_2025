@@ -6,4 +6,5 @@ idf_component_register(SRCS "main.c"
                         button_driver
                         uart_controller
                         cdc_driver
+                        espNow_driver
                     )

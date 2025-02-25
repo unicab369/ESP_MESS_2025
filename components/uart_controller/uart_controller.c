@@ -11,7 +11,7 @@ static char input_buffer[BUF_SIZE];
 static int input_pos = 0;
 static uint8_t* rx_buffer;
 
-void uart_init(uint8_t tx_pin, uint8_t rx_pin, uart_read_callback_t callback) {
+void uart_setup(uint8_t tx_pin, uint8_t rx_pin, uart_read_callback_t callback) {
     uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,

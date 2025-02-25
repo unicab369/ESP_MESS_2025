@@ -12,7 +12,7 @@ static uint64_t last_update_time = 0;
 static uint32_t fade_duration_us = 2000000;
 
 
-void led_fade_init(gpio_num_t led_gpio, uint32_t freq_hz) {
+void led_fade_setup(gpio_num_t led_gpio, uint32_t freq_hz) {
     ledc_timer_config_t timer_conf = {
         .speed_mode = LEDC_LOW_SPEED_MODE,
         .duty_resolution = LEDC_TIMER_10_BIT,

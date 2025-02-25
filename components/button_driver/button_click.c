@@ -15,7 +15,7 @@ static bool button_pressed = false;
 static bool waiting_for_double_click = false;
 static bool long_press_detected = false;
 
-void button_click_init(gpio_num_t gpio, button_event_callback_t callback) {
+void button_click_setup(gpio_num_t gpio, button_event_callback_t callback) {
     button_gpio = gpio;
     event_callback = callback;
 
