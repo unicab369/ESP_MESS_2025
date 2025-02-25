@@ -1,0 +1,28 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.espIdfPathWin": "C:\\Users\\uni\\esp\\v5.4\\esp-idf",
+    "idf.pythonInstallPath": "C:\\Users\\uni\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+    "idf.openOcdConfigs": [
+        "board/esp32c3-builtin.cfg"
+    ],
+    "idf.portWin": "COM5",
+    "idf.toolsPathWin": "C:\\Users\\uni\\.espressif",
+    "files.associations": {
+        "led_toggle.h": "c",
+        "gpio_num.h": "c",
+        "gpio.h": "c",
+        "freertos.h": "c",
+        "ledc.h": "c",
+        "uart.h": "c",
+        "uart_controller.h": "c",
+        "led_fade.h": "c",
+        "usb_serial_jtag.h": "c",
+        "button_click.h": "c",
+        "cdc_driver.h": "c",
+        "string.h": "c"
+    },
+    "idf.flashType": "UART",
+    "idf.customExtraVars": {
+        "IDF_TARGET": "esp32c3"
+    }
+}
