@@ -8,6 +8,6 @@
 // Function prototypes
 void led_fade_setup(gpio_num_t led_gpio, uint32_t freq_hz);
 void led_fade_start(uint32_t brightness_threshold, uint32_t toggle_duration_ms, uint32_t update_frequency_ms);
-void led_fade_update(void);
+void led_fade_run(void);
 
 #endif // LED_FADE_H

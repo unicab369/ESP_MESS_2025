@@ -13,7 +13,7 @@ typedef struct {
 } led_config_t;
 
 // Function prototypes
-void led_toggle_init(gpio_num_t led_gpio, led_config_t config);
-void led_toggle_update(void);
+void led_toggle_setup(gpio_num_t gpio, led_config_t config);
+void led_toggle_run(void);
 
 #endif // LED_TOGGLE_H

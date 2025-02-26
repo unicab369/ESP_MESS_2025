@@ -13,7 +13,7 @@ static uint32_t conf_toggle_usec = 200000;  // micro seconds
 static uint32_t conf_wait_usec = 2000000;   // micro seconds
 static int conf_toggle_max = 6;
 
-void led_toggle_init(gpio_num_t gpio, led_config_t config) {
+void led_toggle_setup(gpio_num_t gpio, led_config_t config) {
     led_gpio = gpio;
 
     // Configure the LED GPIO
@@ -35,7 +35,7 @@ void led_toggle_init(gpio_num_t gpio, led_config_t config) {
     last_wait_time = esp_timer_get_time();
 }
 
-void led_toggle_update(void) {
+void led_toggle_run(void) {
     uint64_t current_time = esp_timer_get_time();
 
     if (is_toggling) {

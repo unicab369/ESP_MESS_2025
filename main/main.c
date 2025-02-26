@@ -3,8 +3,8 @@
 #include "led_toggle.h"
 #include "led_fade.h"
 #include "button_click.h"
+#include "rotary_driver.h"
 #include "uart_controller.h"
-#include "cdc_driver.h"
 #include "espNow_driver.h"
 
 #include "freertos/FreeRTOS.h"
@@ -13,56 +13,81 @@
 #include "esp_log.h"
 #include "driver/usb_serial_jtag.h"
 
+#if CONFIG_IDF_TARGET_ESP32C3
+    #include "cdc_driver.h"
+    #define LED_FADE_PIN 2
+    #define BLINK_PIN 10
+    #define BUTTON_PIN 9
+#elif CONFIG_IDF_TARGET_ESP32
+    #define LED_FADE_PIN 22
+    #define BLINK_PIN 2
+    #define BUTTON_PIN 16
+    #define ROTARY_CLK 15
+    #define ROTARY_DT 13
+#endif
+
+static const char *TAG = "MAIN";
+
 // Button event callback
 void button_event_handler(button_event_t event, uint64_t duration) {
     switch (event) {
         case BUTTON_EVENT_SINGLE_CLICK:
-            ESP_LOGI("TAG", "Single click detected!\n");
+            ESP_LOGI(TAG, "Single click detected!\n");
             break;
         case BUTTON_EVENT_DOUBLE_CLICK:
-            ESP_LOGI("TAG", "Double click detected!\n");
+            ESP_LOGI(TAG, "Double click detected!\n");
             break;
         case BUTTON_EVENT_LONG_PRESS:
-            ESP_LOGI("TAG", "duration = %lld", duration/1000);
+            ESP_LOGI(TAG, "duration = %lld", duration/1000);
             break;
     }
 }
 
-void aurt_read_handler(uint8_t* data, size_t len) {
-    ESP_LOGI("TAG", "IM HERE");
+void rotary_event_handler(int16_t value, bool direction) {
+    const char* directionStr = direction ? "CW" : "CCW";
+    ESP_LOGI(TAG, "rotary = %d, direction: %s", value, directionStr);
+}
+
+void uart_read_handler(uint8_t* data, size_t len) {
+    ESP_LOGI(TAG, "IM HERE");
 }
 
 void app_main(void)
 {
-    // led_config_t led_config = {
-    //     .blink_count = 3,         // Blink 5 times
-    //     .toggle_time_ms = 100,    // Toggle every 500ms
-    //     .wait_time_ms = 1000,       // Wait 200ms between blinks
-    //     .invert_state = true
-    // };
+    #if CONFIG_IDF_TARGET_ESP32C3
+        cdc_setup();
+    #endif
+    ESP_LOGI(TAG, "APP START");
 
-    // // Initialize LED toggling
-    // led_toggle_init(2, led_config);     // GPIO_2
+    led_config_t led_config = {
+        .blink_count = 3,
+        .toggle_time_ms = 100,
+        .wait_time_ms = 1000,
+        .invert_state = true
+    };
 
-    // Initialize LED fading
-    led_fade_setup(2, 5000);             // GPIO_2, 5 kHz frequency
-    led_fade_start(1023, 500, 10);      // Brightness, fade_duration, update_frequency
+    led_toggle_setup(BLINK_PIN, led_config);
+    led_fade_setup(LED_FADE_PIN, 5000);              // 5 kHz frequency
+    led_fade_start(1023, 500, 10);              // Brightness, fade_duration, update_frequency
 
-    button_click_setup(10, button_event_handler);
-    uart_setup(21, 20, aurt_read_handler);
-    cdc_setup();
-
+    rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
+    button_click_setup(BUTTON_PIN, button_event_handler);
+    uart_setup(uart_read_handler);
     espNow_setup();
 
     while (1) {
-        // led_toggle_update();
-        led_fade_update();
+        #if CONFIG_IDF_TARGET_ESP32C3
+            cdc_read_task();
+        #endif
+
+        led_toggle_run();
+        led_fade_run();
 
         uart_run();
         button_click_run();
-        cdc_read_task();
+        rotary_run();
 
-        // espnow_send();
+        espnow_send();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

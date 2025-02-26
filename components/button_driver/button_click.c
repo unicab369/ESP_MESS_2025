@@ -33,7 +33,7 @@ void button_click_run(void) {
     uint64_t current_time = esp_timer_get_time();
     bool current_state = gpio_get_level(button_gpio) == 0;
 
-    if (current_time - last_press_time < DEBOUNCE_TIME) { return; }
+    if (current_time - last_press_time < DEBOUNCE_TIME) return;
 
     if (current_state != button_pressed) {
         button_pressed = current_state;
