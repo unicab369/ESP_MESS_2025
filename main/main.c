@@ -1,5 +1,10 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "esp_err.h"
+
 #include "led_toggle.h"
 #include "led_fade.h"
 #include "button_click.h"
@@ -12,6 +17,9 @@
 #include "driver/ledc.h"
 #include "esp_log.h"
 #include "driver/usb_serial_jtag.h"
+// #include "littlefs_driver.h"
+#include "my_littlefs.h"
+// #include "esp_littlefs.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -75,6 +83,9 @@ void app_main(void)
     uart_setup(uart_read_handler);
     espNow_setup();
 
+    littlefs_setup();
+    littlefs_test();
+
     while (1) {
         #if CONFIG_IDF_TARGET_ESP32C3
             cdc_read_task();
@@ -83,7 +94,7 @@ void app_main(void)
         led_toggle_run();
         led_fade_run();
 
-        uart_run();
+        // uart_run();
         button_click_run();
         rotary_run();
 
