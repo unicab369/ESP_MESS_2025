@@ -39,7 +39,8 @@
         "array": "c",
         "string": "c",
         "string_view": "c",
-        "span": "c"
+        "span": "c",
+        "system_error": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

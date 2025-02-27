@@ -10,7 +10,6 @@
 #include "button_click.h"
 #include "rotary_driver.h"
 #include "uart_driver.h"
-// #include "espnow_driver.h"
 #include "espnow_controller.h"
 
 #include "freertos/FreeRTOS.h"
@@ -19,7 +18,7 @@
 #include "esp_log.h"
 #include "driver/usb_serial_jtag.h"
 // #include "littlefs_driver.h"
-#include "my_littlefs.h"
+// #include "my_littlefs.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -84,8 +83,8 @@ void app_main(void)
     // espnow_setup();
     espnow_controller_setup();
 
-    littlefs_setup();
-    littlefs_test();
+    // littlefs_setup();
+    // littlefs_test();
 
     while (1) {
         #if CONFIG_IDF_TARGET_ESP32C3
@@ -99,8 +98,7 @@ void app_main(void)
         button_click_run();
         rotary_run();
 
-        // espnow_send();
-        // espnow_controller_send();
+        espnow_controller_send();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

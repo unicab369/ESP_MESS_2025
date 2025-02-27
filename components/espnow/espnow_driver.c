@@ -46,7 +46,20 @@ static void wifi_setup(void)
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
 {
     if (message_callback == NULL) return;
-    message_callback(data, len);
+    if (len < sizeof(espnow_message_t)) {
+        ESP_LOGE("TAG", "Received data size mismatch. Expected at least %d bytes, got %d", sizeof(espnow_message_t), len);
+        return;
+    }
+
+    espnow_received_message_t received_message = {
+        .rssi = recv_info->rx_ctrl->rssi,
+        .channel = recv_info->rx_ctrl->channel,
+        .message =  (espnow_message_t *)data
+    };
+    // received_message.message = (espnow_message_t *)data;
+    memcpy(received_message.src_addr, recv_info->src_addr, sizeof(received_message.src_addr));
+
+    message_callback(received_message);
 }
 
 esp_err_t espnow_setup(espnow_message_cb callback)
