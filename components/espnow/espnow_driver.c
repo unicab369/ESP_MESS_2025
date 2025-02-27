@@ -1,4 +1,4 @@
-#include "espNow_driver.h"
+#include "espnow_driver.h"
 #include <string.h>
 #include "esp_timer.h"
 #include "esp_log.h"
@@ -47,7 +47,7 @@ static void example_espnow_recv_cb(const esp_now_recv_info_t *recv_info, const u
     ESP_LOGI(TAG,"received data : %.*s", len, data);
 }
 
-esp_err_t espNow_setup(void)
+esp_err_t espnow_setup(void)
 {
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();

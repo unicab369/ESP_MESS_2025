@@ -7,7 +7,7 @@
 #include <esp_err.h> 
 
 // Function prototypes
-esp_err_t espNow_setup(void);
+esp_err_t espnow_setup(void);
 esp_err_t espnow_send(void);
 
 #endif

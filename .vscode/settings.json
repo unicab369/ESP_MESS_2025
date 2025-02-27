@@ -31,7 +31,8 @@
         "littlefs_driver.h": "c",
         "my_littlefs.h": "c",
         "esp_littlefs.h": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "espnow_controller.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

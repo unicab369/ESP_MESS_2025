@@ -9,8 +9,9 @@
 #include "led_fade.h"
 #include "button_click.h"
 #include "rotary_driver.h"
-#include "uart_controller.h"
-#include "espNow_driver.h"
+#include "uart_driver.h"
+// #include "espnow_driver.h"
+#include "espnow_controller.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -19,7 +20,6 @@
 #include "driver/usb_serial_jtag.h"
 // #include "littlefs_driver.h"
 #include "my_littlefs.h"
-// #include "esp_littlefs.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -81,7 +81,8 @@ void app_main(void)
     rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
-    espNow_setup();
+    // espnow_setup();
+    espnow_controller_setup();
 
     littlefs_setup();
     littlefs_test();
@@ -98,7 +99,8 @@ void app_main(void)
         button_click_run();
         rotary_run();
 
-        espnow_send();
+        // espnow_send();
+        espnow_controller_send();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

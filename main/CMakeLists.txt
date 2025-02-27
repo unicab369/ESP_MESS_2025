@@ -1,13 +1,14 @@
-idf_component_register(SRCS "main.c" "my_littlefs.c"
+idf_component_register(SRCS "main.c"
+                            "my_littlefs.c"
                     INCLUDE_DIRS "."
                     REQUIRES
                         driver
                         led_driver
                         button_driver
                         rotary_driver
-                        uart_controller
+                        uart_driver
                         cdc_driver
-                        espNow_driver
+                        espnow
                         littlefs_driver
                     )
 

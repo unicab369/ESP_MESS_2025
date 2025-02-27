@@ -1,5 +1,5 @@
-#ifndef UART_CONTROLLER_H
-#define UART_CONTROLLER_H
+#ifndef UART_DRIVER_H
+#define UART_DRIVER_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,4 +14,4 @@ void uart_setup(uart_read_callback_t callback);
 void uart_setup_pin(uint8_t tx_pin, uint8_t rx_pin, uart_read_callback_t callback);
 void uart_run(void);
 
-#endif // UART_CONTROLLER_H
+#endif
