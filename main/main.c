@@ -100,7 +100,7 @@ void app_main(void)
         rotary_run();
 
         // espnow_send();
-        espnow_controller_send();
+        // espnow_controller_send();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

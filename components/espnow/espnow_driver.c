@@ -24,6 +24,7 @@ static const uint8_t broadcast_mac[] = BROADCAST_ADDRESS;
 
 static uint64_t last_update_time = 0;
 static uint64_t current_time;
+static espnow_message_cb message_callback = NULL;
 
 /* WiFi should start before using ESPNOW */
 static void wifi_setup(void)
@@ -38,17 +39,20 @@ static void wifi_setup(void)
     ESP_ERROR_CHECK( esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
 
     uint8_t esp_mac[6];
-    esp_read_mac(esp_mac, ESP_MAC_WIFI_STA);
+    esp_read_mac(esp_mac, 6);
     ESP_LOGI(TAG, "ESP mac " MACSTR "", esp_mac[0], esp_mac[1], esp_mac[2], esp_mac[3], esp_mac[4], esp_mac[5]);
 }
 
-static void example_espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
+static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
 {
-    ESP_LOGI(TAG,"received data : %.*s", len, data);
+    if (message_callback == NULL) return;
+    message_callback(data, len);
 }
 
-esp_err_t espnow_setup(void)
+esp_err_t espnow_setup(espnow_message_cb callback)
 {
+    message_callback = callback;
+
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -61,7 +65,7 @@ esp_err_t espnow_setup(void)
 
     /* Initialize ESPNOW and register sending and receiving callback function. */
     ESP_ERROR_CHECK( esp_now_init() );
-    ESP_ERROR_CHECK( esp_now_register_recv_cb(example_espnow_recv_cb) );
+    ESP_ERROR_CHECK( esp_now_register_recv_cb(espnow_recv_cb) );
 
     /* Set primary master key. */
     ESP_ERROR_CHECK( esp_now_set_pmk((uint8_t *)CONFIG_ESPNOW_PMK) );
@@ -77,12 +81,13 @@ esp_err_t espnow_setup(void)
     return ESP_OK;
 }
 
-esp_err_t espnow_send(void) {
+esp_err_t espnow_send(uint8_t* data, size_t len) {
     current_time = esp_timer_get_time();
     if (current_time - last_update_time < 2000000) return ESP_OK;
     last_update_time = current_time;
 
-    esp_err_t err = esp_now_send(broadcast_mac, (uint8_t *) "Sending via ESP-NOW", strlen("Sending via ESP-NOW"));
+    esp_err_t err = esp_now_send(broadcast_mac, data, len);
+    // esp_err_t err = esp_now_send(broadcast_mac, (uint8_t *) "Sending via ESP-NOW", strlen("Sending via ESP-NOW"));
     ESP_LOGI(TAG,"esp now status : %s", esp_err_to_name(err));
     return err;
 }
