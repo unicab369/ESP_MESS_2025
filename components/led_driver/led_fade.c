@@ -41,7 +41,7 @@ void led_fade_start(uint32_t threshold, uint32_t duration_ms, uint32_t frequency
     last_update_time = esp_timer_get_time();
 }
 
-void led_fade_run(void) {
+void led_fade_loop(void) {
     uint64_t current_time = esp_timer_get_time();
 
     if (current_time - last_update_time >= update_frequency_us) {

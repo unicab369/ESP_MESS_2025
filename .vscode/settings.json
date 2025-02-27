@@ -40,7 +40,9 @@
         "string": "c",
         "string_view": "c",
         "span": "c",
-        "system_error": "c"
+        "system_error": "c",
+        "stdint.h": "c",
+        "unistd.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

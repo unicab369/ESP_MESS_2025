@@ -29,7 +29,7 @@ void button_click_setup(gpio_num_t gpio, button_event_callback_t callback) {
     gpio_config(&io_conf);
 }
 
-void button_click_run(void) {
+void button_click_loop(void) {
     uint64_t current_time = esp_timer_get_time();
     bool current_state = gpio_get_level(button_gpio) == 0;
 
@@ -43,7 +43,7 @@ void button_click_run(void) {
             long_press_detected = false;
         } else {
             if (waiting_for_double_click) {
-                event_callback(BUTTON_EVENT_DOUBLE_CLICK, 0);
+                event_callback(BUTTON_DOUBLE_CLICK, 0);
                 waiting_for_double_click = false;
             } else if (!long_press_detected) {
                 waiting_for_double_click = true;
@@ -52,7 +52,7 @@ void button_click_run(void) {
         }
     }
     else if (waiting_for_double_click && (current_time - last_event_time > DOUBLE_CLICK_TIME)) {
-        event_callback(BUTTON_EVENT_SINGLE_CLICK, 0);
+        event_callback(BUTTON_SINGLE_CLICK, 0);
         waiting_for_double_click = false;
     }
     else {
@@ -60,11 +60,11 @@ void button_click_run(void) {
 
         if (button_pressed && (time_diff > LONG_PRESS_TIME)) {
             if (!long_press_detected) {
-                event_callback(BUTTON_EVENT_LONG_PRESS, 0);
+                event_callback(BUTTON_LONG_PRESS, 0);
                 long_press_detected = true;
                 last_event_time = current_time;
             } else if (current_time - last_event_time > LONG_PRESS_REPEAT_TIME) {
-                event_callback(BUTTON_EVENT_LONG_PRESS, time_diff - LONG_PRESS_TIME);
+                event_callback(BUTTON_LONG_PRESS, time_diff - LONG_PRESS_TIME);
                 last_event_time = current_time;
             }
         }
