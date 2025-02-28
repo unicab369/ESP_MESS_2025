@@ -40,21 +40,29 @@ static const char *TAG = "MAIN";
 uint8_t esp_mac[6];
 
 // Button event callback
-void button_event_handler(button_event_t event, uint64_t duration) {
+void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
+    //! NOTE: button_event_t with input_gpio_t values need to match
+    behavior_process_gpio(event, pin, pressed_time);
+
     switch (event) {
         case BUTTON_SINGLE_CLICK:
-            ESP_LOGI(TAG, "Single click detected!\n");
             led_toggle_pulses(1, 0);
             break;
         case BUTTON_DOUBLE_CLICK:
-            ESP_LOGI(TAG, "Double click detected!\n");
             led_toggle_switch();
             break;
         case BUTTON_LONG_PRESS:
-            ESP_LOGI(TAG, "duration = %lld", duration/1000);
             led_toggle_pulses(3, 1000);
             break;
     }
+}
+
+void rotary_event_handler(int16_t value, bool direction) {
+    behavior_process_rotary(value, direction);
+}
+
+void uart_read_handler(uint8_t* data, size_t len) {
+    ESP_LOGI(TAG, "IM HERE");
 }
 
 void espnow_message_handler(espnow_received_message_t received_message) {
@@ -77,6 +85,31 @@ void espnow_message_handler(espnow_received_message_t received_message) {
     ESP_LOGI("TAG", "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
 }
 
+
+void behavior_handle_output(behavior_config_t *config) {
+    switch (config->output_cmd) {
+        case OUTPUT_GPIO_CMD:
+            output_gpio_t output_type = config->output_data[0];
+            
+            switch (output_type) {
+                case OUTPUT_GPIO_STATE:
+                    break;
+                case OUTPUT_GPIO_TOGGLE:
+                    break;
+                case OUTPUT_GPIO_FADE:
+                    break;    
+            }
+            break;
+        case OUTPUT_WS2812_CMD:
+            break;
+        case OUTPUT_DISPLAY_CMD:
+            break;
+        case OUTPUT_NETWORK_CMD:
+            break;
+    }
+}
+
+
 void espnow_controller_send() {
     uint8_t dest_mac[6] = { 0xAA };
     uint8_t data[32] = { 0xBB };
@@ -94,19 +127,6 @@ void espnow_controller_send() {
     espnow_send((uint8_t*)&message, sizeof(message));
 }
 
-
-void rotary_event_handler(int16_t value, bool direction) {
-    const char* directionStr = direction ? "CW" : "CCW";
-    ESP_LOGI(TAG, "rotary = %d, direction: %s", value, directionStr);
-}
-
-void uart_read_handler(uint8_t* data, size_t len) {
-    ESP_LOGI(TAG, "IM HERE");
-}
-
-
-
-
 void app_main(void)
 {
     #if CONFIG_IDF_TARGET_ESP32C3
@@ -122,13 +142,13 @@ void app_main(void)
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
 
-    // espnow_setup(esp_mac, espnow_message_handler);
-    // ESP_LOGI("TAG", "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+    espnow_setup(esp_mac, espnow_message_handler);
+    ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
     
     // littlefs_setup();
     // littlefs_test();
 
-    behavior_setup(esp_mac);
+    behavior_setup(esp_mac, behavior_handle_output);
 
     while (1) {
         #if CONFIG_IDF_TARGET_ESP32C3

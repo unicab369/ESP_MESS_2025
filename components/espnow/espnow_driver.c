@@ -17,7 +17,7 @@
 #define CONFIG_ESPNOW_PMK "pmk1234567890123"
 #define ESPNOW_QUEUE_SIZE           6
 
-static const char *TAG = "espnow_example";
+static const char *TAG = "ESP-NOW";
 
 #define BROADCAST_ADDRESS {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 static const uint8_t broadcast_mac[] = BROADCAST_ADDRESS;
@@ -43,7 +43,7 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 {
     if (message_callback == NULL) return;
     if (len < sizeof(espnow_message_t)) {
-        ESP_LOGE("TAG", "Received data size mismatch. Expected at least %d bytes, got %d", sizeof(espnow_message_t), len);
+        ESP_LOGE(TAG, "Received data size mismatch. Expected at least %d bytes, got %d", sizeof(espnow_message_t), len);
         return;
     }
 

@@ -43,7 +43,8 @@ void button_click_loop(void) {
             long_press_detected = false;
         } else {
             if (waiting_for_double_click) {
-                event_callback(BUTTON_DOUBLE_CLICK, 0);
+                printf("BUTTON_DOUBLE_CLICK detected!\n");
+                event_callback(BUTTON_DOUBLE_CLICK, button_gpio, 0);
                 waiting_for_double_click = false;
             } else if (!long_press_detected) {
                 waiting_for_double_click = true;
@@ -52,7 +53,8 @@ void button_click_loop(void) {
         }
     }
     else if (waiting_for_double_click && (current_time - last_event_time > DOUBLE_CLICK_TIME)) {
-        event_callback(BUTTON_SINGLE_CLICK, 0);
+        printf("BUTTON_SINGLE_CLICK detected!\n");
+        event_callback(BUTTON_SINGLE_CLICK, button_gpio, 0);
         waiting_for_double_click = false;
     }
     else {
@@ -60,11 +62,14 @@ void button_click_loop(void) {
 
         if (button_pressed && (time_diff > LONG_PRESS_TIME)) {
             if (!long_press_detected) {
-                event_callback(BUTTON_LONG_PRESS, 0);
+                event_callback(BUTTON_LONG_PRESS, button_gpio, 0);
                 long_press_detected = true;
                 last_event_time = current_time;
+                
             } else if (current_time - last_event_time > LONG_PRESS_REPEAT_TIME) {
-                event_callback(BUTTON_LONG_PRESS, time_diff - LONG_PRESS_TIME);
+                uint64_t pressed_time = time_diff - LONG_PRESS_TIME;
+                printf("BUTTON_LONG_PRESS duration = %lld\n", pressed_time/1000);
+                event_callback(BUTTON_LONG_PRESS, button_gpio, pressed_time);
                 last_event_time = current_time;
             }
         }

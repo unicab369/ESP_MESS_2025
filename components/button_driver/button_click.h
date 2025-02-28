@@ -6,14 +6,14 @@
 #include <soc/gpio_num.h>
 
 // Button event types
-typedef enum {
-    BUTTON_SINGLE_CLICK,
-    BUTTON_DOUBLE_CLICK,
-    BUTTON_LONG_PRESS
+typedef enum __attribute__((packed)) {
+    BUTTON_SINGLE_CLICK = 0x11,
+    BUTTON_DOUBLE_CLICK = 0x12,
+    BUTTON_LONG_PRESS = 0x13,
 } button_event_t;
 
 // Callback function type
-typedef void (*button_event_callback_t)(button_event_t event, uint64_t duration);
+typedef void (*button_event_callback_t)(button_event_t event, uint8_t pin, uint64_t duration);
 
 // Function prototypes
 void button_click_setup(gpio_num_t button_gpio, button_event_callback_t callback);

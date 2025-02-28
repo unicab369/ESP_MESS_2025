@@ -46,7 +46,13 @@
         "limits": "c",
         "functional": "c",
         "tuple": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "dirent.h": "c",
+        "charconv": "c",
+        "optional": "c",
+        "utility": "c",
+        "random": "c",
+        "littlefs.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

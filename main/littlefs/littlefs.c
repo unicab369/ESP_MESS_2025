@@ -61,11 +61,15 @@ static void read_file_content(const char* path, char* file_name, littlefs_readfi
         return;
     }
 
-    char buff[MAX_FILE_CONTENT_SIZE]; // Buffer to store file content
-    while (fgets(buff, sizeof(buff), file) != NULL) {
-        callback(file_name, buff, sizeof(buff));
-    }
+    char buff[MAX_FILE_CONTENT_SIZE] = { 0 };
 
+    // Read the file line by line
+    while (fgets(buff, sizeof(buff), file) != NULL) {
+        printf("\nline content: \n");
+        printf("%s\n", buff); // Print each line of the file
+        callback(file_name, buff, strlen(buff));
+    }
+    
     fclose(file);
 }
 

@@ -58,6 +58,7 @@ void rotary_loop() {
                 // Trigger the callback if enough time has passed since the last update
                 if (current_time - last_update_time > ROTARY_UPDATE_TIME) {
                     event_callback(value, direction);
+                    printf("rotary = %d, direction: %u\n", value, direction);
                     last_update_time = current_time;
                 }
             }
