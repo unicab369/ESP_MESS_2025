@@ -11,15 +11,14 @@
 #include "button_click.h"
 #include "rotary_driver.h"
 #include "uart_driver.h"
-// #include "espnow_controller.h"
+#include "behavior/behavior.h"
+#include "espnow_driver.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/ledc.h"
 #include "esp_log.h"
 #include "driver/usb_serial_jtag.h"
-// #include "littlefs_driver.h"
-// #include "my_littlefs.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -34,52 +33,22 @@
     #define ROTARY_DT 13
 #endif
 
+#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+
 static const char *TAG = "MAIN";
 
-
-typedef enum __attribute__((packed)) {
-    CMD_GPIO,
-    CMD_WS2812,
-    CMD_DISPLAY
-} command_t;
-
-typedef enum __attribute__((packed)) {
-    GPIO_STATE,
-    GPIO_TOGGLE,
-    GPIO_FLICKER,
-    GPIO_FADE,
-} gpio_output_t;
-
-typedef enum __attribute__((packed)) {
-    WS2812_SINGLE,
-    WS2812_PATERN
-} ws2812_output_t;
-
-
-void gpio_set_state(uint8_t pin, uint8_t value) {
-    uint8_t data[32];
-
-    data[0] = CMD_GPIO;
-    data[1] = GPIO_STATE;
-    data[2] = pin;
-    data[3] = value;
-}
-
-// typedef struct {
-//     gpio_action_t action_type;
-// } gpio_command_action_t;
-
+uint8_t esp_mac[6];
 
 // Button event callback
 void button_event_handler(button_event_t event, uint64_t duration) {
     switch (event) {
         case BUTTON_SINGLE_CLICK:
             ESP_LOGI(TAG, "Single click detected!\n");
-            led_toggle_switch();
+            led_toggle_pulses(1, 0);
             break;
         case BUTTON_DOUBLE_CLICK:
             ESP_LOGI(TAG, "Double click detected!\n");
-            led_toggle_pulses(1, 0);
+            led_toggle_switch();
             break;
         case BUTTON_LONG_PRESS:
             ESP_LOGI(TAG, "duration = %lld", duration/1000);
@@ -87,6 +56,44 @@ void button_event_handler(button_event_t event, uint64_t duration) {
             break;
     }
 }
+
+void espnow_message_handler(espnow_received_message_t received_message) {
+    ESP_LOGW("TAG","received data:");
+
+    ESP_LOGI("TAG", "Source Address: %02X:%02X:%02X:%02X:%02X:%02X", 
+        received_message.src_addr[0],
+        received_message.src_addr[1],
+        received_message.src_addr[2],
+        received_message.src_addr[3],
+        received_message.src_addr[4],
+        received_message.src_addr[5]
+    );
+
+    ESP_LOGI("TAG", "rssi: %d", received_message.rssi);
+    ESP_LOGI("TAG", "channel: %d", received_message.channel);
+    ESP_LOGI("TAG", "group_id: %d", received_message.message->group_id);
+    ESP_LOGI("TAG", "msg_id: %d", received_message.message->msg_id);
+    ESP_LOGI("TAG", "access_code: %u", received_message.message->access_code);
+    ESP_LOGI("TAG", "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
+}
+
+void espnow_controller_send() {
+    uint8_t dest_mac[6] = { 0xAA };
+    uint8_t data[32] = { 0xBB };
+
+    espnow_message_t message = {
+        .access_code = 33,
+        .group_id = 11,
+        .msg_id = 12,
+        .time_to_live = 15,
+    };
+
+    memcpy(message.target_addr, dest_mac, sizeof(message.target_addr));
+    memcpy(message.data, data, sizeof(message.data));
+
+    espnow_send((uint8_t*)&message, sizeof(message));
+}
+
 
 void rotary_event_handler(int16_t value, bool direction) {
     const char* directionStr = direction ? "CW" : "CCW";
@@ -105,19 +112,21 @@ void app_main(void)
     #endif
     ESP_LOGI(TAG, "APP START");
 
-    led_toggle_setup(BLINK_PIN);
-    // led_toggle_pulses(3, 1000);
-
+    led_toggle_setup(BLINK_PIN); 
     led_fade_setup(LED_FADE_PIN, 5000);             // 5 kHz frequency
     led_fade_start(1023, 500, 10);                  // Brightness, fade_duration, update_frequency
 
     rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
-    // espnow_controller_setup();
 
+    espnow_setup(esp_mac, espnow_message_handler);
+    ESP_LOGI("TAG", "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+    
     // littlefs_setup();
     // littlefs_test();
+
+    behavior_setup(esp_mac);
 
     while (1) {
         #if CONFIG_IDF_TARGET_ESP32C3
@@ -131,7 +140,7 @@ void app_main(void)
         button_click_loop();
         rotary_loop();
 
-        // espnow_controller_send();
+        espnow_controller_send();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

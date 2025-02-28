@@ -25,7 +25,7 @@ typedef struct {
 typedef void (*espnow_message_cb)(espnow_received_message_t received_message);
 
 // Function prototypes
-esp_err_t espnow_setup(espnow_message_cb callback);
+esp_err_t espnow_setup(uint8_t* esp_mac, espnow_message_cb callback);
 esp_err_t espnow_send(uint8_t* data, size_t len);
 
 #endif

@@ -42,7 +42,11 @@
         "span": "c",
         "system_error": "c",
         "stdint.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "limits": "c",
+        "functional": "c",
+        "tuple": "c",
+        "stdio.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

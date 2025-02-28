@@ -24,15 +24,16 @@
 #include <sys/param.h>
 #include <unistd.h>
 
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
+#error "esp_littlefs requires esp-idf >=5.0"
+#endif
+
+
 #ifdef CONFIG_LITTLEFS_SDMMC_SUPPORT
 #include <sdmmc_cmd.h>
 #endif
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "spi_flash_mmap.h"
-#else
-#include "esp_spi_flash.h"
-#endif
 
 #if CONFIG_IDF_TARGET_ESP32
 #include "esp32/rom/spi_flash.h"
@@ -1885,9 +1886,16 @@ static int vfs_littlefs_fstat(void* ctx, int fd, struct stat * st) {
 #endif
 
     sem_give(efs);
-
-    st->st_size = info.size;
-    st->st_mode = ((info.type==LFS_TYPE_REG)?S_IFREG:S_IFDIR);
+    if(info.type==LFS_TYPE_REG){
+        // Regular File
+        st->st_mode = S_IFREG;
+        st->st_size = info.size;
+    }
+    else{
+        // Directory
+        st->st_mode = S_IFDIR;
+        st->st_size = 0;  // info.size is only valid for REG files
+    }
     return 0;
 }
 #endif
@@ -1917,8 +1925,16 @@ static int vfs_littlefs_stat(void* ctx, const char * path, struct stat * st) {
     st->st_mtime = vfs_littlefs_get_mtime(efs, path);
 #endif
     sem_give(efs);
-    st->st_size = info.size;
-    st->st_mode = ((info.type==LFS_TYPE_REG)?S_IFREG:S_IFDIR);
+    if(info.type==LFS_TYPE_REG){
+        // Regular File
+        st->st_mode = S_IFREG;
+        st->st_size = info.size;
+    }
+    else{
+        // Directory
+        st->st_mode = S_IFDIR;
+        st->st_size = 0;  // info.size is only valid for REG files
+    }
     return 0;
 }
 

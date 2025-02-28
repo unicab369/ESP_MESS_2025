@@ -1,6 +1,6 @@
 idf_component_register(SRCS 
                             "espnow_driver.c" 
-                            "espnow_controller.c"
+                         #    "espnow_controller.c"
                        INCLUDE_DIRS "."
                        REQUIRES
                        driver

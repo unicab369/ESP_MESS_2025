@@ -37,10 +37,6 @@ static void wifi_setup(void)
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_start());
     ESP_ERROR_CHECK( esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
-
-    uint8_t esp_mac[6];
-    esp_read_mac(esp_mac, 6);
-    ESP_LOGI(TAG, "ESP mac " MACSTR "", esp_mac[0], esp_mac[1], esp_mac[2], esp_mac[3], esp_mac[4], esp_mac[5]);
 }
 
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
@@ -62,8 +58,11 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
     message_callback(received_message);
 }
 
-esp_err_t espnow_setup(espnow_message_cb callback)
+esp_err_t espnow_setup(uint8_t* esp_mac, espnow_message_cb callback)
 {
+    esp_read_mac(esp_mac, 6);
+    ESP_LOGI(TAG, "ESP mac " MACSTR "", esp_mac[0], esp_mac[1], esp_mac[2], esp_mac[3], esp_mac[4], esp_mac[5]);
+
     message_callback = callback;
 
     // Initialize NVS

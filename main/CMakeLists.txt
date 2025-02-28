@@ -1,5 +1,6 @@
 idf_component_register(SRCS "main.c"
-                            "my_littlefs.c"
+                            "littlefs/littlefs.c"
+                            "behavior/behavior.c"
                     INCLUDE_DIRS "."
                     REQUIRES
                         driver
@@ -9,7 +10,6 @@ idf_component_register(SRCS "main.c"
                         uart_driver
                         cdc_driver
                         espnow
-                        littlefs_driver
                     )
 
 # Note: you must have a partition named the first argument (here it's "littlefs")
