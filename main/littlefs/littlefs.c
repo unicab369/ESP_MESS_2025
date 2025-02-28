@@ -8,6 +8,8 @@
 #include "esp_littlefs.h"
 #include <dirent.h>
 
+#define MAX_FILE_CONTENT_SIZE 128
+
 static const char *TAG = "LITTLEFS";
 
 FILE *f;
@@ -59,7 +61,7 @@ static void read_file_content(const char* path, char* file_name, littlefs_readfi
         return;
     }
 
-    char buff[128]; // Buffer to store file content
+    char buff[MAX_FILE_CONTENT_SIZE]; // Buffer to store file content
     while (fgets(buff, sizeof(buff), file) != NULL) {
         callback(file_name, buff, sizeof(buff));
     }

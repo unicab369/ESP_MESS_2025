@@ -105,6 +105,8 @@ void uart_read_handler(uint8_t* data, size_t len) {
 }
 
 
+
+
 void app_main(void)
 {
     #if CONFIG_IDF_TARGET_ESP32C3
@@ -120,8 +122,8 @@ void app_main(void)
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
 
-    espnow_setup(esp_mac, espnow_message_handler);
-    ESP_LOGI("TAG", "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+    // espnow_setup(esp_mac, espnow_message_handler);
+    // ESP_LOGI("TAG", "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
     
     // littlefs_setup();
     // littlefs_test();
@@ -140,7 +142,7 @@ void app_main(void)
         button_click_loop();
         rotary_loop();
 
-        espnow_controller_send();
+        // espnow_controller_send();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

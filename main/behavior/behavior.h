@@ -5,36 +5,35 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+//! INPUT COMMANDS
+typedef enum __attribute__((packed)) {
+    INPUT_CMD_GPIO = 0x01,
+    INPUT_CMD_ROTARY = 0x02,
+    INPUT_CMD_I2C = 0x03,
+    INPUT_CMD_HTTP = 0x04,
+    INPUT_CMD_ESPNOW = 0x05,
+    INPUT_CMD_MQTT = 0x06
+} input_command_t;
+
+
 //! OUTPUT COMMANDS
 typedef enum __attribute__((packed)) {
-    OUTPUT_CMD_GPIO,
-    OUTPUT_CMD_WS2812,
-    OUTPUT_CMD_DISPLAY
+    OUTPUT_CMD_GPIO = 0xA0,
+    OUTPUT_CMD_WS2812 = 0xB0,
+    OUTPUT_CMD_DISPLAY = 0xC0
 } output_command_t;
 
 typedef enum __attribute__((packed)) {
-    OUTPUT_GPIO_STATE,
-    OUTPUT_GPIO_TOGGLE,
-    OUTPUT_GPIO_FLICKER,
-    OUTPUT_GPIO_FADE,
+    OUTPUT_GPIO_STATE = 0xA1,
+    OUTPUT_GPIO_TOGGLE = 0xA2,
+    OUTPUT_GPIO_FLICKER = 0xA3,
+    OUTPUT_GPIO_FADE = 0xA4,
 } output_gpio_t;
 
 typedef enum __attribute__((packed)) {
     OUTPUT_WS2812_SINGLE,
     OUTPUT_WS2812_PATTERN
 } output_ws2812_t;
-
-
-//! INPUT COMMANDS
-typedef enum __attribute__((packed)) {
-    INPUT_CMD_GPIO,
-    INPUT_CMD_ROTARY,
-    INPUT_CMD_I2C,
-    INPUT_CMD_HTTP,
-    INPUT_CMD_ESPNOW,
-    INPUT_CMD_MQTT
-} input_command_t;
-
 
 //! BEHAVIORS
 typedef struct {
