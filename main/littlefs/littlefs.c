@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "esp_littlefs.h"
+#include <dirent.h>
 
 static const char *TAG = "LITTLEFS";
 
@@ -44,6 +45,47 @@ void littlefs_setup() {
     } else {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
     }
+}
+
+static void read_file_content(const char* path, char* file_name, littlefs_readfile_cb callback) {
+    // Construct the full file path
+    char file_path[512];
+    snprintf(file_path, sizeof(file_path), "%s/%s", path, file_name);
+    ESP_LOGI("TAG", "Read file: %s", file_path);
+
+    FILE* file = fopen(file_path, "r");
+    if (file == NULL) {
+        ESP_LOGE("TAG", "Failed to open file: %s", file_path);
+        return;
+    }
+
+    char buff[128]; // Buffer to store file content
+    while (fgets(buff, sizeof(buff), file) != NULL) {
+        callback(file_name, buff, sizeof(buff));
+    }
+
+    fclose(file);
+}
+
+
+void littlefs_loadFiles(const char* path, littlefs_readfile_cb callback) {
+    // Open the directory
+    DIR* dir = opendir(path);
+    if (dir == NULL) {
+        ESP_LOGE("TAG", "Failed to open directory: %s", path);
+        return;
+    }
+
+    // Read directory entries
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // Skip directories
+        if (entry->d_type == DT_DIR) continue;
+        read_file_content(path, entry->d_name, callback);
+    }
+
+    // Close the directory
+    closedir(dir);
 }
 
 void littlefs_writeFile(const char* path, const char*) {

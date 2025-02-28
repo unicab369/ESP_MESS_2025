@@ -60,9 +60,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 
 esp_err_t espnow_setup(uint8_t* esp_mac, espnow_message_cb callback)
 {
-    esp_read_mac(esp_mac, 6);
-    ESP_LOGI(TAG, "ESP mac " MACSTR "", esp_mac[0], esp_mac[1], esp_mac[2], esp_mac[3], esp_mac[4], esp_mac[5]);
-
     message_callback = callback;
 
     // Initialize NVS
@@ -74,6 +71,7 @@ esp_err_t espnow_setup(uint8_t* esp_mac, espnow_message_cb callback)
     ESP_ERROR_CHECK( ret );
 
     wifi_setup();
+    esp_read_mac(esp_mac, 6);       //! ORDER DOES MATTER: after wifi_setup()
 
     /* Initialize ESPNOW and register sending and receiving callback function. */
     ESP_ERROR_CHECK( esp_now_init() );
