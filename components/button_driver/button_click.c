@@ -29,8 +29,7 @@ void button_click_setup(gpio_num_t gpio, button_event_callback_t callback) {
     gpio_config(&io_conf);
 }
 
-void button_click_loop(void) {
-    uint64_t current_time = esp_timer_get_time();
+void button_click_loop(uint64_t current_time) {
     bool current_state = gpio_get_level(button_gpio) == 0;
 
     if (current_time - last_press_time < DEBOUNCE_TIME) return;

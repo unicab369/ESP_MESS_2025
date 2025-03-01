@@ -36,10 +36,9 @@ void rotary_setup(uint8_t clk_pin, uint8_t dt_pin, rotary_callback_t callback) {
     last_dt_state = gpio_get_level(DT_PIN);
 }
 
-void rotary_loop() {
+void rotary_loop(uint64_t current_time) {
     int clk_state = gpio_get_level(CLK_PIN);
     int dt_state = gpio_get_level(DT_PIN);
-    uint64_t current_time = esp_timer_get_time();
 
     // Check for state change (with debouncing)
     if (clk_state != last_clk_state || dt_state != last_dt_state) {

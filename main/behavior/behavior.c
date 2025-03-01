@@ -24,8 +24,7 @@ static const char *TAG = "BEHAVIOR";
 static behavior_config_t device_behaviors[10];
 static uint8_t behaviors_index = 0;
 static uint8_t device_mac[6];
-static behavior_output_cb output_callback;
-
+static behavior_output_interface behavior_interface;
 
 void print_bytes(uint8_t* data, size_t len) {
     // Print all bytes in hexadecimal format
@@ -143,8 +142,8 @@ void littlefs_readLine_handler(char* file_name, char* str_buff, size_t len) {
     }
 }
 
-void behavior_setup(uint8_t* esp_mac, behavior_output_cb cb) {
-    output_callback = cb;
+void behavior_setup(uint8_t* esp_mac, behavior_output_interface interface) {
+    behavior_interface = interface;
     memcpy(device_mac, esp_mac, sizeof(device_mac));
 
     behaviors_index = 0;
@@ -157,13 +156,43 @@ void behavior_process_gpio(input_gpio_t input_type, int8_t pin, uint16_t input_v
         behavior_config_t config = device_behaviors[i];
         int compare_mac = memcmp(config.remote_mac, device_mac, sizeof(device_mac)) == 0;
         if (!compare_mac || config.input_cmd != INPUT_GPIO_CMD) continue;
+        printf("IM HERE 111\n");
 
-        printf("IM HERE 333\n");
-        if (config.input_data[0] == input_type && 
-            config.input_data[1] == pin
-        ) {
-            output_callback(&config);
+        output_gpio_t output_type = config.output_data[0];
+        bool check = config.input_data[0] == input_type && config.input_data[1] == pin;
+        if (!check) continue;;
+        printf("IM HERE 222\n");
+
+        uint8_t output_pin = config.output_data[0];
+        uint8_t output_val1 = config.output_data[1];
+        uint32_t output_val2;
+        uint32_t output_val3;
+
+        memcpy(&output_val2, config.output_data+2, sizeof(uint32_t));
+        memcpy(&output_val3, config.output_data+2, sizeof(uint32_t));
+
+        switch (output_type) {
+            case OUTPUT_GPIO_SET:
+                printf("IM HERE OUTPUT_GPIO_SET\n");
+                behavior_interface.on_gpio_set(output_pin, output_val1);
+                break;
+            
+            case OUTPUT_GPIO_TOGGLE:
+                printf("IM HERE OUTPUT_GPIO_TOGGLE\n");
+                behavior_interface.on_gpio_toggle(output_pin);
+                break;
+            
+            case OUTPUT_GPIO_PULSE:
+                printf("IM HERE OUTPUT_GPIO_PULSE\n");
+                behavior_interface.on_gpio_pulse(output_pin, output_val1, output_val2);
+                break;
+
+            case OUTPUT_GPIO_FADE:
+                printf("IM HERE OUTPUT_GPIO_FADE\n");
+                behavior_interface.on_gpio_fade(output_pin, output_val2, output_val3);
+                break;
         }
+
     }
 }
 
@@ -174,6 +203,5 @@ void behavior_process_rotary(uint16_t value, bool direction) {
         if (!compare_mac || config.input_cmd != INPUT_ROTARY_CMD) continue;
 
         printf("IM HERE 444\n");
-        output_callback(&config);
     }
 }

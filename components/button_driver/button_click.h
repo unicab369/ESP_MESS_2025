@@ -17,6 +17,6 @@ typedef void (*button_event_callback_t)(button_event_t event, uint8_t pin, uint6
 
 // Function prototypes
 void button_click_setup(gpio_num_t button_gpio, button_event_callback_t callback);
-void button_click_loop(void);
+void button_click_loop(uint64_t current_time);
 
 #endif

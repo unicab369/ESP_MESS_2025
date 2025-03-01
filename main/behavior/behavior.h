@@ -22,11 +22,6 @@ typedef enum __attribute__((packed)) {
     INPUT_GPIO_ANALOG = 0x15
 } input_gpio_t;
 
-typedef struct __attribute__((packed)) {
-    uint8_t input_id;
-    uint8_t data[32];
-} input_config_t;
-
 //! OUTPUT COMMANDS
 typedef enum __attribute__((packed)) {
     OUTPUT_GPIO_CMD = 0xA0,
@@ -36,8 +31,9 @@ typedef enum __attribute__((packed)) {
 } output_command_t;
 
 typedef enum __attribute__((packed)) {
-    OUTPUT_GPIO_STATE = 0xA1,
+    OUTPUT_GPIO_SET = 0xA1,
     OUTPUT_GPIO_TOGGLE = 0xA2,
+    OUTPUT_GPIO_PULSE = 0xA3,
     OUTPUT_GPIO_FADE = 0xA4,
 } output_gpio_t;
 
@@ -55,10 +51,23 @@ typedef struct {
     uint8_t output_data[16];
 } behavior_config_t;
 
-typedef void (*behavior_output_cb)(behavior_config_t* config);
+
+
+typedef void (*gpio_set_cb_t)(uint8_t pin, uint16_t val);
+typedef void (*gpio_toogle_cb_t)(uint8_t pin);
+typedef void (*gpio_pulse_cb_t)(uint8_t pin, uint8_t count, uint32_t repeat_duration);
+typedef void (*gpio_fade_cb_t)(uint8_t pin, uint32_t output_threshold, uint32_t duration_ms);
+
+typedef struct {
+    gpio_set_cb_t on_gpio_set;
+    gpio_toogle_cb_t on_gpio_toggle;
+    gpio_pulse_cb_t on_gpio_pulse;
+    gpio_fade_cb_t on_gpio_fade;
+} behavior_output_interface;
+
 
 // Function prototypes
-void behavior_setup(uint8_t* esp_mac, behavior_output_cb callback);
+void behavior_setup(uint8_t* esp_mac, behavior_output_interface interface);
 void behavior_process_gpio(input_gpio_t input_type, int8_t pin, uint16_t input_value);
 void behavior_process_rotary(uint16_t value, bool direction);
 

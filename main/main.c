@@ -19,6 +19,7 @@
 #include "driver/ledc.h"
 #include "esp_log.h"
 #include "driver/usb_serial_jtag.h"
+#include "esp_timer.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -83,30 +84,6 @@ void espnow_message_handler(espnow_received_message_t received_message) {
 }
 
 
-void behavior_handle_output(behavior_config_t *config) {
-    switch (config->output_cmd) {
-        case OUTPUT_GPIO_CMD:
-            output_gpio_t output_type = config->output_data[0];
-            
-            switch (output_type) {
-                case OUTPUT_GPIO_STATE:
-                    break;
-                case OUTPUT_GPIO_TOGGLE:
-                    break;
-                case OUTPUT_GPIO_FADE:
-                    break;    
-            }
-            break;
-        case OUTPUT_WS2812_CMD:
-            break;
-        case OUTPUT_DISPLAY_CMD:
-            break;
-        case OUTPUT_NETWORK_CMD:
-            break;
-    }
-}
-
-
 void espnow_controller_send() {
     uint8_t dest_mac[6] = { 0xAA };
     uint8_t data[32] = { 0xBB };
@@ -124,12 +101,13 @@ void espnow_controller_send() {
     espnow_send((uint8_t*)&message, sizeof(message));
 }
 
+
 void app_main(void)
 {
+    ESP_LOGI(TAG, "APP START");
     #if CONFIG_IDF_TARGET_ESP32C3
         cdc_setup();
     #endif
-    ESP_LOGI(TAG, "APP START");
 
     led_toggle_setup(LED_FADE_PIN); 
     led_fade_setup(LED_FADE_PIN);
@@ -141,19 +119,26 @@ void app_main(void)
 
     espnow_setup(esp_mac, espnow_message_handler);
     ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
-    behavior_setup(esp_mac, behavior_handle_output);
+
+    
+    behavior_output_interface output_interface;
+    // output_interface.on_gpio_set = 
+
+    behavior_setup(esp_mac, output_interface);
 
     while (1) {
+        uint64_t current_time = esp_timer_get_time();
+        
         #if CONFIG_IDF_TARGET_ESP32C3
             cdc_read_task();
         #endif
 
-        led_toggle_loop();
-        led_fade_loop();
+        led_toggle_loop(current_time);
+        led_fade_loop(current_time);
 
         // uart_run();
-        button_click_loop();
-        rotary_loop();
+        button_click_loop(current_time);
+        rotary_loop(current_time);
 
         // espnow_controller_send();
 

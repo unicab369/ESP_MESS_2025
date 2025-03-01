@@ -84,7 +84,6 @@ void led_toggle_pulses(uint8_t count, uint32_t repeat_duration) {
 
 void led_toggle_stop() {
     is_enabled = false;
-    is_toggling = false;
 }
 
 void led_toggle_setValue(bool onOff) {
@@ -108,9 +107,8 @@ void led_toggle_switch() {
     toggle();
 }
 
-void led_toggle_loop(void) {
+void led_toggle_loop(uint64_t current_time) {
     if (!is_enabled) return;
-    uint64_t current_time = esp_timer_get_time();
 
     if (is_toggling) {
         // Toggle the LED every conf_toggle_usec
@@ -142,3 +140,37 @@ void led_toggle_loop(void) {
 // // Resume the LEDC timer and channel
 // ESP_ERROR_CHECK(ledc_timer_resume(LEDC_MODE, LEDC_TIMER)); // Resume timer
 // ESP_ERROR_CHECK(ledc_channel_resume(LEDC_MODE, LEDC_CHANNEL)); // Resume channel
+
+// // Configure the LEDC timer
+// ledc_timer_config_t timer_config = {
+//     .speed_mode = LEDC_MODE,
+//     .duty_resolution = LEDC_DUTY_RESOLUTION,
+//     .timer_num = LEDC_TIMER,
+//     .freq_hz = LEDC_FREQUENCY,
+//     .clk_cfg = LEDC_AUTO_CLK, // Automatic clock source
+// };
+// ESP_ERROR_CHECK(ledc_timer_config(&timer_config));
+
+// // Configure LEDC channel 1 for GPIO 18
+// ledc_channel_config_t channel_config_1 = {
+//     .gpio_num = LEDC_GPIO_PIN_1,
+//     .speed_mode = LEDC_MODE,
+//     .channel = LEDC_CHANNEL_1,
+//     .intr_type = LEDC_INTR_DISABLE, // No interrupt
+//     .timer_sel = LEDC_TIMER,
+//     .duty = 0, // Start with 0% duty cycle (LED off)
+//     .hpoint = 0, // Phase point (default to 0)
+// };
+// ESP_ERROR_CHECK(ledc_channel_config(&channel_config_1));
+
+// // Configure LEDC channel 2 for GPIO 19
+// ledc_channel_config_t channel_config_2 = {
+//     .gpio_num = LEDC_GPIO_PIN_2,
+//     .speed_mode = LEDC_MODE,
+//     .channel = LEDC_CHANNEL_2,
+//     .intr_type = LEDC_INTR_DISABLE, // No interrupt
+//     .timer_sel = LEDC_TIMER,
+//     .duty = 0, // Start with 0% duty cycle (LED off)
+//     .hpoint = 0, // Phase point (default to 0)
+// };
+// ESP_ERROR_CHECK(ledc_channel_config(&channel_config_2));

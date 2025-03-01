@@ -20,6 +20,6 @@ void led_toggle_pulses(uint8_t count, uint32_t repeat_duration);
 void led_toggle_switch(void);
 void led_toggle_setValue(bool onOff);
 void led_toggle_stop(void);
-void led_toggle_loop(void);
+void led_toggle_loop(uint64_t current_time);
 
 #endif // LED_TOGGLE_H

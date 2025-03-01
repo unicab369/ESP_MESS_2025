@@ -6,7 +6,6 @@
 #define LED_UPDATE_FREQUENCY 10000     // 10ms
 
 static uint32_t brightness_threshold;
-static uint32_t update_frequency_us;
 static uint32_t current_duty = 0;
 static bool is_fading_up = true;
 static uint64_t last_update_time = 0;
@@ -52,9 +51,7 @@ void led_fade_stop() {
     is_enabled = false;
 }
 
-void led_fade_loop(void) {
-    uint64_t current_time = esp_timer_get_time();
-
+void led_fade_loop(uint64_t current_time) {
     if (is_enabled && current_time - last_update_time >= LED_UPDATE_FREQUENCY) {
         last_update_time = current_time;
 
