@@ -46,12 +46,17 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
 
     switch (event) {
         case BUTTON_SINGLE_CLICK:
-            led_toggle_pulses(1, 0);
-            break;
-        case BUTTON_DOUBLE_CLICK:
+            led_fade_stop();
+            // led_toggle_pulses(1, 0);
+            // led_toggle_pulses(3, 1000);
             led_toggle_switch();
             break;
+        case BUTTON_DOUBLE_CLICK:
+            led_toggle_stop();
+            led_fade_restart(1023, 500);        // Brightness, fade_duration
+            break;
         case BUTTON_LONG_PRESS:
+            led_fade_stop();
             led_toggle_pulses(3, 1000);
             break;
     }
@@ -66,23 +71,15 @@ void uart_read_handler(uint8_t* data, size_t len) {
 }
 
 void espnow_message_handler(espnow_received_message_t received_message) {
-    ESP_LOGW("TAG","received data:");
+    ESP_LOGW(TAG,"received data:");
+    ESP_LOGI(TAG, "Source Address: %02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(received_message.src_addr));
 
-    ESP_LOGI("TAG", "Source Address: %02X:%02X:%02X:%02X:%02X:%02X", 
-        received_message.src_addr[0],
-        received_message.src_addr[1],
-        received_message.src_addr[2],
-        received_message.src_addr[3],
-        received_message.src_addr[4],
-        received_message.src_addr[5]
-    );
-
-    ESP_LOGI("TAG", "rssi: %d", received_message.rssi);
-    ESP_LOGI("TAG", "channel: %d", received_message.channel);
-    ESP_LOGI("TAG", "group_id: %d", received_message.message->group_id);
-    ESP_LOGI("TAG", "msg_id: %d", received_message.message->msg_id);
-    ESP_LOGI("TAG", "access_code: %u", received_message.message->access_code);
-    ESP_LOGI("TAG", "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
+    ESP_LOGI(TAG, "rssi: %d", received_message.rssi);
+    ESP_LOGI(TAG, "channel: %d", received_message.channel);
+    ESP_LOGI(TAG, "group_id: %d", received_message.message->group_id);
+    ESP_LOGI(TAG, "msg_id: %d", received_message.message->msg_id);
+    ESP_LOGI(TAG, "access_code: %u", received_message.message->access_code);
+    ESP_LOGI(TAG, "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
 }
 
 
@@ -134,9 +131,9 @@ void app_main(void)
     #endif
     ESP_LOGI(TAG, "APP START");
 
-    led_toggle_setup(BLINK_PIN); 
-    led_fade_setup(LED_FADE_PIN, 5000);             // 5 kHz frequency
-    led_fade_start(1023, 500, 10);                  // Brightness, fade_duration, update_frequency
+    led_toggle_setup(LED_FADE_PIN); 
+    led_fade_setup(LED_FADE_PIN);
+    led_fade_restart(1023, 500);        // Brightness, fade_duration
 
     rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     button_click_setup(BUTTON_PIN, button_event_handler);
@@ -144,10 +141,6 @@ void app_main(void)
 
     espnow_setup(esp_mac, espnow_message_handler);
     ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
-    
-    // littlefs_setup();
-    // littlefs_test();
-
     behavior_setup(esp_mac, behavior_handle_output);
 
     while (1) {

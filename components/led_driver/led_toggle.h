@@ -18,8 +18,8 @@ void led_toggle_restart(void);
 void led_toggle_pulses(uint8_t count, uint32_t repeat_duration);
 
 void led_toggle_switch(void);
-void led_toggle_value(bool onOff);
-void led_toggle_off(void);
+void led_toggle_setValue(bool onOff);
+void led_toggle_stop(void);
 void led_toggle_loop(void);
 
 #endif // LED_TOGGLE_H

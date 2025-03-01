@@ -1,7 +1,10 @@
 #include "led_toggle.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+
+#define LEDC_DUTY_RESOLUTION   LEDC_TIMER_10_BIT
 
 static const char *TAG = "GPIO_TOGGLE";
 
@@ -15,6 +18,7 @@ static uint64_t last_wait_time = 0;
 static uint32_t conf_toggle_usec = 200000;  // micro seconds
 static uint32_t conf_wait_usec = 0;   // micro seconds
 static int conf_toggle_max = 6;
+static bool is_enabled = false;
 
 static gpio_toggle_t led_config = {
     .blink_count = 1,
@@ -26,18 +30,40 @@ static gpio_toggle_t led_config = {
 void led_toggle_setup(gpio_num_t gpio) {
     led_gpio = gpio;
 
-    // Configure the LED GPIO
-    gpio_config_t io_conf = {
-        .pin_bit_mask = (1ULL << led_gpio),
-        .mode = GPIO_MODE_INPUT_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
-    gpio_config(&io_conf);
+    // //Configure the LED GPIO
+    // gpio_config_t io_conf = {
+    //     .pin_bit_mask = (1ULL << led_gpio),
+    //     .mode = GPIO_MODE_INPUT_OUTPUT,
+    //     .pull_up_en = GPIO_PULLUP_DISABLE,
+    //     .pull_down_en = GPIO_PULLDOWN_DISABLE,
+    //     .intr_type = GPIO_INTR_DISABLE
+    // };
+    // gpio_config(&io_conf);
+
+    // ledc_timer_config_t timer_conf = {
+    //     .speed_mode = LEDC_LOW_SPEED_MODE,
+    //     .duty_resolution = LEDC_DUTY_RESOLUTION,
+    //     .timer_num = LEDC_TIMER_0,
+    //     .freq_hz = 5000,
+    //     .clk_cfg = LEDC_AUTO_CLK
+    // };
+    // ledc_timer_config(&timer_conf);
+
+    // ledc_channel_config_t channel_conf = {
+    //     .gpio_num = led_gpio,
+    //     .speed_mode = LEDC_LOW_SPEED_MODE,
+    //     .channel = LEDC_CHANNEL_0,
+    //     .timer_sel = LEDC_TIMER_0,
+    //     .duty = 0,
+    //     .hpoint = 0
+    // };
+    // ledc_channel_config(&channel_conf);
 }
 
 void led_toggle_restart() {
+    //! stop PWM
+    // ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
+
     // reset values
     last_toggle_time = esp_timer_get_time();
     last_wait_time = esp_timer_get_time();
@@ -47,6 +73,7 @@ void led_toggle_restart() {
     conf_toggle_max = led_config.blink_count*2;
     conf_toggle_usec = led_config.toggle_time_ms*1000;
     conf_wait_usec = led_config.wait_time_ms*1000;
+    is_enabled = true;
 }
 
 void led_toggle_pulses(uint8_t count, uint32_t repeat_duration) {
@@ -55,32 +82,40 @@ void led_toggle_pulses(uint8_t count, uint32_t repeat_duration) {
     led_toggle_restart();
 }
 
-void led_toggle_off() {
-    conf_wait_usec = 0;
+void led_toggle_stop() {
+    is_enabled = false;
     is_toggling = false;
 }
 
-void led_toggle_value(bool onOff) {
-    led_toggle_off();
+void led_toggle_setValue(bool onOff) {
+    led_toggle_stop();
     gpio_set_level(led_gpio, onOff);
 }
 
+static void toggle() {
+    led_state = !led_state;
+
+    // gpio_set_level(led_gpio, led_state);
+
+    uint32_t duty = led_state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    printf("Value: %" PRIu32 "\n", duty);
+}
+
 void led_toggle_switch() {
-    led_toggle_off();
-    bool readState = gpio_get_level(led_gpio);
-    gpio_set_level(led_gpio, !readState);
+    led_toggle_stop();
+    toggle();
 }
 
 void led_toggle_loop(void) {
-    //! conf_wait_usec == 0 means no repeat
-    if (conf_wait_usec == 0 && !is_toggling) return;
+    if (!is_enabled) return;
     uint64_t current_time = esp_timer_get_time();
 
     if (is_toggling) {
         // Toggle the LED every conf_toggle_usec
         if (current_time - last_toggle_time >= conf_toggle_usec) {
-            led_state = !led_state;
-            gpio_set_level(led_gpio, led_state);
+            toggle();
             last_toggle_time = current_time;
             toggle_count++;
 
@@ -99,3 +134,11 @@ void led_toggle_loop(void) {
         }
     }
 }
+
+
+// // Stop the LEDC channel
+// ESP_ERROR_CHECK(ledc_stop(LEDC_MODE, LEDC_CHANNEL, 0)); // Stop LEDC
+
+// // Resume the LEDC timer and channel
+// ESP_ERROR_CHECK(ledc_timer_resume(LEDC_MODE, LEDC_TIMER)); // Resume timer
+// ESP_ERROR_CHECK(ledc_channel_resume(LEDC_MODE, LEDC_CHANNEL)); // Resume channel
