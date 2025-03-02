@@ -20,7 +20,7 @@
 #include "behavior/behavior.h"
 #include "espnow_driver.h"
 #include "ws2812.h"
-
+#include "timer_pulse.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -130,6 +130,15 @@ void app_main(void)
 
     behavior_setup(esp_mac, output_interface);
 
+    timer_pulse_config_t config = {
+        .pulse_count = 1,
+        .pulse_time_ms = 500,
+        .wait_time_ms = 500
+    };
+
+    timer_pulse_obj_t pulse_obj;
+    ws2812_load_obj(config, &pulse_obj);
+
     while (1) {
         uint64_t current_time = esp_timer_get_time();
         
@@ -146,7 +155,7 @@ void app_main(void)
 
         // espnow_controller_send();
 
-        // ws2812_loop();
+        timer_pulse_handler(current_time, &pulse_obj, ws2812_toggle);
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

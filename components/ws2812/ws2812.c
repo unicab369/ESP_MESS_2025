@@ -1,5 +1,4 @@
 #include "ws2812.h"
-#include "driver/rmt_tx.h"
 #include <math.h>
 #include <string.h>
 
@@ -8,7 +7,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define RMT_LED_STRIP_RESOLUTION_HZ 10000000 // 10MHz resolution, 1 tick = 0.1us (led strip needs a high resolution)
+#include "esp_timer.h"
+
 #define RMT_LED_STRIP_GPIO_NUM      12
 #define EXAMPLE_LED_NUMBERS         7
 
@@ -20,27 +20,6 @@ static const char *TAG = "example";
 
 static uint8_t led_strip_pixels[EXAMPLE_LED_NUMBERS * 3];
 
-static const rmt_symbol_word_t ws2812_zero = {
-    .level0 = 1,
-    .duration0 = 0.3 * RMT_LED_STRIP_RESOLUTION_HZ / 1000000, // T0H=0.3us
-    .level1 = 0,
-    .duration1 = 0.9 * RMT_LED_STRIP_RESOLUTION_HZ / 1000000, // T0L=0.9us
-};
-
-static const rmt_symbol_word_t ws2812_one = {
-    .level0 = 1,
-    .duration0 = 0.9 * RMT_LED_STRIP_RESOLUTION_HZ / 1000000, // T1H=0.9us
-    .level1 = 0,
-    .duration1 = 0.3 * RMT_LED_STRIP_RESOLUTION_HZ / 1000000, // T1L=0.3us
-};
-
-//reset defaults to 50uS
-static const rmt_symbol_word_t ws2812_reset = {
-    .level0 = 1,
-    .duration0 = RMT_LED_STRIP_RESOLUTION_HZ / 1000000 * 50 / 2,
-    .level1 = 0,
-    .duration1 = RMT_LED_STRIP_RESOLUTION_HZ / 1000000 * 50 / 2,
-};
 
 static size_t encoder_callback(const void *data, size_t data_size,
                                size_t symbols_written, size_t symbols_free,
@@ -96,11 +75,60 @@ void ws2812_setup(void) {
     rmt_new_tx_channel(&tx_chan_config, &led_chan);
     rmt_new_simple_encoder(&simple_encoder_cfg, &simple_encoder);
     rmt_enable(led_chan);
+
+    timer_pulse_config_t config = {
+        .pulse_count = 1,
+        .pulse_time_ms = 500,
+        .wait_time_ms = 500
+    };
+}
+
+void ws2812_load_obj(timer_pulse_config_t config, timer_pulse_obj_t* object) {
+    timer_pulse_setup(config, object);
+    timer_pulse_reset(esp_timer_get_time(), object);
+}
+
+static void clear_leds() {
+    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+}
+
+static void update_leds(uint16_t index, ws2812_rgb_t rgb) {
+    led_strip_pixels[index * 3 + 0] = rgb.green;        // Green
+    led_strip_pixels[index * 3 + 1] = rgb.red;          // Red
+    led_strip_pixels[index * 3 + 2] = rgb.blue;         // Blue
+
+    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+}
+
+void ws2812_toggle(bool state) {
+    if (state) {
+        ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
+        update_leds(4, rgb_value);
+    } else {
+        clear_leds();
+    }
+}
+
+int led_index = 0;
+
+void ws2812_loop2(uint64_t current_time) {
+    // Clear all LEDs
+    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+
+    ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
+    update_leds(led_index, rgb_value);
+
+    // Delay before moving to the next LED
+    vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
+
+    // Move to the next LED
+    led_index = (led_index + 1) % EXAMPLE_LED_NUMBERS;
 }
 
 float offset = 0;
 
-void ws2812_run1(void) {
+void ws2812_run1(uint64_t current_time) {
     for (int led = 0; led < EXAMPLE_LED_NUMBERS; led++) {
         // Build RGB pixels. Each color is an offset sine, which gives a
         // hue-like effect.
@@ -119,50 +147,4 @@ void ws2812_run1(void) {
     if (offset > 2 * M_PI) {
         offset -= 2 * M_PI;
     }
-}
-
-typedef struct {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-} ws2812_rgb_t;
-
-static void clear_leds() {
-    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-
-    
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
-}
-
-static void set_leds(uint16_t index, ws2812_rgb_t rgb) {
-    led_strip_pixels[index * 3 + 0] = rgb.green;        // Green
-    led_strip_pixels[index * 3 + 1] = rgb.red;          // Red
-    led_strip_pixels[index * 3 + 2] = rgb.blue;         // Blue
-
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
-}
-
-void ws2812_loop(void) {
-    ws2812_rgb_t rgb_value = { .red = 0, .green = 0, .blue = 200 };
-    set_leds(4, rgb_value);
-    vTaskDelay(pdMS_TO_TICKS(500));  // On for 500ms
-
-    clear_leds();
-    vTaskDelay(pdMS_TO_TICKS(500));  // Off for 500ms
-}
-
-int led_index = 0;
-
-void ws2812_loop2(void) {
-    // Clear all LEDs
-    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-
-    ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
-    set_leds(led_index, rgb_value);
-
-    // Delay before moving to the next LED
-    vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
-
-    // Move to the next LED
-    led_index = (led_index + 1) % EXAMPLE_LED_NUMBERS;
 }

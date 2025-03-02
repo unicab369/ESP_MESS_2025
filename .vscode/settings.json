@@ -53,7 +53,8 @@
         "utility": "c",
         "random": "c",
         "littlefs.h": "c",
-        "algorithm": "c"
+        "algorithm": "c",
+        "ws2812.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

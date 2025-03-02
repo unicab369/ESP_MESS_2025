@@ -64,18 +64,16 @@ void led_toggle_setValue(bool onOff) {
     gpio_set_level(led_gpio, onOff);
 }
 
-static void toggle() {
-    pulse_obj.led_state = !pulse_obj.led_state;
-
+static void toggle(bool state) {
     // gpio_set_level(led_gpio, led_state);
-    uint32_t duty = pulse_obj.led_state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
+    uint32_t duty = state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 }
 
 void led_toggle_switch() {
     pulse_obj.is_enabled = false;       // stop
-    toggle();
+    toggle(pulse_obj.current_state);
 }
 
 void led_toggle_loop(uint64_t current_time) {

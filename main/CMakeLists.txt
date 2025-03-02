@@ -13,6 +13,7 @@ idf_component_register(SRCS "main.c"
                         cdc_driver
                         espnow
                         ws2812
+                        ztimer_helper
                     )
 
 # Note: you must have a partition named the first argument (here it's "littlefs")
