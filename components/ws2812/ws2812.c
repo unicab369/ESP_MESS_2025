@@ -67,6 +67,10 @@ rmt_transmit_config_t tx_config = {
 
 #define WS2812_TRANSMIT_FREQUENCY 50000   // every 50ms
 
+#define PULSE_OJB_COUNT2 2
+timer_pulse_obj_t pulse_objs[PULSE_OJB_COUNT2];
+ws2812_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT2];
+
 uint64_t last_transmit_time;
 
 void ws2812_setup(void) {
@@ -82,11 +86,13 @@ void ws2812_setup(void) {
     rmt_enable(led_chan);
 }
 
-void ws2812_load_obj(timer_pulse_config_t config, timer_pulse_obj_t* object) {
+void ws2812_load_obj(ws2812_pulse_obj_t objx) {
     last_transmit_time = esp_timer_get_time();
+    ws2812_pulse_objs[objx.pulse_idx] = objx;
 
-    timer_pulse_setup(config, object);
-    timer_pulse_reset(esp_timer_get_time(), object);
+    timer_pulse_obj_t* timer_obj = &pulse_objs[objx.pulse_idx];
+    timer_pulse_setup(objx.config, timer_obj);
+    timer_pulse_reset(esp_timer_get_time(), timer_obj);
 }
 
 // static void request_clear_leds() {
@@ -99,18 +105,22 @@ static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
     led_strip_pixels[index * 3 + 2] = rgb.blue;         // Blue
 }
 
-void ws2812_toggle(bool state) {
+void ws2812_toggle(bool state, uint8_t led_index) {
     ws2812_rgb_t rgb_value = { .red = state ? 150 : 0, .green = 0, .blue = 0 };
-    request_update_leds(4, rgb_value);
+    request_update_leds(led_index, rgb_value);
 }
 
-void ws2812_toggle2(bool state) {
-    ws2812_rgb_t rgb_value = { .red = 0, .green = state ? 150 : 0, .blue = 0 };
-    request_update_leds(3, rgb_value);
+static void ws2812_test_handler(uint8_t index, bool state) {
+    ws2812_pulse_obj_t* obj = &ws2812_pulse_objs[index];
+    ws2812_rgb_t offValue = { .red = 0, .green = 0, .blue = 0 };
+    ws2812_rgb_t output = state ? obj->rgb : offValue;
+
+    printf("led_idx: %u\n", obj->led_idx);
+    request_update_leds(obj->led_idx, output);
 }
 
-void ws2812_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len) {
-    timer_pulse_handler(current_time, objects, len);
+void ws2812_loop(uint64_t current_time) {
+    timer_pulse_handler(current_time, pulse_objs, PULSE_OJB_COUNT2, ws2812_test_handler);
 
     if (current_time - last_transmit_time <= WS2812_TRANSMIT_FREQUENCY) return;
     last_transmit_time = current_time;

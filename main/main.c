@@ -55,7 +55,6 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
                 .pulse_count = 2,
                 .pulse_time_ms = 100,
                 .wait_time_ms = 1000,
-                .callback = led_toggle
             };
 
             led_fade_stop();
@@ -72,7 +71,6 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
                 .pulse_count = 3,
                 .pulse_time_ms = 100,
                 .wait_time_ms = 1000,
-                .callback = led_toggle
             };
 
             led_fade_stop();
@@ -119,12 +117,6 @@ void espnow_controller_send() {
     espnow_send((uint8_t*)&message, sizeof(message));
 }
 
-#define PULSE_OJB_COUNT 2
-
-// void ws2812_toggle(bool state) {
-//     printf("IM HERE \n");
-// }
-
 void app_main(void)
 {
     ESP_LOGI(TAG, "APP START");
@@ -151,23 +143,30 @@ void app_main(void)
 
     behavior_setup(esp_mac, output_interface);
 
-    timer_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT];
+    ws2812_pulse_obj_t ojb1 = {
+        .pulse_idx = 0,
+        .led_idx = 4,
+        .rgb = { .red = 150, .green = 0, .blue = 0 },
+        .config = {
+            .pulse_count = 1,
+            .pulse_time_ms = 500,
+            .wait_time_ms = 500,
+        }
+    };
+    ws2812_load_obj(ojb1);
 
-    timer_pulse_config_t config1 = {
-        .pulse_count = 1,
-        .pulse_time_ms = 500,
-        .wait_time_ms = 500,
-        .callback = ws2812_toggle
+
+    ws2812_pulse_obj_t ojb2 = {
+        .pulse_idx = 1,
+        .led_idx = 3,
+        .rgb =  { .red = 0, .green = 150, .blue = 0 },
+        .config = {
+            .pulse_count = 2,
+            .pulse_time_ms = 100,
+            .wait_time_ms = 1000,
+        }
     };
-    ws2812_load_obj(config1, &ws2812_pulse_objs[0]);
-    
-    timer_pulse_config_t config2 = {
-        .pulse_count = 1,
-        .pulse_time_ms = 200,
-        .wait_time_ms = 200,
-        .callback = ws2812_toggle2
-    };
-    ws2812_load_obj(config2, &ws2812_pulse_objs[1]);
+    ws2812_load_obj(ojb2);
 
 
     while (1) {
@@ -177,7 +176,7 @@ void app_main(void)
             cdc_read_task();
         #endif
 
-        // led_toggle_loop(current_time, led_pulse_objs, sizeof(led_pulse_objs));
+        led_toggle_loop(current_time, led_pulse_objs, 1);
         led_fade_loop(current_time);
 
         // uart_run();
@@ -185,7 +184,7 @@ void app_main(void)
         rotary_loop(current_time);
 
         // espnow_controller_send();
-        ws2812_loop(current_time, ws2812_pulse_objs, PULSE_OJB_COUNT);
+        ws2812_loop(current_time);
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

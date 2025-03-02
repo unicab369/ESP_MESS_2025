@@ -56,7 +56,8 @@
         "algorithm": "c",
         "ws2812.h": "c",
         "timer_pulse.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "stdlib.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

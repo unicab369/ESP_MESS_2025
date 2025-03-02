@@ -5,7 +5,6 @@ void timer_pulse_setup(timer_pulse_config_t config, timer_pulse_obj_t *obj) {
     obj->config.half_cycle_count = config.pulse_count*2;
     obj->config.pulse_time_uS = config.pulse_time_ms*1000;
     obj->config.wait_time_uS = config.wait_time_ms*1000;
-    obj->config.callback = config.callback;
 }
 
 void timer_pulse_reset(uint64_t current_time, timer_pulse_obj_t *obj) {
@@ -18,7 +17,10 @@ void timer_pulse_reset(uint64_t current_time, timer_pulse_obj_t *obj) {
     obj->last_toggle_time = current_time;
 }
 
-void timer_pulse_handler(uint64_t current_time, timer_pulse_obj_t *objects, size_t len) {
+void timer_pulse_handler(
+    uint64_t current_time, timer_pulse_obj_t *objects, size_t len, 
+    void (*callback)(uint8_t index, bool state)
+) {
     for (int i=0; i<len; i++) {
         timer_pulse_obj_t* obj = &objects[i];
         if (!obj->is_enabled) continue;
@@ -29,7 +31,8 @@ void timer_pulse_handler(uint64_t current_time, timer_pulse_obj_t *objects, size
                 obj->last_toggle_time = current_time;
                 obj->toggle_count++;
                 obj->current_state = !obj->current_state;
-                obj->config.callback(obj->current_state);
+                callback(i, obj->current_state);
+                // obj->config.callback(obj->current_state);
     
                 // If we've toggled enough times, switch to waiting
                 if (obj->toggle_count >= obj->config.half_cycle_count) {

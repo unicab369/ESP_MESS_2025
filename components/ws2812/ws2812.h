@@ -33,19 +33,28 @@ static const rmt_symbol_word_t ws2812_reset = {
     .duration1 = RMT_LED_STRIP_RESOLUTION_HZ / 1000000 * 50 / 2,
 };
 
-
 typedef struct {
     uint8_t red;
     uint8_t green;
     uint8_t blue;
 } ws2812_rgb_t;
 
+
+typedef struct {
+    uint8_t led_idx;
+    uint8_t pulse_idx;
+    ws2812_rgb_t rgb;
+    timer_pulse_config_t config;
+    void (*pulse_cb)(void);
+} ws2812_pulse_obj_t;
+
+
 void ws2812_setup(void);
+void ws2812_load_obj(ws2812_pulse_obj_t objx) ;
+
+void ws2812_toggle(bool state, uint8_t led_index);
 void ws2812_run1(uint64_t current_time);
-void ws2812_loop(uint64_t current_time, timer_pulse_obj_t* object, size_t len);
+void ws2812_loop(uint64_t current_time);
 void ws2812_loop2(uint64_t current_time);
-void ws2812_load_obj(timer_pulse_config_t config, timer_pulse_obj_t* object);
-void ws2812_toggle(bool state);
-void ws2812_toggle2(bool state);
 
 #endif

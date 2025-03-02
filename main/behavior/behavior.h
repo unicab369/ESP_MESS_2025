@@ -24,39 +24,30 @@ typedef enum __attribute__((packed)) {
 
 //! OUTPUT COMMANDS
 typedef enum __attribute__((packed)) {
-    OUTPUT_GPIO_CMD = 0xA0,
-    OUTPUT_WS2812_CMD = 0xB0,
-    OUTPUT_DISPLAY_CMD = 0xC0,
-    OUTPUT_NETWORK_CMD = 0xD0
-} output_command_t;
-
-typedef enum __attribute__((packed)) {
     OUTPUT_GPIO_SET = 0xA1,
     OUTPUT_GPIO_TOGGLE = 0xA2,
     OUTPUT_GPIO_PULSE = 0xA3,
     OUTPUT_GPIO_FADE = 0xA4,
+    OUTPUT_WS2812_PULSE = 0xA5,
+    OUTPUT_WS2812_PATTERN = 0xA6
 } output_gpio_t;
-
-typedef enum __attribute__((packed)) {
-    OUTPUT_WS2812_SINGLE,
-    OUTPUT_WS2812_PATTERN
-} output_ws2812_t;
 
 //! BEHAVIORS
 typedef struct {
     uint8_t remote_mac[6];
     input_command_t input_cmd;
     uint8_t input_data[16];
-    output_command_t output_cmd;
+    uint8_t output_cmd;
     uint8_t output_data[16];
 } behavior_config_t;
-
 
 
 typedef void (*gpio_set_cb_t)(uint8_t pin, uint16_t val);
 typedef void (*gpio_toogle_cb_t)(uint8_t pin);
 typedef void (*gpio_pulse_cb_t)(uint8_t pin, uint8_t count, uint32_t repeat_duration);
 typedef void (*gpio_fade_cb_t)(uint8_t pin, uint32_t output_threshold, uint32_t duration_ms);
+typedef void (*ws2812_pulse_cb_t)();
+
 
 typedef struct {
     gpio_set_cb_t on_gpio_set;

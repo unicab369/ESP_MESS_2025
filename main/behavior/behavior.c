@@ -11,6 +11,7 @@
 #include <ctype.h>
 
 #define BEHAVIOR_VALIDATION_CODE 0x33
+#define OUTPUT_VALIDATION_CODE 0xA0
 #define INDEX_VALIDATION 0
 #define INDEX_INPUT_CMD 1
 #define INDEX_INPUT_GPIO 2
@@ -73,7 +74,7 @@ static int parse_mac_address(const char *mac_str, uint8_t mac[6]) {
 
 bool check_config_cmd(behavior_config_t* config) {
     bool check_input = false;
-    bool check_output = false;
+    bool check_output = config->output_cmd == OUTPUT_VALIDATION_CODE;
 
     switch (config->input_cmd) {
         case INPUT_GPIO_CMD:
@@ -87,21 +88,6 @@ bool check_config_cmd(behavior_config_t* config) {
             break;
         case INPUT_NETWORK_CMD:
             check_input = true;
-            break;
-    }
-
-    switch (config->output_cmd) {
-        case OUTPUT_GPIO_CMD:
-            check_output = true;
-            break;
-        case OUTPUT_WS2812_CMD:
-            check_output = true;
-            break;
-        case OUTPUT_DISPLAY_CMD:
-            check_output = true;
-            break;
-        case OUTPUT_NETWORK_CMD:
-            check_output = true;
             break;
     }
 
@@ -154,16 +140,16 @@ void behavior_setup(uint8_t* esp_mac, behavior_output_interface interface) {
 void behavior_process_gpio(input_gpio_t input_type, int8_t pin, uint16_t input_value) {
     for (int i=0; i<=behaviors_index; i++) {
         behavior_config_t config = device_behaviors[i];
+        printf("remote_mac : %02X:%02X:%02X:%02X:%02X:%02X\n", MAC2STR(config.remote_mac));
+        printf("device_mac : %02X:%02X:%02X:%02X:%02X:%02X\n", MAC2STR(device_mac));
         int compare_mac = memcmp(config.remote_mac, device_mac, sizeof(device_mac)) == 0;
         if (!compare_mac || config.input_cmd != INPUT_GPIO_CMD) continue;
-        printf("IM HERE 111\n");
 
         output_gpio_t output_type = config.output_data[0];
         bool check = config.input_data[0] == input_type && config.input_data[1] == pin;
         if (!check) continue;;
-        printf("IM HERE 222\n");
 
-        uint8_t output_pin = config.output_data[0];
+        uint8_t val0 = config.output_data[0];
         uint8_t output_val1 = config.output_data[1];
         uint32_t output_val2;
         uint32_t output_val3;
@@ -174,22 +160,30 @@ void behavior_process_gpio(input_gpio_t input_type, int8_t pin, uint16_t input_v
         switch (output_type) {
             case OUTPUT_GPIO_SET:
                 printf("IM HERE OUTPUT_GPIO_SET\n");
-                behavior_interface.on_gpio_set(output_pin, output_val1);
+                behavior_interface.on_gpio_set(val0, output_val1);  // val0 - gpio_pin
                 break;
             
             case OUTPUT_GPIO_TOGGLE:
                 printf("IM HERE OUTPUT_GPIO_TOGGLE\n");
-                behavior_interface.on_gpio_toggle(output_pin);
+                behavior_interface.on_gpio_toggle(val0);
                 break;
             
             case OUTPUT_GPIO_PULSE:
                 printf("IM HERE OUTPUT_GPIO_PULSE\n");
-                behavior_interface.on_gpio_pulse(output_pin, output_val1, output_val2);
+                behavior_interface.on_gpio_pulse(val0, output_val1, output_val2);
                 break;
 
             case OUTPUT_GPIO_FADE:
                 printf("IM HERE OUTPUT_GPIO_FADE\n");
-                behavior_interface.on_gpio_fade(output_pin, output_val2, output_val3);
+                behavior_interface.on_gpio_fade(val0, output_val2, output_val3);
+                break;
+            
+            case OUTPUT_WS2812_PULSE:
+                printf("IM HERE OUTPUT_WS2812_PULSE\n");
+                break;
+
+            case OUTPUT_WS2812_PATTERN:
+                printf("IM HERE OUTPUT_WS2812_PATTERN\n");
                 break;
         }
 

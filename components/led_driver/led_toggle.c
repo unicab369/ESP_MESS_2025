@@ -69,8 +69,12 @@ void led_toggle(bool state) {
 //     toggle(pulse_obj.current_state);
 // }
 
+void led_test_handler(uint8_t index, bool state) {
+
+}
+
 void led_toggle_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len) {
-    timer_pulse_handler(current_time, objects, len);
+    timer_pulse_handler(current_time, objects, len, led_test_handler);
 }
 
 //! stop PWM
