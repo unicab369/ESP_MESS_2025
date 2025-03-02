@@ -39,6 +39,9 @@ typedef struct {
     uint8_t blue;
 } ws2812_rgb_t;
 
+static ws2812_rgb_t rgb_off = {
+    .red = 0, .green = 0, .blue = 0
+};
 
 typedef struct {
     uint8_t led_idx;
@@ -50,7 +53,7 @@ typedef struct {
 
 
 void ws2812_setup(void);
-void ws2812_load_obj(ws2812_pulse_obj_t objx) ;
+void ws2812_load_pulse(ws2812_pulse_obj_t object);
 
 void ws2812_toggle(bool state, uint8_t led_index);
 void ws2812_run1(uint64_t current_time);

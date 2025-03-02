@@ -153,7 +153,7 @@ void app_main(void)
             .wait_time_ms = 500,
         }
     };
-    ws2812_load_obj(ojb1);
+    ws2812_load_pulse(ojb1);
 
 
     ws2812_pulse_obj_t ojb2 = {
@@ -166,7 +166,7 @@ void app_main(void)
             .wait_time_ms = 1000,
         }
     };
-    ws2812_load_obj(ojb2);
+    ws2812_load_pulse(ojb2);
 
 
     while (1) {

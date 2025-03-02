@@ -73,6 +73,9 @@ ws2812_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT2];
 
 uint64_t last_transmit_time;
 
+static uint64_t last_moved_time;
+bool is_filling = false;
+
 void ws2812_setup(void) {
     rmt_tx_channel_config_t tx_chan_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
@@ -86,18 +89,21 @@ void ws2812_setup(void) {
     rmt_enable(led_chan);
 }
 
-void ws2812_load_obj(ws2812_pulse_obj_t objx) {
+void ws2812_load_pulse(ws2812_pulse_obj_t object) {
     last_transmit_time = esp_timer_get_time();
-    ws2812_pulse_objs[objx.pulse_idx] = objx;
+    ws2812_pulse_objs[object.pulse_idx] = object;
 
-    timer_pulse_obj_t* timer_obj = &pulse_objs[objx.pulse_idx];
-    timer_pulse_setup(objx.config, timer_obj);
+    timer_pulse_obj_t* timer_obj = &pulse_objs[object.pulse_idx];
+    timer_pulse_setup(object.config, timer_obj);
     timer_pulse_reset(esp_timer_get_time(), timer_obj);
 }
 
-// static void request_clear_leds() {
-//     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-// }
+static void reset_leds(bool transmit) {
+    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+    if (!transmit) return;
+
+    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+}
 
 static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
     led_strip_pixels[index * 3 + 0] = rgb.green;        // Green
@@ -105,29 +111,51 @@ static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
     led_strip_pixels[index * 3 + 2] = rgb.blue;         // Blue
 }
 
-void ws2812_toggle(bool state, uint8_t led_index) {
-    ws2812_rgb_t rgb_value = { .red = state ? 150 : 0, .green = 0, .blue = 0 };
-    request_update_leds(led_index, rgb_value);
-}
-
-static void ws2812_test_handler(uint8_t index, bool state) {
+static void on_pulse_handler(uint8_t index, bool state) {
     ws2812_pulse_obj_t* obj = &ws2812_pulse_objs[index];
-    ws2812_rgb_t offValue = { .red = 0, .green = 0, .blue = 0 };
-    ws2812_rgb_t output = state ? obj->rgb : offValue;
-
-    printf("led_idx: %u\n", obj->led_idx);
+    ws2812_rgb_t output = state ? obj->rgb : rgb_off;
     request_update_leds(obj->led_idx, output);
 }
 
-void ws2812_loop(uint64_t current_time) {
-    timer_pulse_handler(current_time, pulse_objs, PULSE_OJB_COUNT2, ws2812_test_handler);
+int led_index = 0;
 
-    if (current_time - last_transmit_time <= WS2812_TRANSMIT_FREQUENCY) return;
+void ws2812_loop(uint64_t current_time) {
+    //! handle pulses
+    timer_pulse_handler(current_time, pulse_objs, PULSE_OJB_COUNT2, on_pulse_handler);
+
+    //! handle moving leds
+    if (current_time - last_moved_time > 100000) {
+        last_moved_time = current_time;
+
+        ws2812_rgb_t rgb_value = { .red = 0, .green = 0, .blue = 150 };
+
+        if (is_filling) {
+            // Fill phase: turn on LEDs one at a time
+            request_update_leds(led_index, rgb_value);
+            
+            led_index++;
+            if (led_index >= EXAMPLE_LED_NUMBERS) {
+                led_index = 0;
+                is_filling = false;
+            }
+        } else {
+            // Clear phase: turn off LEDs one at a time
+            request_update_leds(led_index, rgb_off);
+            
+            led_index++;
+            if (led_index >= EXAMPLE_LED_NUMBERS) {
+                led_index = 0;
+                is_filling = true;
+            }
+        }
+    }
+
+    //! transmit the updated leds
+    if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
     last_transmit_time = current_time;
     rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
 }
 
-int led_index = 0;
 
 void ws2812_loop2(uint64_t current_time) {
     // Clear all LEDs

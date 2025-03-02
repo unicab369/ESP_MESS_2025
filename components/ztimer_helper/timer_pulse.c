@@ -32,7 +32,6 @@ void timer_pulse_handler(
                 obj->toggle_count++;
                 obj->current_state = !obj->current_state;
                 callback(i, obj->current_state);
-                // obj->config.callback(obj->current_state);
     
                 // If we've toggled enough times, switch to waiting
                 if (obj->toggle_count >= obj->config.half_cycle_count) {
