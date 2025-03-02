@@ -51,8 +51,8 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
         case BUTTON_SINGLE_CLICK:
             led_fade_stop();
             // led_toggle_pulses(1, 0);
-            // led_toggle_pulses(3, 1000);
-            led_toggle_switch();
+            led_toggle_pulses(2, 1000);
+            // led_toggle_switch();
             break;
         case BUTTON_DOUBLE_CLICK:
             led_toggle_stop();

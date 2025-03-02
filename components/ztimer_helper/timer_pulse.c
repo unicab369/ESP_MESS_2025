@@ -1,21 +1,5 @@
 #include "timer_pulse.h"
 
-// static int toggle_count = 0;
-// static bool is_toggling = false;
-// static bool is_enabled = false;
-// static uint64_t last_wait_time = 0;
-// static uint64_t last_toggle_time = 0;
-
-// static uint8_t pulse_count_max = 1;
-// static uint16_t pulse_time_usec = 100000;       // 200 ms
-// static uint16_t wait_time_usec = 1000000;       // 1000 ms
-
-// void timer_pulse_setup(uint8_t pulse_count, uint16_t pulse_time_ms, uint16_t wait_time_ms) {
-//     pulse_count_max = pulse_count*2;
-//     pulse_time_usec = pulse_time_ms*1000;
-//     wait_time_usec = wait_time_ms*1000;
-// }
-
 void timer_pulse_setup(timer_pulse_config_t config, timer_pulse_obj_t *obj) {
     obj->config.half_cycle_count = config.pulse_count*2;
     obj->config.pulse_time_uS = config.pulse_time_ms*1000;
@@ -27,6 +11,7 @@ void timer_pulse_reset(uint64_t current_time, timer_pulse_obj_t *obj) {
     obj->toggle_count = 0;
     obj->is_toggling = true;
     obj->is_enabled = true;
+    obj->led_state = false;
     obj->last_wait_time = current_time;
     obj->last_toggle_time = current_time;
 }

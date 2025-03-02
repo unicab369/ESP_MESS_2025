@@ -10,23 +10,7 @@
 static const char *TAG = "GPIO_TOGGLE";
 
 static gpio_num_t led_gpio;
-static int toggle_count = 0;
-static bool led_state = false;
-static bool is_toggling = false;
-
-static uint64_t last_toggle_time = 0;
-static uint64_t last_wait_time = 0;
-static uint32_t conf_toggle_usec = 200000;  // micro seconds
-static uint32_t conf_wait_usec = 0;   // micro seconds
-static int conf_toggle_max = 6;
-static bool is_enabled = false;
-
-static gpio_toggle_t led_config = {
-    .blink_count = 1,
-    .toggle_time_ms = 100,
-    .wait_time_ms = 1000,
-    .invert_state = true,
-};
+timer_pulse_obj_t pulse_obj;
 
 void led_toggle_setup(gpio_num_t gpio) {
     led_gpio = gpio;
@@ -61,79 +45,45 @@ void led_toggle_setup(gpio_num_t gpio) {
     // ledc_channel_config(&channel_conf);
 }
 
-void led_toggle_restart() {
-    //! stop PWM
-    // ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
-
-    // reset values
-    last_toggle_time = esp_timer_get_time();
-    last_wait_time = esp_timer_get_time();
-    is_toggling = true;
-
-    led_state = !led_config.invert_state;
-    conf_toggle_max = led_config.blink_count*2;
-    conf_toggle_usec = led_config.toggle_time_ms*1000;
-    conf_wait_usec = led_config.wait_time_ms*1000;
-    is_enabled = true;
-}
-
-void led_toggle_pulses(uint8_t count, uint32_t repeat_duration) {
-    led_config.blink_count = count;
-    led_config.wait_time_ms = repeat_duration;
-    led_toggle_restart();
-}
-
 void led_toggle_stop() {
-    is_enabled = false;
+    pulse_obj.is_enabled = false;       // stop
+}
+
+void led_toggle_pulses(uint8_t pulse_count, uint32_t repeat_duration_ms) {
+    timer_pulse_config_t config = {
+        .pulse_count = pulse_count,
+        .pulse_time_ms = 100,
+        .wait_time_ms = repeat_duration_ms
+    };
+    timer_pulse_setup(config, &pulse_obj);
+    timer_pulse_reset(esp_timer_get_time(), &pulse_obj);
 }
 
 void led_toggle_setValue(bool onOff) {
-    led_toggle_stop();
+    pulse_obj.is_enabled = false;       // stop
     gpio_set_level(led_gpio, onOff);
 }
 
 static void toggle() {
-    led_state = !led_state;
+    pulse_obj.led_state = !pulse_obj.led_state;
 
     // gpio_set_level(led_gpio, led_state);
-
-    uint32_t duty = led_state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
+    uint32_t duty = pulse_obj.led_state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
-    printf("Value: %" PRIu32 "\n", duty);
 }
 
 void led_toggle_switch() {
-    led_toggle_stop();
+    pulse_obj.is_enabled = false;       // stop
     toggle();
 }
 
 void led_toggle_loop(uint64_t current_time) {
-    if (!is_enabled) return;
-
-    if (is_toggling) {
-        // Toggle the LED every conf_toggle_usec
-        if (current_time - last_toggle_time >= conf_toggle_usec) {
-            toggle();
-            last_toggle_time = current_time;
-            toggle_count++;
-
-            // If we've toggled enough times, switch to waiting
-            if (toggle_count >= conf_toggle_max) {
-                is_toggling = false;
-                toggle_count = 0;
-                last_wait_time = current_time;
-            }
-        }
-    } else {
-        // Wait for conf_wait_usec before starting toggling again
-        if (current_time - last_wait_time >= conf_wait_usec) {
-            is_toggling = true;
-            last_toggle_time = current_time;
-        }
-    }
+    timer_pulse_handler(current_time, &pulse_obj, toggle);
 }
 
+//! stop PWM
+// ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
 
 // // Stop the LEDC channel
 // ESP_ERROR_CHECK(ledc_stop(LEDC_MODE, LEDC_CHANNEL, 0)); // Stop LEDC
