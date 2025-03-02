@@ -10,7 +10,11 @@ static const char *TAG = "GPIO_TOGGLE";
 
 static gpio_num_t led_gpio;
 
-void led_toggle_setup(gpio_num_t gpio) {
+#define PULSE_OJB_COUNT1 1
+static timer_pulse_obj_t timer_objs[PULSE_OJB_COUNT1];
+static gpio_toggle_obj toggle_objs[PULSE_OJB_COUNT1];
+
+void gpio_digital_setup(gpio_num_t gpio) {
     led_gpio = gpio;
 
     // //Configure the LED GPIO
@@ -43,39 +47,49 @@ void led_toggle_setup(gpio_num_t gpio) {
     // ledc_channel_config(&channel_conf);
 }
 
-void led_toggle_stop(timer_pulse_obj_t* object) {
-    object->is_enabled = false;       // stop
+void gpio_digital_stop(uint8_t index) {
+    timer_objs[index].is_enabled = false; // stop
 }
 
-void led_toggle_pulses(timer_pulse_config_t config, timer_pulse_obj_t* object) {
-    timer_pulse_setup(config, object);
-    timer_pulse_reset(esp_timer_get_time(), object);
+void gpio_digital_config(gpio_toggle_obj object) {
+    toggle_objs[object.object_index] = object;
+
+    timer_pulse_obj_t* timer_obj = &timer_objs[object.object_index];
+    timer_pulse_setup(object.timer_config, timer_obj);
+    timer_pulse_reset(esp_timer_get_time(), timer_obj);
 }
 
-// void led_toggle_setValue(bool onOff) {
+// void gpio_digital_set(bool onOff) {
 //     pulse_obj.is_enabled = false;       // stop
 //     gpio_set_level(led_gpio, onOff);
 // }
 
-void led_toggle(bool state) {
+// void gpio_digital_toggle() {
+//     pulse_obj.is_enabled = false;       // stop
+//     toggle(pulse_obj.current_state);
+// }
+
+static void pulse_handler(uint8_t index, bool state) {
     // gpio_set_level(led_gpio, led_state);
     uint32_t duty = state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 }
 
-// void led_toggle_switch() {
-//     pulse_obj.is_enabled = false;       // stop
-//     toggle(pulse_obj.current_state);
-// }
-
-void led_test_handler(uint8_t index, bool state) {
-
+void gpio_digital_loop(uint64_t current_time) {
+    for (int i=0; i<PULSE_OJB_COUNT1; i++) {
+        timer_pulse_obj_t* obj = &timer_objs[i];
+        timer_pulse_handler(current_time, i, obj, pulse_handler);
+    }
 }
 
-void led_toggle_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len) {
-    timer_pulse_handler(current_time, objects, len, led_test_handler);
-}
+
+
+
+
+
+
+
 
 //! stop PWM
 // ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);

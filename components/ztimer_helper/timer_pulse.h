@@ -33,7 +33,11 @@ typedef struct {
 void timer_pulse_setup(timer_pulse_config_t config, timer_pulse_obj_t *obj);
 void timer_pulse_reset(uint64_t current_time, timer_pulse_obj_t *obj);
 
-void timer_pulse_handler(uint64_t current_time, timer_pulse_obj_t *obj, size_t len,
-                            void (*callback)(uint8_t index, bool state));
+void timer_pulse_handler(
+    uint64_t current_time,
+    uint8_t index,
+    timer_pulse_obj_t *obj,
+    void (*callback)(uint8_t index, bool state)
+);
 
 #endif

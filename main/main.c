@@ -42,8 +42,6 @@ static const char *TAG = "MAIN";
 
 uint8_t esp_mac[6];
 
-timer_pulse_obj_t led_pulse_objs[1];
-
 // Button event callback
 void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
     //! NOTE: button_event_t with input_gpio_t values need to match
@@ -51,30 +49,35 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
 
     switch (event) {
         case BUTTON_SINGLE_CLICK:
-            timer_pulse_config_t config_1 = {
-                .pulse_count = 2,
-                .pulse_time_ms = 100,
-                .wait_time_ms = 1000,
+            gpio_toggle_obj obj_a = {
+                .object_index = 0,
+                .timer_config = {
+                    .pulse_count = 1,
+                    .pulse_time_ms = 100,
+                    .wait_time_ms = 1000,
+                }
             };
 
             led_fade_stop();
-            // led_toggle_pulses(1, 0);
-            led_toggle_pulses(config_1, &led_pulse_objs[0]);
+            gpio_digital_config(obj_a);
             // led_toggle_switch();
             break;
         case BUTTON_DOUBLE_CLICK:
-            led_toggle_stop(&led_pulse_objs[0]);
+            gpio_digital_stop(0);
             led_fade_restart(1023, 500);        // Brightness, fade_duration
             break;
         case BUTTON_LONG_PRESS:
-            timer_pulse_config_t config_2 = {
-                .pulse_count = 3,
-                .pulse_time_ms = 100,
-                .wait_time_ms = 1000,
+            gpio_toggle_obj obj_b = {
+                .object_index = 0,
+                .timer_config = {
+                    .pulse_count = 3,
+                    .pulse_time_ms = 100,
+                    .wait_time_ms = 1000,
+                }
             };
 
-            led_fade_stop();
-            led_toggle_pulses(config_2, &led_pulse_objs[0]);
+            led_fade_stop();        
+            gpio_digital_config(obj_b);
             break;
     }
 }
@@ -124,7 +127,19 @@ void app_main(void)
         cdc_setup();
     #endif
 
-    led_toggle_setup(LED_FADE_PIN); 
+    gpio_digital_setup(LED_FADE_PIN);
+
+    gpio_toggle_obj obj0 = {
+        .object_index = 0,
+        .timer_config = {
+            .pulse_count = 2,
+            .pulse_time_ms = 100,
+            .wait_time_ms = 1000,
+        }
+    };
+
+    gpio_digital_config(obj0);
+
     led_fade_setup(LED_FADE_PIN);
     led_fade_restart(1023, 500);        // Brightness, fade_duration
 
@@ -149,8 +164,8 @@ void app_main(void)
         .rgb = { .red = 150, .green = 0, .blue = 0 },
         .config = {
             .pulse_count = 1,
-            .pulse_time_ms = 500,
-            .wait_time_ms = 500,
+            .pulse_time_ms = 100,
+            .wait_time_ms = 1000,
         }
     };
     ws2812_load_pulse(ojb1);
@@ -176,7 +191,7 @@ void app_main(void)
             cdc_read_task();
         #endif
 
-        led_toggle_loop(current_time, led_pulse_objs, 1);
+        gpio_digital_loop(current_time);
         led_fade_loop(current_time);
 
         // uart_run();

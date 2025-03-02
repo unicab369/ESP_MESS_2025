@@ -65,11 +65,11 @@ rmt_transmit_config_t tx_config = {
 };
 
 
-#define WS2812_TRANSMIT_FREQUENCY 50000   // every 50ms
+#define WS2812_TRANSMIT_FREQUENCY 30000   // micro seconds
 
 #define PULSE_OJB_COUNT2 2
-timer_pulse_obj_t pulse_objs[PULSE_OJB_COUNT2];
-ws2812_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT2];
+static timer_pulse_obj_t timer_objs[PULSE_OJB_COUNT2];
+static ws2812_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT2];
 
 uint64_t last_transmit_time;
 
@@ -93,7 +93,7 @@ void ws2812_load_pulse(ws2812_pulse_obj_t object) {
     last_transmit_time = esp_timer_get_time();
     ws2812_pulse_objs[object.pulse_idx] = object;
 
-    timer_pulse_obj_t* timer_obj = &pulse_objs[object.pulse_idx];
+    timer_pulse_obj_t* timer_obj = &timer_objs[object.pulse_idx];
     timer_pulse_setup(object.config, timer_obj);
     timer_pulse_reset(esp_timer_get_time(), timer_obj);
 }
@@ -121,10 +121,13 @@ int led_index = 0;
 
 void ws2812_loop(uint64_t current_time) {
     //! handle pulses
-    timer_pulse_handler(current_time, pulse_objs, PULSE_OJB_COUNT2, on_pulse_handler);
+    for (int i=0; i<PULSE_OJB_COUNT2; i++) {
+        timer_pulse_obj_t* obj = &timer_objs[i];
+        timer_pulse_handler(current_time, i, obj, on_pulse_handler);
+    }
 
     //! handle moving leds
-    if (current_time - last_moved_time > 100000) {
+    if (current_time - last_moved_time > 60000) {
         last_moved_time = current_time;
 
         ws2812_rgb_t rgb_value = { .red = 0, .green = 0, .blue = 150 };
@@ -156,21 +159,6 @@ void ws2812_loop(uint64_t current_time) {
     rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
 }
 
-
-void ws2812_loop2(uint64_t current_time) {
-    // Clear all LEDs
-    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-
-    ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
-    request_update_leds(led_index, rgb_value);
-
-    // Delay before moving to the next LED
-    vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
-
-    // Move to the next LED
-    led_index = (led_index + 1) % EXAMPLE_LED_NUMBERS;
-}
-
 float offset = 0;
 
 void ws2812_run1(uint64_t current_time) {
@@ -193,3 +181,66 @@ void ws2812_run1(uint64_t current_time) {
         offset -= 2 * M_PI;
     }
 }
+
+#define MOVE_FORWARD 0
+#define MOVE_BACKWARD 1
+
+static int led_direction = MOVE_FORWARD;
+
+int skip_pixels = 0;
+ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
+ws2812_rgb_t off_value = { .red = 0, .green = 0, .blue = 0 };
+
+// void ws2812_loop(uint64_t current_time) {
+//     // Clear all LEDs
+//     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+
+//     // Turn on the current LED
+//     request_update_leds(led_index, rgb_value);
+//     rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+
+//     // Delay before moving to the next LED
+//     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
+
+//     // Move to the next LED position
+//     if (led_direction == MOVE_FORWARD) {
+//         led_index = (led_index + 1 + skip_pixels) % EXAMPLE_LED_NUMBERS;
+//         if (led_index < skip_pixels) {
+//             led_direction = MOVE_BACKWARD;
+//             led_index = EXAMPLE_LED_NUMBERS - 1;
+//         }
+//     } else {
+//         led_index = (led_index - 1 - skip_pixels + EXAMPLE_LED_NUMBERS) % EXAMPLE_LED_NUMBERS;
+//         if (led_index > EXAMPLE_LED_NUMBERS - 1 - skip_pixels) {
+//             led_direction = MOVE_FORWARD;
+//             led_index = 0;
+//         }
+//     }
+// }
+
+// void ws2812_loop(uint64_t current_time) {
+//     // Clear all LEDs
+//     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+
+//     // Turn on the current LED
+//     request_update_leds(led_index, rgb_value);
+//     rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+
+//     // Delay before moving to the next LED
+//     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
+
+//     // Move to the next LED position
+//     if (led_direction == MOVE_FORWARD) {
+//         led_index += (1 + skip_pixels);
+//         if (led_index >= EXAMPLE_LED_NUMBERS) {
+//             led_direction = MOVE_BACKWARD;
+//             led_index = EXAMPLE_LED_NUMBERS - 1;
+//         }
+//     } else {
+//         led_index -= (1 + skip_pixels);
+//         if (led_index < 0) {
+//             led_direction = MOVE_FORWARD;
+//             led_index = 0;
+//         }
+//     }
+// }
