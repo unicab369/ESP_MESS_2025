@@ -42,9 +42,10 @@ typedef struct {
 
 void ws2812_setup(void);
 void ws2812_run1(uint64_t current_time);
-void ws2812_loop(uint64_t current_time);
+void ws2812_loop(uint64_t current_time, timer_pulse_obj_t* object, size_t len);
 void ws2812_loop2(uint64_t current_time);
 void ws2812_load_obj(timer_pulse_config_t config, timer_pulse_obj_t* object);
 void ws2812_toggle(bool state);
+void ws2812_toggle2(bool state);
 
 #endif

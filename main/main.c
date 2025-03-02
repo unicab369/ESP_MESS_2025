@@ -42,6 +42,8 @@ static const char *TAG = "MAIN";
 
 uint8_t esp_mac[6];
 
+timer_pulse_obj_t led_pulse_objs[1];
+
 // Button event callback
 void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
     //! NOTE: button_event_t with input_gpio_t values need to match
@@ -49,18 +51,32 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
 
     switch (event) {
         case BUTTON_SINGLE_CLICK:
+            timer_pulse_config_t config_1 = {
+                .pulse_count = 2,
+                .pulse_time_ms = 100,
+                .wait_time_ms = 1000,
+                .callback = led_toggle
+            };
+
             led_fade_stop();
             // led_toggle_pulses(1, 0);
-            led_toggle_pulses(2, 1000);
+            led_toggle_pulses(config_1, &led_pulse_objs[0]);
             // led_toggle_switch();
             break;
         case BUTTON_DOUBLE_CLICK:
-            led_toggle_stop();
+            led_toggle_stop(&led_pulse_objs[0]);
             led_fade_restart(1023, 500);        // Brightness, fade_duration
             break;
         case BUTTON_LONG_PRESS:
+            timer_pulse_config_t config_2 = {
+                .pulse_count = 3,
+                .pulse_time_ms = 100,
+                .wait_time_ms = 1000,
+                .callback = led_toggle
+            };
+
             led_fade_stop();
-            led_toggle_pulses(3, 1000);
+            led_toggle_pulses(config_2, &led_pulse_objs[0]);
             break;
     }
 }
@@ -103,6 +119,7 @@ void espnow_controller_send() {
     espnow_send((uint8_t*)&message, sizeof(message));
 }
 
+#define PULSE_OJB_COUNT 2
 
 void app_main(void)
 {
@@ -130,14 +147,24 @@ void app_main(void)
 
     behavior_setup(esp_mac, output_interface);
 
-    timer_pulse_config_t config = {
+    timer_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT];
+
+    timer_pulse_config_t config1 = {
         .pulse_count = 1,
         .pulse_time_ms = 500,
-        .wait_time_ms = 500
+        .wait_time_ms = 500,
+        .callback = ws2812_toggle
     };
+    ws2812_load_obj(config1, &ws2812_pulse_objs[0]);
+    
+    timer_pulse_config_t config2 = {
+        .pulse_count = 1,
+        .pulse_time_ms = 500,
+        .wait_time_ms = 500,
+        .callback = ws2812_toggle2
+    };
+    ws2812_load_obj(config2, &ws2812_pulse_objs[1]);
 
-    timer_pulse_obj_t pulse_obj;
-    ws2812_load_obj(config, &pulse_obj);
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
@@ -146,7 +173,7 @@ void app_main(void)
             cdc_read_task();
         #endif
 
-        led_toggle_loop(current_time);
+        // led_toggle_loop(current_time, led_pulse_objs, sizeof(led_pulse_objs));
         led_fade_loop(current_time);
 
         // uart_run();
@@ -154,8 +181,7 @@ void app_main(void)
         rotary_loop(current_time);
 
         // espnow_controller_send();
-
-        timer_pulse_handler(current_time, &pulse_obj, ws2812_toggle);
+        ws2812_loop(current_time, ws2812_pulse_objs, PULSE_OJB_COUNT);
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

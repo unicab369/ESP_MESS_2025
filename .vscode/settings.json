@@ -54,7 +54,9 @@
         "random": "c",
         "littlefs.h": "c",
         "algorithm": "c",
-        "ws2812.h": "c"
+        "ws2812.h": "c",
+        "timer_pulse.h": "c",
+        "stddef.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

@@ -3,14 +3,12 @@
 #include "driver/ledc.h"
 #include "esp_timer.h"
 #include "esp_log.h"
-#include "timer_pulse.h"
 
 #define LEDC_DUTY_RESOLUTION   LEDC_TIMER_10_BIT
 
 static const char *TAG = "GPIO_TOGGLE";
 
 static gpio_num_t led_gpio;
-timer_pulse_obj_t pulse_obj;
 
 void led_toggle_setup(gpio_num_t gpio) {
     led_gpio = gpio;
@@ -45,39 +43,34 @@ void led_toggle_setup(gpio_num_t gpio) {
     // ledc_channel_config(&channel_conf);
 }
 
-void led_toggle_stop() {
-    pulse_obj.is_enabled = false;       // stop
+void led_toggle_stop(timer_pulse_obj_t* object) {
+    object->is_enabled = false;       // stop
 }
 
-void led_toggle_pulses(uint8_t pulse_count, uint32_t repeat_duration_ms) {
-    timer_pulse_config_t config = {
-        .pulse_count = pulse_count,
-        .pulse_time_ms = 100,
-        .wait_time_ms = repeat_duration_ms
-    };
-    timer_pulse_setup(config, &pulse_obj);
-    timer_pulse_reset(esp_timer_get_time(), &pulse_obj);
+void led_toggle_pulses(timer_pulse_config_t config, timer_pulse_obj_t* object) {
+    timer_pulse_setup(config, object);
+    timer_pulse_reset(esp_timer_get_time(), object);
 }
 
-void led_toggle_setValue(bool onOff) {
-    pulse_obj.is_enabled = false;       // stop
-    gpio_set_level(led_gpio, onOff);
-}
+// void led_toggle_setValue(bool onOff) {
+//     pulse_obj.is_enabled = false;       // stop
+//     gpio_set_level(led_gpio, onOff);
+// }
 
-static void toggle(bool state) {
+void led_toggle(bool state) {
     // gpio_set_level(led_gpio, led_state);
     uint32_t duty = state ? (1 << LEDC_DUTY_RESOLUTION) - 1 : 0;
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty);
     ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 }
 
-void led_toggle_switch() {
-    pulse_obj.is_enabled = false;       // stop
-    toggle(pulse_obj.current_state);
-}
+// void led_toggle_switch() {
+//     pulse_obj.is_enabled = false;       // stop
+//     toggle(pulse_obj.current_state);
+// }
 
-void led_toggle_loop(uint64_t current_time) {
-    timer_pulse_handler(current_time, &pulse_obj, toggle);
+void led_toggle_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len) {
+    timer_pulse_handler(current_time, objects, len);
 }
 
 //! stop PWM

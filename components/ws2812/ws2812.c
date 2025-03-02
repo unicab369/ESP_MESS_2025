@@ -64,6 +64,11 @@ rmt_transmit_config_t tx_config = {
     .loop_count = 0, // no transfer loop
 };
 
+
+#define WS2812_TRANSMIT_FREQUENCY 50000   // every 50ms
+
+uint64_t last_transmit_time;
+
 void ws2812_setup(void) {
     rmt_tx_channel_config_t tx_chan_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
@@ -75,39 +80,49 @@ void ws2812_setup(void) {
     rmt_new_tx_channel(&tx_chan_config, &led_chan);
     rmt_new_simple_encoder(&simple_encoder_cfg, &simple_encoder);
     rmt_enable(led_chan);
-
-    timer_pulse_config_t config = {
-        .pulse_count = 1,
-        .pulse_time_ms = 500,
-        .wait_time_ms = 500
-    };
 }
 
 void ws2812_load_obj(timer_pulse_config_t config, timer_pulse_obj_t* object) {
+    last_transmit_time = esp_timer_get_time();
+
     timer_pulse_setup(config, object);
     timer_pulse_reset(esp_timer_get_time(), object);
 }
 
-static void clear_leds() {
+static void request_clear_leds() {
     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
 }
 
-static void update_leds(uint16_t index, ws2812_rgb_t rgb) {
+static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
     led_strip_pixels[index * 3 + 0] = rgb.green;        // Green
     led_strip_pixels[index * 3 + 1] = rgb.red;          // Red
     led_strip_pixels[index * 3 + 2] = rgb.blue;         // Blue
-
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
 }
 
 void ws2812_toggle(bool state) {
     if (state) {
         ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
-        update_leds(4, rgb_value);
+        request_update_leds(4, rgb_value);
     } else {
-        clear_leds();
+        request_clear_leds();
     }
+}
+
+void ws2812_toggle2(bool state) {
+    if (state) {
+        ws2812_rgb_t rgb_value = { .red = 0, .green = 200, .blue = 0 };
+        request_update_leds(3, rgb_value);
+    } else {
+        request_clear_leds();
+    }
+}
+
+void ws2812_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len) {
+    timer_pulse_handler(current_time, objects, len);
+
+    if (current_time - last_transmit_time <= WS2812_TRANSMIT_FREQUENCY) return;
+    last_transmit_time = current_time;
+    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
 }
 
 int led_index = 0;
@@ -117,7 +132,7 @@ void ws2812_loop2(uint64_t current_time) {
     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
 
     ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
-    update_leds(led_index, rgb_value);
+    request_update_leds(led_index, rgb_value);
 
     // Delay before moving to the next LED
     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement

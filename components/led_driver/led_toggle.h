@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <soc/gpio_num.h>
+#include <stddef.h>
+#include "timer_pulse.h"
+
 
 typedef struct {
     int blink_count;         // Number of times to blink the LED
@@ -15,11 +18,12 @@ typedef struct {
 // Function prototypes
 void led_toggle_setup(gpio_num_t gpio);
 void led_toggle_restart(void);
-void led_toggle_pulses(uint8_t pulse_count, uint32_t repeat_duration_ms);
+void led_toggle_pulses(timer_pulse_config_t config, timer_pulse_obj_t* object);
+void led_toggle(bool state);
 
 void led_toggle_switch(void);
 void led_toggle_setValue(bool onOff);
-void led_toggle_stop(void);
-void led_toggle_loop(uint64_t current_time);
+void led_toggle_stop(timer_pulse_obj_t* object);
+void led_toggle_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len);
 
 #endif // LED_TOGGLE_H
