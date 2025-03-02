@@ -89,9 +89,9 @@ void ws2812_load_obj(timer_pulse_config_t config, timer_pulse_obj_t* object) {
     timer_pulse_reset(esp_timer_get_time(), object);
 }
 
-static void request_clear_leds() {
-    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-}
+// static void request_clear_leds() {
+//     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+// }
 
 static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
     led_strip_pixels[index * 3 + 0] = rgb.green;        // Green
@@ -100,21 +100,13 @@ static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
 }
 
 void ws2812_toggle(bool state) {
-    if (state) {
-        ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
-        request_update_leds(4, rgb_value);
-    } else {
-        request_clear_leds();
-    }
+    ws2812_rgb_t rgb_value = { .red = state ? 150 : 0, .green = 0, .blue = 0 };
+    request_update_leds(4, rgb_value);
 }
 
 void ws2812_toggle2(bool state) {
-    if (state) {
-        ws2812_rgb_t rgb_value = { .red = 0, .green = 200, .blue = 0 };
-        request_update_leds(3, rgb_value);
-    } else {
-        request_clear_leds();
-    }
+    ws2812_rgb_t rgb_value = { .red = 0, .green = state ? 150 : 0, .blue = 0 };
+    request_update_leds(3, rgb_value);
 }
 
 void ws2812_loop(uint64_t current_time, timer_pulse_obj_t* objects, size_t len) {

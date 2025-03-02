@@ -5,6 +5,7 @@ void timer_pulse_setup(timer_pulse_config_t config, timer_pulse_obj_t *obj) {
     obj->config.half_cycle_count = config.pulse_count*2;
     obj->config.pulse_time_uS = config.pulse_time_ms*1000;
     obj->config.wait_time_uS = config.wait_time_ms*1000;
+    obj->config.callback = config.callback;
 }
 
 void timer_pulse_reset(uint64_t current_time, timer_pulse_obj_t *obj) {
@@ -20,7 +21,6 @@ void timer_pulse_reset(uint64_t current_time, timer_pulse_obj_t *obj) {
 void timer_pulse_handler(uint64_t current_time, timer_pulse_obj_t *objects, size_t len) {
     for (int i=0; i<len; i++) {
         timer_pulse_obj_t* obj = &objects[i];
-        
         if (!obj->is_enabled) continue;
 
         if (obj->is_toggling) {

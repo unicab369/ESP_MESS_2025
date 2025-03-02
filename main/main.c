@@ -121,6 +121,10 @@ void espnow_controller_send() {
 
 #define PULSE_OJB_COUNT 2
 
+// void ws2812_toggle(bool state) {
+//     printf("IM HERE \n");
+// }
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "APP START");
@@ -159,8 +163,8 @@ void app_main(void)
     
     timer_pulse_config_t config2 = {
         .pulse_count = 1,
-        .pulse_time_ms = 500,
-        .wait_time_ms = 500,
+        .pulse_time_ms = 200,
+        .wait_time_ms = 200,
         .callback = ws2812_toggle2
     };
     ws2812_load_obj(config2, &ws2812_pulse_objs[1]);
