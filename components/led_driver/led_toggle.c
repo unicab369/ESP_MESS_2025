@@ -3,6 +3,7 @@
 #include "driver/ledc.h"
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "timer_pulse.h"
 
 #define LEDC_DUTY_RESOLUTION   LEDC_TIMER_10_BIT
 

@@ -4,6 +4,12 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/ledc.h"
+#include "esp_log.h"
+#include "driver/usb_serial_jtag.h"
+#include "esp_timer.h"
 #include "esp_err.h"
 
 #include "led_toggle.h"
@@ -13,13 +19,8 @@
 #include "uart_driver.h"
 #include "behavior/behavior.h"
 #include "espnow_driver.h"
+#include "ws2812.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "driver/ledc.h"
-#include "esp_log.h"
-#include "driver/usb_serial_jtag.h"
-#include "esp_timer.h"
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -29,7 +30,8 @@
 #elif CONFIG_IDF_TARGET_ESP32
     #define LED_FADE_PIN 22
     #define BLINK_PIN 5
-    #define BUTTON_PIN 16
+    // #define BUTTON_PIN 16
+    #define BUTTON_PIN 23
     #define ROTARY_CLK 15
     #define ROTARY_DT 13
 #endif
@@ -113,6 +115,8 @@ void app_main(void)
     led_fade_setup(LED_FADE_PIN);
     led_fade_restart(1023, 500);        // Brightness, fade_duration
 
+    ws2812_setup();
+
     rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
@@ -141,6 +145,8 @@ void app_main(void)
         rotary_loop(current_time);
 
         // espnow_controller_send();
+
+        // ws2812_loop();
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));
