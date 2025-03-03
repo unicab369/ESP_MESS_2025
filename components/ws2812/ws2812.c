@@ -8,6 +8,7 @@
 #include "freertos/task.h"
 
 #include "esp_timer.h"
+#include "serv_cycleIndex.c"
 
 #define RMT_LED_STRIP_GPIO_NUM      12
 #define EXAMPLE_LED_NUMBERS         7
@@ -18,7 +19,7 @@
 
 static const char *TAG = "example";
 
-static uint8_t led_strip_pixels[EXAMPLE_LED_NUMBERS * 3];
+static uint8_t led_pixels[EXAMPLE_LED_NUMBERS * 3];
 
 
 static size_t encoder_callback(const void *data, size_t data_size,
@@ -99,16 +100,16 @@ void ws2812_load_pulse(ws2812_pulse_obj_t object) {
 }
 
 static void reset_leds(bool transmit) {
-    memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+    memset(led_pixels, 0, sizeof(led_pixels));
     if (!transmit) return;
 
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
 
 static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
-    led_strip_pixels[index * 3 + 0] = rgb.green;        // Green
-    led_strip_pixels[index * 3 + 1] = rgb.red;          // Red
-    led_strip_pixels[index * 3 + 2] = rgb.blue;         // Blue
+    led_pixels[index * 3 + 0] = rgb.green;        // Green
+    led_pixels[index * 3 + 1] = rgb.red;          // Red
+    led_pixels[index * 3 + 2] = rgb.blue;         // Blue
 }
 
 static void on_pulse_handler(uint8_t index, bool state) {
@@ -119,6 +120,20 @@ static void on_pulse_handler(uint8_t index, bool state) {
 
 int led_index = 0;
 
+serv_cycleIndex_obj cycleIndex_obj = {
+    .current_index = 0,
+    .is_firstHalfCycle = true,
+    .max_count = 7,
+    .refresh_time_uS = 60000,
+    .last_refresh_time = 0
+};
+
+void on_cycleIndex_callback(uint16_t index, bool is_firstHalfCycle) {
+    ws2812_rgb_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
+    ws2812_rgb_t value = is_firstHalfCycle ? rgb_on : rgb_off;
+    request_update_leds(index, value);
+}
+
 void ws2812_loop(uint64_t current_time) {
     //! handle pulses
     for (int i=0; i<PULSE_OJB_COUNT2; i++) {
@@ -127,37 +142,44 @@ void ws2812_loop(uint64_t current_time) {
     }
 
     //! handle moving leds
-    if (current_time - last_moved_time > 60000) {
-        last_moved_time = current_time;
-
-        ws2812_rgb_t rgb_value = { .red = 0, .green = 0, .blue = 150 };
-
-        if (is_filling) {
-            // Fill phase: turn on LEDs one at a time
-            request_update_leds(led_index, rgb_value);
-            
-            led_index++;
-            if (led_index >= EXAMPLE_LED_NUMBERS) {
-                led_index = 0;
-                is_filling = false;
-            }
-        } else {
-            // Clear phase: turn off LEDs one at a time
-            request_update_leds(led_index, rgb_off);
-            
-            led_index++;
-            if (led_index >= EXAMPLE_LED_NUMBERS) {
-                led_index = 0;
-                is_filling = true;
-            }
-        }
-    }
+    serv_cycleIndex_check(current_time, &cycleIndex_obj, on_cycleIndex_callback);
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
     last_transmit_time = current_time;
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
+
+bool is_increasing = false;
+int brightness = 0;
+
+static void set_pixel_color(uint8_t *pixels, int pixel, uint8_t red, uint8_t green, uint8_t blue)
+{
+    led_pixels[pixel * 3] = green;
+    led_pixels[pixel * 3 + 1] = red;
+    led_pixels[pixel * 3 + 2] = blue;
+}
+
+// void ws2812_loop(uint64_t current_time) {
+//     if (is_increasing) {
+//         brightness += 5;
+//         if (brightness >= 255) {
+//             brightness = 255;
+//             is_increasing = false;
+//         }
+//     } else {
+//         brightness -= 5;
+//         if (brightness <= 0) {
+//             brightness = 0;
+//             is_increasing = true;
+//         }
+//     }
+
+//     set_pixel_color(led_pixels, 3, brightness, 0, 0);  // Red fade
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+//     vTaskDelay(pdMS_TO_TICKS(20));
+// }
+
 
 float offset = 0;
 
@@ -167,12 +189,12 @@ void ws2812_run1(uint64_t current_time) {
         // hue-like effect.
         float angle = offset + (led * EXAMPLE_ANGLE_INC_LED);
         const float color_off = (M_PI * 2) / 3;
-        led_strip_pixels[led * 3 + 0] = sin(angle + color_off * 0) * 127 + 128;
-        led_strip_pixels[led * 3 + 1] = sin(angle + color_off * 1) * 127 + 128;
-        led_strip_pixels[led * 3 + 2] = sin(angle + color_off * 2) * 117 + 128;;
+        led_pixels[led * 3 + 0] = sin(angle + color_off * 0) * 127 + 128;
+        led_pixels[led * 3 + 1] = sin(angle + color_off * 1) * 127 + 128;
+        led_pixels[led * 3 + 2] = sin(angle + color_off * 2) * 117 + 128;;
     }
     // Flush RGB values to LEDs
-    rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
     rmt_tx_wait_all_done(led_chan, portMAX_DELAY);
     vTaskDelay(pdMS_TO_TICKS(EXAMPLE_FRAME_DURATION_MS));
     //Increase offset to shift pattern
