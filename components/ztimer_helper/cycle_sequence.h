@@ -19,21 +19,22 @@ typedef struct {
 typedef struct {
     int16_t current_value;
     int16_t previous_value;
-    bool is_reversed;
+    bool direction;
+    bool is_bounced;
+    bool is_toggled;        // toggled when reaches max or min
     int8_t increment;
     int16_t max_value;
     uint64_t refresh_time_uS;
     uint64_t last_refresh_time;
 } step_sequence_config_t;
 
-typedef void (step_sequence_cb)(uint8_t obj_index, int16_t current_value, 
-    int16_t previous_value, bool is_reversed);
 
+typedef void (*sequence_cb)(uint8_t index, step_sequence_config_t* conf);
 
 void cycle_fill(
-    uint64_t current_time,  bool bouncing,
+    uint64_t current_time,
     step_sequence_config_t* obj, 
-    step_sequence_cb callback
+    sequence_cb callback
 );
 
 void cycle_fade(uint64_t current_time, uint16_t obj_index,
@@ -43,9 +44,9 @@ void cycle_fade(uint64_t current_time, uint16_t obj_index,
 
 //! cycle the sequency by step
 void cycle_step(
-    uint64_t current_time, bool bouncing, uint8_t index,
+    uint64_t current_time, uint8_t index,
     step_sequence_config_t* conf,
-    step_sequence_cb callback
+    sequence_cb callback
 );
 
 #endif

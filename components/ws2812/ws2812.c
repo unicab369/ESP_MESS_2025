@@ -137,46 +137,52 @@ static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
 //! fill_sequence
 step_sequence_config_t fill_sequence = {
     .current_value = 0,
-    .is_reversed = true,
+    .direction = true,
+    .is_bounced = false,
+    .is_toggled = true,
     .increment = 1,
     .max_value = 7,
     .refresh_time_uS = 600000,
     .last_refresh_time = 0
 };
 
-static void fill_sequence_callback(uint8_t obj_index, int16_t current_value, int16_t previous_value, bool is_reversed) {
+static void fill_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
+    printf("IM HERE: %d\n", conf->current_value);
+
     RGB_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
-    RGB_t value = is_reversed ? rgb_on : rgb_off;
-    request_update_leds(current_value, value);
+    RGB_t value = conf->is_toggled ? rgb_on : rgb_off;
+
+    request_update_leds(conf->current_value, value);
 }
 
 //! step_sequence
 step_sequence_config_t step_sequence = {
     .current_value = 0,
     .previous_value = -1,
-    .is_reversed = false,
+    .direction = true,
+    .is_bounced = false,
     .increment = 1,
     .max_value = 7,
     .refresh_time_uS = 200000,
     .last_refresh_time = 0
 };
 
-static void step_sequence_callback(uint8_t obj_index, int16_t current_value, int16_t previous_value, bool is_reversed) {
+static void step_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
     RGB_t value = { .red = 0, .green = 0, .blue = 150 };
 
-    if (previous_value >= 0) {
-        request_update_leds(previous_value, (RGB_t){0, 0, 0});
+    if (conf->previous_value >= 0) {
+        request_update_leds(conf->previous_value, (RGB_t){0, 0, 0});
     }
 
-    request_update_leds(current_value, value);
+    request_update_leds(conf->current_value, value);
 }
 
 void ws2812_loop(uint64_t current_time) {
     //! handle moving leds
-    cycle_fill(current_time, false, &fill_sequence, fill_sequence_callback);
+    cycle_fill(current_time, &fill_sequence, fill_sequence_callback);
 
     //! handle stepping led
-    // cycle_step(current_time, false, 0, &step_sequence, step_sequence_callback);
+    // cycle_step(current_time, 0, &step_sequence, step_sequence_callback);
 
     //! handle pulsing led
     // for (int i=0; i < OBJECT_COUNT; i++) {

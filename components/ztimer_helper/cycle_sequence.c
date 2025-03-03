@@ -43,8 +43,22 @@ void cycle_fade(
     callback(obj_index, conf->current_value);
 }
 
-static void handle_Switch() {
+static void handle_switch_direction(step_sequence_config_t* conf) {
+    if (!conf->direction) {
+        conf->current_value += conf->increment;
 
+        if (conf->current_value >= conf->max_value) {
+            conf->current_value = conf->max_value - 1;
+            conf->direction = true;
+        }
+    } else {
+        conf->current_value -= conf->increment;
+        
+        if (conf->current_value < 0) {
+            conf->current_value = 0;
+            conf->direction = false;
+        }
+    }
 }
 
 // example sequence:
@@ -56,9 +70,9 @@ static void handle_Switch() {
 // value = 2 + increment
 
 void cycle_fill(
-    uint64_t current_time, bool bouncing,
+    uint64_t current_time,
     step_sequence_config_t* conf, 
-    step_sequence_cb callback
+    sequence_cb callback
 ) {
     // check refresh time
     if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
@@ -66,47 +80,61 @@ void cycle_fill(
 
     int8_t increment = conf->increment;
     int16_t max_value = conf->max_value;
-    bool is_switched = conf->is_reversed;
-    int16_t current_value = conf->current_value;
-    
+    bool direction = conf->direction;
+
     // call the callback
-    printf("curr = %d | %s\n", conf->current_value, is_switched ? "reverse" : "forward");
-    callback(0, current_value, conf->previous_value, is_switched);
+    printf("curr = %d | %s\n", conf->current_value, direction ? "inverted" : "normal");
+    callback(0, conf);
     conf->previous_value = conf->current_value;
     
-    if (bouncing) {
-        if (!is_switched) {
+    // check for bouncing
+    if (conf->is_bounced) {
+        if (!direction) {
             conf->current_value += increment;
     
             if (conf->current_value >= max_value) {
                 conf->current_value = max_value - 1;
-                conf->is_reversed = true;
+                conf->direction = true;
+                conf->is_toggled = !conf->is_toggled;
             }
         } else {
             conf->current_value -= increment;
             
             if (conf->current_value < 0) {
                 conf->current_value = 0;
-                conf->is_reversed = false;
+                conf->direction = false;
+                conf->is_toggled = !conf->is_toggled;
             }
         }
     } else {
-        // increase the index
-        conf->current_value += increment;                           
+        // reverse if reaches min or max
+        if (direction) {
+            // normal
+            conf->current_value += increment;                           
 
-        // check if max_count has been reached
-        if (current_value >= max_value) {     
-            conf->current_value = 0;                     
-            conf->is_reversed = !is_switched;
+            // check if max value has been reached
+            if (conf->current_value >= max_value) {     
+                conf->current_value = 0;                     
+                conf->is_toggled = !conf->is_toggled;
+            }
+        } else {
+            conf->current_value -= increment;                           
+
+            // check if min value has been reached
+            if (conf->current_value < 0) {     
+                conf->current_value = max_value - 1;                     
+                conf->is_toggled = !conf->is_toggled;
+            }
         }
+
     }
 }
 
 
 void cycle_step(
-    uint64_t current_time, bool bouncing, uint8_t index,
+    uint64_t current_time, uint8_t obj_index,
     step_sequence_config_t* conf,
-    step_sequence_cb callback
+    sequence_cb callback
 ) {
     // check refresh time
     if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
@@ -114,37 +142,22 @@ void cycle_step(
 
     int8_t increment = conf->increment;
     int16_t max_value = conf->max_value;
-    bool is_reversed = conf->is_reversed;
+    bool direction = conf->direction;
 
     // call the callback
-    // printf("curr = %d, prev = %d | %s\n", conf->current_value, conf->previous_value, is_reversed ? "reverse" : "forward");
-    callback(index, conf->current_value, conf->previous_value, is_reversed);
+    // printf("curr = %d, prev = %d | %s\n", conf->current_value, conf->previous_value, direction ? "reverse" : "forward");
+    callback(obj_index, conf);
 
     // update previous value
     conf->previous_value = conf->current_value;
 
-    // note: bounce will neglect reverse
-    if (bouncing) {
-        if (!is_reversed) {
-            conf->current_value += increment;
-
-            // revert if reached max value
-            if (conf->current_value >= max_value) {
-                conf->current_value = max_value - 1;
-                conf->is_reversed = true;
-            }
-        } else {
-            conf->current_value -= increment;
-    
-            // revert if reached min value
-            if (conf->current_value < 0) {
-                conf->current_value = 0;
-                conf->is_reversed = false;
-            }
-        }
+    // check for bouncing
+    if (conf->is_bounced) {
+        // reverse if reaches min or max
+        handle_switch_direction(conf);
 
     } else {
-        if (!is_reversed) {
+        if (!direction) {
             // Forward movement
             conf->current_value = (conf->current_value + increment) % max_value;
     
