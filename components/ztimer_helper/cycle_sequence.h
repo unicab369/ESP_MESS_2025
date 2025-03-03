@@ -32,7 +32,7 @@ typedef struct {
 typedef void (*sequence_cb)(uint8_t index, step_sequence_config_t* conf);
 
 void cycle_fill(
-    uint64_t current_time,
+    uint64_t current_time, uint8_t obj_index,
     step_sequence_config_t* obj, 
     sequence_cb callback
 );

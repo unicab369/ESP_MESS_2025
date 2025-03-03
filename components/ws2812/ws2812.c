@@ -140,7 +140,7 @@ step_sequence_config_t fill_sequence = {
     .direction = true,
     .is_bounced = false,
     .is_toggled = true,
-    .increment = 1,
+    .increment = 2,
     .max_value = 7,
     .refresh_time_uS = 600000,
     .last_refresh_time = 0
@@ -159,7 +159,7 @@ static void fill_sequence_callback(uint8_t obj_index, step_sequence_config_t* co
 step_sequence_config_t step_sequence = {
     .current_value = 0,
     .previous_value = -1,
-    .direction = true,
+    .direction = false,
     .is_bounced = false,
     .increment = 1,
     .max_value = 7,
@@ -179,10 +179,10 @@ static void step_sequence_callback(uint8_t obj_index, step_sequence_config_t* co
 
 void ws2812_loop(uint64_t current_time) {
     //! handle moving leds
-    cycle_fill(current_time, &fill_sequence, fill_sequence_callback);
+    // cycle_fill(current_time, 0, &fill_sequence, fill_sequence_callback);
 
     //! handle stepping led
-    // cycle_step(current_time, 0, &step_sequence, step_sequence_callback);
+    cycle_step(current_time, 0, &step_sequence, step_sequence_callback);
 
     //! handle pulsing led
     // for (int i=0; i < OBJECT_COUNT; i++) {

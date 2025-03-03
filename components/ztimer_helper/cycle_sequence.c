@@ -50,6 +50,7 @@ static void handle_switch_direction(step_sequence_config_t* conf) {
         if (conf->current_value >= conf->max_value) {
             conf->current_value = conf->max_value - 1;
             conf->direction = true;
+            conf->is_toggled = false;
         }
     } else {
         conf->current_value -= conf->increment;
@@ -57,6 +58,7 @@ static void handle_switch_direction(step_sequence_config_t* conf) {
         if (conf->current_value < 0) {
             conf->current_value = 0;
             conf->direction = false;
+            conf->is_toggled = true;
         }
     }
 }
@@ -70,7 +72,7 @@ static void handle_switch_direction(step_sequence_config_t* conf) {
 // value = 2 + increment
 
 void cycle_fill(
-    uint64_t current_time,
+    uint64_t current_time, uint8_t obj_index,
     step_sequence_config_t* conf, 
     sequence_cb callback
 ) {
@@ -84,28 +86,14 @@ void cycle_fill(
 
     // call the callback
     printf("curr = %d | %s\n", conf->current_value, direction ? "inverted" : "normal");
-    callback(0, conf);
+    callback(obj_index, conf);
     conf->previous_value = conf->current_value;
     
     // check for bouncing
     if (conf->is_bounced) {
-        if (!direction) {
-            conf->current_value += increment;
-    
-            if (conf->current_value >= max_value) {
-                conf->current_value = max_value - 1;
-                conf->direction = true;
-                conf->is_toggled = !conf->is_toggled;
-            }
-        } else {
-            conf->current_value -= increment;
-            
-            if (conf->current_value < 0) {
-                conf->current_value = 0;
-                conf->direction = false;
-                conf->is_toggled = !conf->is_toggled;
-            }
-        }
+        // revert direction if reaches min or max
+        handle_switch_direction(conf);
+
     } else {
         // reverse if reaches min or max
         if (direction) {
@@ -126,7 +114,6 @@ void cycle_fill(
                 conf->is_toggled = !conf->is_toggled;
             }
         }
-
     }
 }
 
@@ -153,11 +140,11 @@ void cycle_step(
 
     // check for bouncing
     if (conf->is_bounced) {
-        // reverse if reaches min or max
+        // revert direction if reaches min or max
         handle_switch_direction(conf);
 
     } else {
-        if (!direction) {
+        if (direction) {
             // Forward movement
             conf->current_value = (conf->current_value + increment) % max_value;
     
