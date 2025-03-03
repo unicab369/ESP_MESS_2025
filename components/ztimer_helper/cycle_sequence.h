@@ -31,7 +31,7 @@ typedef struct {
 
 typedef void (*sequence_cb)(uint8_t index, step_sequence_config_t* conf);
 
-void cycle_fill(
+void cycle_indexes(
     uint64_t current_time, uint8_t obj_index,
     step_sequence_config_t* obj, 
     sequence_cb callback
@@ -39,14 +39,6 @@ void cycle_fill(
 
 void cycle_fade(uint64_t current_time, uint16_t obj_index,
     sequence_config_t* obj, void (*callback)(uint16_t index, int16_t current_value)
-);
-
-
-//! cycle the sequency by step
-void cycle_step(
-    uint64_t current_time, uint8_t index,
-    step_sequence_config_t* conf,
-    sequence_cb callback
 );
 
 #endif

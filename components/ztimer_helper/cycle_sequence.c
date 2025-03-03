@@ -64,14 +64,7 @@ static void handle_switch_direction(step_sequence_config_t* conf) {
 }
 
 // example sequence:
-// value = 0 + increment
-// value = 1 + increment
-// value = 2 + increment    // max_value = 2, reset cycle
-// value = 0 + increment
-// value = 1 + increment
-// value = 2 + increment
-
-void cycle_fill(
+void cycle_indexes(
     uint64_t current_time, uint8_t obj_index,
     step_sequence_config_t* conf, 
     sequence_cb callback
@@ -81,11 +74,12 @@ void cycle_fill(
     conf->last_refresh_time = current_time;
 
     int8_t increment = conf->increment;
-    int16_t max_value = conf->max_value;
+    int16_t maxValue = conf->max_value;
+    bool isToggled = conf->is_toggled;
     bool direction = conf->direction;
 
     // call the callback
-    printf("curr = %d | %s\n", conf->current_value, direction ? "inverted" : "normal");
+    printf("curr = %d | toggled = %s\n", conf->current_value, isToggled ? "true" : "false");
     callback(obj_index, conf);
     conf->previous_value = conf->current_value;
     
@@ -101,7 +95,7 @@ void cycle_fill(
             conf->current_value += increment;                           
 
             // check if max value has been reached
-            if (conf->current_value >= max_value) {     
+            if (conf->current_value >= maxValue) {     
                 conf->current_value = 0;                     
                 conf->is_toggled = !conf->is_toggled;
             }
@@ -110,53 +104,8 @@ void cycle_fill(
 
             // check if min value has been reached
             if (conf->current_value < 0) {     
-                conf->current_value = max_value - 1;                     
+                conf->current_value = maxValue - 1;                     
                 conf->is_toggled = !conf->is_toggled;
-            }
-        }
-    }
-}
-
-
-void cycle_step(
-    uint64_t current_time, uint8_t obj_index,
-    step_sequence_config_t* conf,
-    sequence_cb callback
-) {
-    // check refresh time
-    if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
-    conf->last_refresh_time = current_time;
-
-    int8_t increment = conf->increment;
-    int16_t max_value = conf->max_value;
-    bool direction = conf->direction;
-
-    // call the callback
-    // printf("curr = %d, prev = %d | %s\n", conf->current_value, conf->previous_value, direction ? "reverse" : "forward");
-    callback(obj_index, conf);
-
-    // update previous value
-    conf->previous_value = conf->current_value;
-
-    // check for bouncing
-    if (conf->is_bounced) {
-        // revert direction if reaches min or max
-        handle_switch_direction(conf);
-
-    } else {
-        if (direction) {
-            // Forward movement
-            conf->current_value = (conf->current_value + increment) % max_value;
-    
-            if (conf->current_value < increment) {
-                conf->current_value = 0;
-            }
-        } else {
-            // Backward movement
-            conf->current_value = (conf->current_value - increment + max_value) % max_value;
-    
-            if (conf->current_value > max_value - increment) {
-                conf->current_value = max_value - 1;
             }
         }
     }
