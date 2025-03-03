@@ -172,6 +172,12 @@ void step_sequence_callback(uint8_t index, int16_t current_value, int16_t previo
 }
 
 void ws2812_loop(uint64_t current_time) {
+    //! handle moving leds
+    // cycle_move(current_time, &cycleIndex, on_cycleIndex_cb);
+
+    //! handle stepping led
+    cycle_step(current_time, false, 0, &step_sequence, step_sequence_callback);
+
     //! handle pulsing led
     // for (int i=0; i < OBJECT_COUNT; i++) {
     //     timer_pulse_obj_t* obj = &timer_objs[i];
@@ -179,15 +185,9 @@ void ws2812_loop(uint64_t current_time) {
     // }
 
     //! handle fading led
-    for (int i=0; i < OBJECT_COUNT; i++) {
-        cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
-    }
-
-    //! handle moving leds
-    cycle_move(current_time, &cycleIndex, on_cycleIndex_cb);
-
-    //! handle stepping led
-    // cycle_step(current_time, 0, &step_sequence, step_sequence_callback);
+    // for (int i=0; i < OBJECT_COUNT; i++) {
+    //     cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
+    // }
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;

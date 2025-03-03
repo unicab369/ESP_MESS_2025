@@ -39,7 +39,9 @@ typedef void (step_sequence_cb)(uint8_t index, int16_t current_value,
 
 
 //! cycle the sequency by step
-void cycle_step(uint64_t current_time, uint8_t index,
-                step_sequence_config_t* conf, step_sequence_cb callback);
+void cycle_step(
+    uint64_t current_time, bool bouncing, uint8_t index,
+    step_sequence_config_t* conf, step_sequence_cb callback
+);
 
 #endif
