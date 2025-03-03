@@ -58,7 +58,9 @@
         "timer_pulse.h": "c",
         "stddef.h": "c",
         "stdlib.h": "c",
-        "ratio": "c"
+        "ratio": "c",
+        "serv_cycleindex.h": "c",
+        "variant": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

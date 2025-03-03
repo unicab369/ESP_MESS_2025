@@ -8,6 +8,7 @@
 #include "driver/rmt_tx.h"
 
 #include "timer_pulse.h"
+#include "serv_cycleIndex.h"
 
 #define RMT_LED_STRIP_RESOLUTION_HZ 10000000 // 10MHz resolution, 1 tick = 0.1us (led strip needs a high resolution)
 
@@ -44,16 +45,23 @@ static ws2812_rgb_t rgb_off = {
 };
 
 typedef struct {
-    uint8_t led_index;
     uint8_t obj_index;
+    uint8_t led_index;
     ws2812_rgb_t rgb;
     timer_pulse_config_t config;
-    void (*pulse_cb)(void);
+    void (*callback)(void);
 } ws2812_pulse_obj_t;
 
 
+typedef struct {
+    uint8_t led_index;
+    ws2812_rgb_t active_channels;
+    serv_cycleFade_t config;
+} ws2812_cycleFade_t;
+
 void ws2812_setup(void);
 void ws2812_load_pulse(ws2812_pulse_obj_t object);
+void ws2812_load_fades(ws2812_cycleFade_t ref, uint8_t index);
 
 void ws2812_toggle(bool state, uint8_t led_index);
 void ws2812_run1(uint64_t current_time);

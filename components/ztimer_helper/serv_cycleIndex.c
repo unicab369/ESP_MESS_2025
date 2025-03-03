@@ -3,7 +3,7 @@
 
 void serv_cycleIndex_check(
     uint64_t current_time,
-    serv_cycleIndex_obj* obj, 
+    serv_cycleIndex_t* obj, 
     void (*callback)(uint16_t current_index, bool is_firstHalfCycle)
 ) {
     // check refresh time
@@ -26,8 +26,9 @@ void serv_cycleIndex_check(
 
 void serv_cycleFade_check(
     uint64_t current_time,
-    serv_cycleFade_obj* obj,
-    void (*callback)(uint16_t current_value)
+    uint16_t obj_index,
+    serv_cycleFade_t* obj,
+    void (*callback)(uint16_t index, int16_t current_value)
 ) {
     // check refresh time
     if (current_time - obj->last_refresh_time < obj->refresh_time_uS) return;
@@ -52,5 +53,5 @@ void serv_cycleFade_check(
     }
 
     // call the callback
-    callback(obj->current_value);
+    callback(obj_index, obj->current_value);
 }

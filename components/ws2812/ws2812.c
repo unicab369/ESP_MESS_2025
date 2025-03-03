@@ -8,7 +8,7 @@
 #include "freertos/task.h"
 
 #include "esp_timer.h"
-#include "serv_cycleIndex.c"
+
 
 #define RMT_LED_STRIP_GPIO_NUM      12
 #define EXAMPLE_LED_NUMBERS         7
@@ -68,9 +68,9 @@ rmt_transmit_config_t tx_config = {
 
 #define WS2812_TRANSMIT_FREQUENCY 30000   // micro seconds
 
-#define PULSE_OJB_COUNT2 2
-static timer_pulse_obj_t timer_objs[PULSE_OJB_COUNT2];
-static ws2812_pulse_obj_t ws2812_pulse_objs[PULSE_OJB_COUNT2];
+#define OBJECT_COUNT 2
+static timer_pulse_obj_t timer_objs[OBJECT_COUNT];
+static ws2812_pulse_obj_t ws2812_pulse_objs[OBJECT_COUNT];
 
 uint64_t last_transmit_time;
 
@@ -118,10 +118,9 @@ static void on_pulse_handler(uint8_t index, bool state) {
     request_update_leds(obj->led_index, output);
 }
 
-int led_index = 0;
 
 //! Cycle Index
-serv_cycleIndex_obj cycleIndex_obj = {
+serv_cycleIndex_t cycleIndex = {
     .current_index = 0,
     .is_firstHalfCycle = true,
     .increment = 1,
@@ -130,39 +129,76 @@ serv_cycleIndex_obj cycleIndex_obj = {
     .last_refresh_time = 0
 };
 
-void on_cycleIndex_cb(uint16_t index, bool is_firstHalfCycle) {
+static void on_cycleIndex_cb(uint16_t index, bool is_firstHalfCycle) {
     ws2812_rgb_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
     ws2812_rgb_t value = is_firstHalfCycle ? rgb_on : rgb_off;
     request_update_leds(index, value);
 }
 
-//! Cycle Fade
-serv_cycleFade_obj cycleFade_obj = {
-    .current_value = 0,
-    .is_increasing = true,
-    .increment = 7,
-    .max_value = 200,
-    .refresh_time_uS = 20000,
-    .last_refresh_time = 0
-};
+static ws2812_cycleFade_t cycle_fades[OBJECT_COUNT];
 
-void onCycleFade_cb(uint16_t fading_value) {
-    ws2812_rgb_t rgb_on = { .red = fading_value, .green = 0, .blue = fading_value };
-    request_update_leds(2, rgb_on);
+ws2812_rgb_t set_color(int16_t value, ws2812_rgb_t channels) {
+    return (ws2812_rgb_t){
+        .red = channels.red & value,
+        .green = channels.green & value,
+        .blue = channels.blue & value
+    };
+}
+
+void hsv_to_rgb(float h, float s, float v, ws2812_rgb_t* rgb) {
+    float c = v * s;
+    float x = c * (1 - fabs(fmod(h / 60.0f, 2) - 1));
+    float m = v - c;
+    
+    float r_temp, g_temp, b_temp;
+    if (h < 60) {
+        r_temp = c; g_temp = x; b_temp = 0;
+    } else if (h < 120) {
+        r_temp = x; g_temp = c; b_temp = 0;
+    } else if (h < 180) {
+        r_temp = 0; g_temp = c; b_temp = x;
+    } else if (h < 240) {
+        r_temp = 0; g_temp = x; b_temp = c;
+    } else if (h < 300) {
+        r_temp = x; g_temp = 0; b_temp = c;
+    } else {
+        r_temp = c; g_temp = 0; b_temp = x;
+    }
+    
+    rgb->red = (uint8_t)((r_temp + m) * 255);
+    rgb->green = (uint8_t)((g_temp + m) * 255);
+    rgb->blue = (uint8_t)((b_temp + m) * 255);
+}
+
+static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
+    ws2812_rgb_t new_color;
+    hsv_to_rgb(fading_value, 1.0f, 1.0f, &new_color);
+
+    ws2812_cycleFade_t* ref = &cycle_fades[obj_index];
+    ws2812_rgb_t new_color2 = set_color(fading_value, ref->active_channels);
+    request_update_leds(ref->led_index, new_color2);
+}
+
+
+void ws2812_load_fades(ws2812_cycleFade_t ref, uint8_t index) {
+    cycle_fades[index] = ref;
 }
 
 void ws2812_loop(uint64_t current_time) {
     //! handle pulses
-    for (int i=0; i<PULSE_OJB_COUNT2; i++) {
+    for (int i=0; i < OBJECT_COUNT; i++) {
         timer_pulse_obj_t* obj = &timer_objs[i];
         timer_pulse_handler(current_time, i, obj, on_pulse_handler);
     }
 
-    //! handle moving leds
-    // serv_cycleIndex_check(current_time, &cycleIndex_obj, on_cycleIndex_cb);
-
     //! handle fading leds
-    serv_cycleFade_check(current_time, &cycleFade_obj, onCycleFade_cb);
+    for (int i=0; i < OBJECT_COUNT; i++) {
+        serv_cycleFade_check(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
+    }
+
+    //! handle moving leds
+    // serv_cycleIndex_check(current_time, &cycleIndex, on_cycleIndex_cb);
+
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
@@ -194,6 +230,27 @@ void ws2812_run1(uint64_t current_time) {
     }
 }
 
+// void led_task(void *pvParameters)
+// {
+//     float hue = 0.0f;
+//     uint8_t r, g, b;
+
+//     while (1) {
+//         hsv_to_rgb(hue, 1.0f, 1.0f, &r, &g, &b);
+//         set_pixel_color(led_pixels, 7, r, g, b);
+//         ws2812_write_leds(led_pixels, sizeof(led_pixels));
+
+//         hue += 1.0f;
+//         if (hue >= 360.0f) {
+//             hue = 0.0f;
+//         }
+
+//         vTaskDelay(pdMS_TO_TICKS(20));
+//     }
+// }
+
+
+
 #define MOVE_FORWARD 0
 #define MOVE_BACKWARD 1
 
@@ -202,6 +259,8 @@ static int led_direction = MOVE_FORWARD;
 int skip_pixels = 0;
 ws2812_rgb_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
 ws2812_rgb_t off_value = { .red = 0, .green = 0, .blue = 0 };
+
+int led_index = 0;
 
 // void ws2812_loop(uint64_t current_time) {
 //     // Clear all LEDs

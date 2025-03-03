@@ -184,6 +184,34 @@ void app_main(void)
     ws2812_load_pulse(ojb2);
 
 
+    ws2812_cycleFade_t obj3 = {
+        .led_index = 1,
+        .active_channels = { .red = 0xFF, .green = 0, .blue = 0xFF },
+        .config = {
+            .current_value = 0,
+            .is_increasing = true,
+            .increment = 5,
+            .max_value = 150,
+            .refresh_time_uS = 40000,
+        }
+    };
+
+    ws2812_load_fades(obj3, 0);
+
+    ws2812_cycleFade_t obj4 = {
+        .led_index = 2,
+        .active_channels = { .red = 0xFF, .green = 0, .blue = 0 },
+        .config = {
+            .current_value = 0,
+            .is_increasing = true,
+            .increment = 5,
+            .max_value = 150,       // hue max 360
+            .refresh_time_uS = 40000,
+        }
+    };
+    ws2812_load_fades(obj4, 1);
+
+
     while (1) {
         uint64_t current_time = esp_timer_get_time();
         
