@@ -18,9 +18,45 @@
 #include "rotary_driver.h"
 #include "uart_driver.h"
 #include "behavior/behavior.h"
-#include "espnow_driver.h"
 #include "ws2812.h"
 #include "timer_pulse.h"
+
+
+#define ESPNOW_ENABLED false
+
+#if ESPNOW_ENABLED
+    #include "espnow_driver.h"
+
+    void espnow_message_handler(espnow_received_message_t received_message) {
+        ESP_LOGW(TAG,"received data:");
+        ESP_LOGI(TAG, "Source Address: %02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(received_message.src_addr));
+    
+        ESP_LOGI(TAG, "rssi: %d", received_message.rssi);
+        ESP_LOGI(TAG, "channel: %d", received_message.channel);
+        ESP_LOGI(TAG, "group_id: %d", received_message.message->group_id);
+        ESP_LOGI(TAG, "msg_id: %d", received_message.message->msg_id);
+        ESP_LOGI(TAG, "access_code: %u", received_message.message->access_code);
+        ESP_LOGI(TAG, "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
+    }
+    
+    
+    void espnow_controller_send() {
+        uint8_t dest_mac[6] = { 0xAA };
+        uint8_t data[32] = { 0xBB };
+    
+        espnow_message_t message = {
+            .access_code = 33,
+            .group_id = 11,
+            .msg_id = 12,
+            .time_to_live = 15,
+        };
+    
+        memcpy(message.target_addr, dest_mac, sizeof(message.target_addr));
+        memcpy(message.data, data, sizeof(message.data));
+    
+        espnow_send((uint8_t*)&message, sizeof(message));
+    }
+#endif
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -90,35 +126,7 @@ void uart_read_handler(uint8_t* data, size_t len) {
     ESP_LOGI(TAG, "IM HERE");
 }
 
-void espnow_message_handler(espnow_received_message_t received_message) {
-    ESP_LOGW(TAG,"received data:");
-    ESP_LOGI(TAG, "Source Address: %02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(received_message.src_addr));
 
-    ESP_LOGI(TAG, "rssi: %d", received_message.rssi);
-    ESP_LOGI(TAG, "channel: %d", received_message.channel);
-    ESP_LOGI(TAG, "group_id: %d", received_message.message->group_id);
-    ESP_LOGI(TAG, "msg_id: %d", received_message.message->msg_id);
-    ESP_LOGI(TAG, "access_code: %u", received_message.message->access_code);
-    ESP_LOGI(TAG, "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
-}
-
-
-void espnow_controller_send() {
-    uint8_t dest_mac[6] = { 0xAA };
-    uint8_t data[32] = { 0xBB };
-
-    espnow_message_t message = {
-        .access_code = 33,
-        .group_id = 11,
-        .msg_id = 12,
-        .time_to_live = 15,
-    };
-
-    memcpy(message.target_addr, dest_mac, sizeof(message.target_addr));
-    memcpy(message.data, data, sizeof(message.data));
-
-    espnow_send((uint8_t*)&message, sizeof(message));
-}
 
 void app_main(void)
 {
@@ -149,9 +157,10 @@ void app_main(void)
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
 
-    espnow_setup(esp_mac, espnow_message_handler);
-    ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
-
+    #if ESPNOW_ENABLED
+        espnow_setup(esp_mac, espnow_message_handler);
+        ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+    #endif
     
     behavior_output_interface output_interface;
     // output_interface.on_gpio_set = 
@@ -189,7 +198,7 @@ void app_main(void)
         .active_channels = { .red = 0xFF, .green = 0, .blue = 0xFF },
         .config = {
             .current_value = 0,
-            .is_increasing = true,
+            .is_switched = true,
             .increment = 5,
             .max_value = 150,
             .refresh_time_uS = 40000,
@@ -203,7 +212,7 @@ void app_main(void)
         .active_channels = { .red = 0xFF, .green = 0, .blue = 0 },
         .config = {
             .current_value = 0,
-            .is_increasing = true,
+            .is_switched = true,
             .increment = 5,
             .max_value = 150,       // hue max 360
             .refresh_time_uS = 20000,

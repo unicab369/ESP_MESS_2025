@@ -11,7 +11,7 @@
 
 
 #define RMT_LED_STRIP_GPIO_NUM      12
-#define EXAMPLE_LED_NUMBERS         7
+#define LEDS_COUNT         7
 
 #define EXAMPLE_FRAME_DURATION_MS   20
 #define EXAMPLE_ANGLE_INC_FRAME     0.02
@@ -19,7 +19,7 @@
 
 static const char *TAG = "example";
 
-static uint8_t led_pixels[EXAMPLE_LED_NUMBERS * 3];
+static uint8_t led_pixels[LEDS_COUNT * 3];
 
 
 static size_t encoder_callback(const void *data, size_t data_size,
@@ -120,18 +120,18 @@ static void on_pulse_handler(uint8_t index, bool state) {
 
 
 //! Cycle Index
-cycleIndex_config_t cycleIndex = {
-    .current_index = 0,
-    .is_firstHalfCycle = true,
+sequence_config_t cycleIndex = {
+    .current_value = 0,
+    .is_switched = true,
     .increment = 1,
     .max_value = 7,
     .refresh_time_uS = 60000,
     .last_refresh_time = 0
 };
 
-static void on_cycleIndex_cb(uint16_t index, bool is_firstHalfCycle) {
+static void on_cycleIndex_cb(int16_t index, bool is_switched) {
     RGB_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
-    RGB_t value = is_firstHalfCycle ? rgb_on : rgb_off;
+    RGB_t value = is_switched ? rgb_on : rgb_off;
     request_update_leds(index, value);
 }
 
@@ -164,7 +164,7 @@ void ws2812_loop(uint64_t current_time) {
     }
 
     //! handle moving leds
-    // cycleIndex_check(current_time, &cycleIndex, on_cycleIndex_cb);
+    cycleIndex_check(current_time, &cycleIndex, on_cycleIndex_cb);
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
@@ -176,7 +176,7 @@ void ws2812_loop(uint64_t current_time) {
 float offset = 0;
 
 void ws2812_run1(uint64_t current_time) {
-    for (int led = 0; led < EXAMPLE_LED_NUMBERS; led++) {
+    for (int led = 0; led < LEDS_COUNT; led++) {
         // Build RGB pixels. Each color is an offset sine, which gives a
         // hue-like effect.
         float angle = offset + (led * EXAMPLE_ANGLE_INC_LED);
@@ -204,44 +204,15 @@ static int led_direction = MOVE_FORWARD;
 
 int skip_pixels = 0;
 RGB_t rgb_value = { .red = 200, .green = 0, .blue = 0 };
-RGB_t off_value = { .red = 0, .green = 0, .blue = 0 };
-
 int led_index = 0;
 
 // void ws2812_loop(uint64_t current_time) {
 //     // Clear all LEDs
-//     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
+//     memset(led_pixels, 0, sizeof(led_pixels));
 
 //     // Turn on the current LED
 //     request_update_leds(led_index, rgb_value);
-//     rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
-
-//     // Delay before moving to the next LED
-//     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
-
-//     // Move to the next LED position
-//     if (led_direction == MOVE_FORWARD) {
-//         led_index = (led_index + 1 + skip_pixels) % EXAMPLE_LED_NUMBERS;
-//         if (led_index < skip_pixels) {
-//             led_direction = MOVE_BACKWARD;
-//             led_index = EXAMPLE_LED_NUMBERS - 1;
-//         }
-//     } else {
-//         led_index = (led_index - 1 - skip_pixels + EXAMPLE_LED_NUMBERS) % EXAMPLE_LED_NUMBERS;
-//         if (led_index > EXAMPLE_LED_NUMBERS - 1 - skip_pixels) {
-//             led_direction = MOVE_FORWARD;
-//             led_index = 0;
-//         }
-//     }
-// }
-
-// void ws2812_loop(uint64_t current_time) {
-//     // Clear all LEDs
-//     memset(led_strip_pixels, 0, sizeof(led_strip_pixels));
-
-//     // Turn on the current LED
-//     request_update_leds(led_index, rgb_value);
-//     rmt_transmit(led_chan, simple_encoder, led_strip_pixels, sizeof(led_strip_pixels), &tx_config);
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 
 //     // Delay before moving to the next LED
 //     vTaskDelay(pdMS_TO_TICKS(100));  // Adjust this value to change the speed of movement
@@ -249,9 +220,9 @@ int led_index = 0;
 //     // Move to the next LED position
 //     if (led_direction == MOVE_FORWARD) {
 //         led_index += (1 + skip_pixels);
-//         if (led_index >= EXAMPLE_LED_NUMBERS) {
+//         if (led_index >= LEDS_COUNT) {
 //             led_direction = MOVE_BACKWARD;
-//             led_index = EXAMPLE_LED_NUMBERS - 1;
+//             led_index = LEDS_COUNT - 1;
 //         }
 //     } else {
 //         led_index -= (1 + skip_pixels);
@@ -260,4 +231,151 @@ int led_index = 0;
 //             led_index = 0;
 //         }
 //     }
+// }
+
+// void ws2812_loop(uint64_t current_time) {
+//     request_update_leds(5, (RGB_t){ 255, 0, 0});
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+//     vTaskDelay(pdMS_TO_TICKS(500));
+
+//     request_update_leds(5, (RGB_t){ 0, 0, 0});
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+//     vTaskDelay(pdMS_TO_TICKS(500));
+// }
+
+
+#define SKIP_STEPS 1
+
+// void ws2812_loop(uint64_t current_time) {
+//     static int current_led = 0;
+//     static int previous_led = 0;
+
+//     // Turn off the previous LED
+//     if (previous_led >= 0) {
+//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
+//     }
+
+//     // Turn on the current LED
+//     request_update_leds(current_led, (RGB_t){255, 0, 0});
+    
+//     // Move to the next LED
+//     previous_led = current_led;
+//     current_led = (current_led + SKIP_STEPS) % LEDS_COUNT;
+
+//     // If we've wrapped around, adjust the current_led to avoid skipping the first LED
+//     if (current_led < SKIP_STEPS) {
+//         current_led = 0;
+//     }
+
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+
+//     printf("current = %d, previous = %d\n", current_led, previous_led);
+//     vTaskDelay(pdMS_TO_TICKS(1000));
+// }
+
+// void ws2812_loop(uint64_t current_time) {
+//     static int current_led = LEDS_COUNT - 1;  // Start from the last LED
+//     static int previous_led = LEDS_COUNT - 1;
+
+//     // Turn off the previous LED
+//     if (previous_led >= 0) {
+//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
+//     }
+
+//     // Turn on the current LED
+//     request_update_leds(current_led, (RGB_t){255, 0, 0});
+    
+//     // Move to the previous LED
+//     previous_led = current_led;
+//     current_led = (current_led - SKIP_STEPS + LEDS_COUNT) % LEDS_COUNT;
+
+//     // If we've wrapped around, adjust the current_led to avoid skipping the last LED
+//     if (current_led > LEDS_COUNT - SKIP_STEPS) {
+//         current_led = LEDS_COUNT - 1;
+//     }
+
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+
+//     printf("current = %d, previous = %d\n", current_led, previous_led);
+//     vTaskDelay(pdMS_TO_TICKS(1000));
+// }
+
+
+
+// static bool reverse = false;
+
+// void ws2812_loop(uint64_t current_time) {
+//     static int current_led = 0;
+//     static int previous_led = 0;
+//     static int skip_steps2 = 2;
+
+//     // Turn off the previous LED
+//     if (previous_led >= 0) {
+//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
+//     }
+
+//     // Turn on the current LED
+//     request_update_leds(current_led, (RGB_t){255, 0, 0});
+    
+//     // Move to the next LED
+//     previous_led = current_led;
+
+//     if (!reverse) {
+//         // Forward movement
+//         current_led = (current_led + skip_steps2) % LEDS_COUNT;
+//         if (current_led < skip_steps2) {
+//             current_led = 0;
+//         }
+//     } else {
+//         // Backward movement
+//         current_led = (current_led - skip_steps2 + LEDS_COUNT) % LEDS_COUNT;
+//         if (current_led > LEDS_COUNT - skip_steps2) {
+//             current_led = LEDS_COUNT - 1;
+//         }
+//     }
+
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+
+//     printf("current = %d, previous = %d, direction = %s\n", current_led, previous_led, reverse ? "backward" : "forward");
+//     vTaskDelay(pdMS_TO_TICKS(800));
+// }
+
+
+// void ws2812_loop(uint64_t current_time) {
+//     static int current_led = 0;
+//     static int previous_led = 0;
+//     static bool reverse = true;
+
+//     // Turn off the previous LED
+//     if (previous_led >= 0) {
+//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
+//     }
+
+//     // Turn on the current LED
+//     request_update_leds(current_led, (RGB_t){255, 0, 0});
+//     previous_led = current_led;
+
+//     if (!reverse) {
+//         current_led += SKIP_STEPS;
+
+//         // wrapped around
+//         if (current_led >= LEDS_COUNT) {
+//             reverse = true;
+//             current_led = LEDS_COUNT - 1;
+//         }
+//     } else {
+//         current_led -= SKIP_STEPS;
+
+//         // wrapped around
+//         if (current_led < 0) {
+//             reverse = false;
+//             current_led = 0;
+//         }
+//     }
+
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+
+//     printf("current = %d, previous = %d, direction = %s\n", current_led, previous_led, reverse ? "reverse" : "forward");
+
+//     vTaskDelay(pdMS_TO_TICKS(1000));
 // }

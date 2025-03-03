@@ -47,7 +47,7 @@ typedef struct {
 typedef struct {
     uint8_t led_index;
     RGB_t active_channels;
-    cycleFade_config_t config;
+    sequence_config_t config;
 } ws2812_cycleFade_t;
 
 void ws2812_setup(void);
