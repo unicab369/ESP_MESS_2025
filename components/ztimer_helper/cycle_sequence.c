@@ -1,5 +1,5 @@
 #include "cycle_sequence.h"
-
+#include <stdio.h>
 
 // example sequence:
 // value = 0 + increment
@@ -9,26 +9,27 @@
 // value = 1 + increment
 // value = 2 + increment
 
-void cycleIndex_check(
+void cycle_move(
     uint64_t current_time,
-    sequence_config_t* obj, 
+    sequence_config_t* conf, 
     void (*callback)(int16_t current_value, bool is_switched)
 ) {
     // check refresh time
-    if (current_time - obj->last_refresh_time < obj->refresh_time_uS) return;
-    obj->last_refresh_time = current_time;
+    if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
+    conf->last_refresh_time = current_time;
 
     // call the callback
-    callback(obj->current_value, obj->is_switched);
+    int16_t current_value = conf->current_value;
+    callback(current_value, conf->is_switched);
 
     // increase the index
-    obj->current_value += obj->increment;                           
+    conf->current_value += conf->increment;                           
 
     // check if max_count has been reached
-    if (obj->current_value >= obj->max_value) {     
+    if (current_value >= conf->max_value) {     
         // reset index and toggle counting
-        obj->current_value = 0;                     
-        obj->is_switched = !obj->is_switched;
+        conf->current_value = 0;                     
+        conf->is_switched = !conf->is_switched;
     }
 }
 
@@ -39,40 +40,71 @@ void cycleIndex_check(
 // value = 2 + increment
 // value = 1 + increment
 
-void cycleFade_check(
-    uint64_t current_time,
-    uint16_t obj_index,
-    sequence_config_t* obj,
+void cycle_fade(
+    uint64_t current_time, uint16_t obj_index,
+    sequence_config_t* conf,
     void (*callback)(uint16_t index, int16_t current_value)
 ) {
     // check refresh time
-    if (current_time - obj->last_refresh_time < obj->refresh_time_uS) return;
-    obj->last_refresh_time = current_time;
+    if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
+    conf->last_refresh_time = current_time;
 
-    if (obj->is_switched) {
-        obj->current_value += obj->increment;
+    int8_t increment = conf->increment;
+    int16_t max_value = conf->max_value;
+    int16_t current_value = conf->current_value;
+
+    if (conf->is_switched) {
+        conf->current_value += increment;
 
         // check when max value has been reached
-        if (obj->current_value > obj->max_value) {
-            obj->current_value = obj->max_value;
-            obj->is_switched = false;
+        if (current_value > max_value) {
+            conf->current_value = max_value;
+            conf->is_switched = false;
         }
     } else {
-        obj->current_value -= obj->increment;
+        conf->current_value -= increment;
 
         // check when the min value has been reached
-        if (obj->current_value <= 0) {
-            obj->current_value = 0;
-            obj->is_switched = true;
+        if (current_value <= 0) {
+            conf->current_value = 0;
+            conf->is_switched = true;
         }
     }
 
     // call the callback
-    callback(obj_index, obj->current_value);
+    callback(obj_index, conf->current_value);
 }
 
-void cycleStep_check(
-
+void cycle_step(
+    uint64_t current_time, uint8_t index,
+    step_sequence_config_t* conf, step_sequence_cb callback
 ) {
+    // check refresh time
+    if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
+    conf->last_refresh_time = current_time;
 
+    int8_t increment = conf->increment;
+    int16_t max_value = conf->max_value;
+    bool is_reversed = conf->is_reversed;
+
+    // call the callback
+    // printf("curr = %d, prev = %d | %s\n", conf->current_value, conf->previous_value, is_reversed ? "reverse" : "forward");
+    callback(index, conf->current_value, conf->previous_value, is_reversed);
+    // update previous value
+    conf->previous_value = conf->current_value;
+
+    // is_reverted
+    if (!is_reversed) {
+        // Forward movement
+        conf->current_value = (conf->current_value + increment) % max_value;
+        if (conf->current_value < increment) {
+            conf->current_value = 0;
+        }
+    } else {
+        // Backward movement
+        conf->current_value = (conf->current_value - increment + max_value) % max_value;
+        if (conf->current_value > max_value - increment) {
+            conf->current_value = max_value - 1;
+        }
+    }
 }

@@ -119,6 +119,12 @@ static void on_pulse_handler(uint8_t index, bool state) {
 }
 
 
+static ws2812_cycleFade_t cycle_fades[OBJECT_COUNT];
+
+void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index) {
+    cycle_fades[index] = ref;
+}
+
 //! Cycle Index
 sequence_config_t cycleIndex = {
     .current_value = 0,
@@ -135,8 +141,6 @@ static void on_cycleIndex_cb(int16_t index, bool is_switched) {
     request_update_leds(index, value);
 }
 
-static ws2812_cycleFade_t cycle_fades[OBJECT_COUNT];
-
 static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
     RGB_t new_color;
     hsv_to_rgb(fading_value, 1.0f, 1.0f, &new_color);
@@ -146,25 +150,44 @@ static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
     request_update_leds(ref->led_index, new_color2);
 }
 
+step_sequence_config_t step_sequence = {
+    .current_value = 0,
+    .previous_value = -1,
+    .is_reversed = false,
+    .increment = 1,
+    .max_value = 7,
+    .refresh_time_uS = 300000,
+    .last_refresh_time = 0
+};
 
-void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index) {
-    cycle_fades[index] = ref;
+void step_sequence_callback(uint8_t index, int16_t current_value, int16_t previous_value, bool is_reversed) {
+    RGB_t value = { .red = 0, .green = 0, .blue = 150 };
+
+    if (previous_value >= 0) {
+        request_update_leds(previous_value, (RGB_t){0, 0, 0});
+    }
+
+    request_update_leds(current_value, value);
+    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
 
 void ws2812_loop(uint64_t current_time) {
-    //! handle pulses
-    for (int i=0; i < OBJECT_COUNT; i++) {
-        timer_pulse_obj_t* obj = &timer_objs[i];
-        timer_pulse_handler(current_time, i, obj, on_pulse_handler);
-    }
+    //! handle pulsing led
+    // for (int i=0; i < OBJECT_COUNT; i++) {
+    //     timer_pulse_obj_t* obj = &timer_objs[i];
+    //     timer_pulse_handler(current_time, i, obj, on_pulse_handler);
+    // }
 
-    //! handle fading leds
+    //! handle fading led
     for (int i=0; i < OBJECT_COUNT; i++) {
-        cycleFade_check(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
+        cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
     }
 
     //! handle moving leds
-    cycleIndex_check(current_time, &cycleIndex, on_cycleIndex_cb);
+    cycle_move(current_time, &cycleIndex, on_cycleIndex_cb);
+
+    //! handle stepping led
+    // cycle_step(current_time, 0, &step_sequence, step_sequence_callback);
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
@@ -243,103 +266,7 @@ int led_index = 0;
 //     vTaskDelay(pdMS_TO_TICKS(500));
 // }
 
-
 #define SKIP_STEPS 1
-
-// void ws2812_loop(uint64_t current_time) {
-//     static int current_led = 0;
-//     static int previous_led = 0;
-
-//     // Turn off the previous LED
-//     if (previous_led >= 0) {
-//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
-//     }
-
-//     // Turn on the current LED
-//     request_update_leds(current_led, (RGB_t){255, 0, 0});
-    
-//     // Move to the next LED
-//     previous_led = current_led;
-//     current_led = (current_led + SKIP_STEPS) % LEDS_COUNT;
-
-//     // If we've wrapped around, adjust the current_led to avoid skipping the first LED
-//     if (current_led < SKIP_STEPS) {
-//         current_led = 0;
-//     }
-
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-
-//     printf("current = %d, previous = %d\n", current_led, previous_led);
-//     vTaskDelay(pdMS_TO_TICKS(1000));
-// }
-
-// void ws2812_loop(uint64_t current_time) {
-//     static int current_led = LEDS_COUNT - 1;  // Start from the last LED
-//     static int previous_led = LEDS_COUNT - 1;
-
-//     // Turn off the previous LED
-//     if (previous_led >= 0) {
-//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
-//     }
-
-//     // Turn on the current LED
-//     request_update_leds(current_led, (RGB_t){255, 0, 0});
-    
-//     // Move to the previous LED
-//     previous_led = current_led;
-//     current_led = (current_led - SKIP_STEPS + LEDS_COUNT) % LEDS_COUNT;
-
-//     // If we've wrapped around, adjust the current_led to avoid skipping the last LED
-//     if (current_led > LEDS_COUNT - SKIP_STEPS) {
-//         current_led = LEDS_COUNT - 1;
-//     }
-
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-
-//     printf("current = %d, previous = %d\n", current_led, previous_led);
-//     vTaskDelay(pdMS_TO_TICKS(1000));
-// }
-
-
-
-// static bool reverse = false;
-
-// void ws2812_loop(uint64_t current_time) {
-//     static int current_led = 0;
-//     static int previous_led = 0;
-//     static int skip_steps2 = 2;
-
-//     // Turn off the previous LED
-//     if (previous_led >= 0) {
-//         request_update_leds(previous_led, (RGB_t){0, 0, 0});
-//     }
-
-//     // Turn on the current LED
-//     request_update_leds(current_led, (RGB_t){255, 0, 0});
-    
-//     // Move to the next LED
-//     previous_led = current_led;
-
-//     if (!reverse) {
-//         // Forward movement
-//         current_led = (current_led + skip_steps2) % LEDS_COUNT;
-//         if (current_led < skip_steps2) {
-//             current_led = 0;
-//         }
-//     } else {
-//         // Backward movement
-//         current_led = (current_led - skip_steps2 + LEDS_COUNT) % LEDS_COUNT;
-//         if (current_led > LEDS_COUNT - skip_steps2) {
-//             current_led = LEDS_COUNT - 1;
-//         }
-//     }
-
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-
-//     printf("current = %d, previous = %d, direction = %s\n", current_led, previous_led, reverse ? "backward" : "forward");
-//     vTaskDelay(pdMS_TO_TICKS(800));
-// }
-
 
 // void ws2812_loop(uint64_t current_time) {
 //     static int current_led = 0;
