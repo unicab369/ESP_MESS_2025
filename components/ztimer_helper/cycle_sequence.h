@@ -26,22 +26,26 @@ typedef struct {
     uint64_t last_refresh_time;
 } step_sequence_config_t;
 
-void cycle_move(uint64_t current_time, sequence_config_t* obj, 
-    void (*callback)(int16_t current_value, bool is_switched)
+typedef void (step_sequence_cb)(uint8_t obj_index, int16_t current_value, 
+    int16_t previous_value, bool is_reversed);
+
+
+void cycle_fill(
+    uint64_t current_time,  bool bouncing,
+    step_sequence_config_t* obj, 
+    step_sequence_cb callback
 );
 
 void cycle_fade(uint64_t current_time, uint16_t obj_index,
     sequence_config_t* obj, void (*callback)(uint16_t index, int16_t current_value)
 );
 
-typedef void (step_sequence_cb)(uint8_t index, int16_t current_value, 
-                                    int16_t previous_value, bool is_reversed);
-
 
 //! cycle the sequency by step
 void cycle_step(
     uint64_t current_time, bool bouncing, uint8_t index,
-    step_sequence_config_t* conf, step_sequence_cb callback
+    step_sequence_config_t* conf,
+    step_sequence_cb callback
 );
 
 #endif

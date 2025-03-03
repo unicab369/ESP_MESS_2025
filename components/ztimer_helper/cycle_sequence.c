@@ -43,6 +43,10 @@ void cycle_fade(
     callback(obj_index, conf->current_value);
 }
 
+static void handle_Switch() {
+
+}
+
 // example sequence:
 // value = 0 + increment
 // value = 1 + increment
@@ -51,34 +55,58 @@ void cycle_fade(
 // value = 1 + increment
 // value = 2 + increment
 
-void cycle_move(
-    uint64_t current_time,
-    sequence_config_t* conf, 
-    void (*callback)(int16_t current_value, bool is_switched)
+void cycle_fill(
+    uint64_t current_time, bool bouncing,
+    step_sequence_config_t* conf, 
+    step_sequence_cb callback
 ) {
     // check refresh time
     if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
     conf->last_refresh_time = current_time;
 
-    // call the callback
+    int8_t increment = conf->increment;
+    int16_t max_value = conf->max_value;
+    bool is_switched = conf->is_reversed;
     int16_t current_value = conf->current_value;
-    callback(current_value, conf->is_switched);
+    
+    // call the callback
+    printf("curr = %d | %s\n", conf->current_value, is_switched ? "reverse" : "forward");
+    callback(0, current_value, conf->previous_value, is_switched);
+    conf->previous_value = conf->current_value;
+    
+    if (bouncing) {
+        if (!is_switched) {
+            conf->current_value += increment;
+    
+            if (conf->current_value >= max_value) {
+                conf->current_value = max_value - 1;
+                conf->is_reversed = true;
+            }
+        } else {
+            conf->current_value -= increment;
+            
+            if (conf->current_value < 0) {
+                conf->current_value = 0;
+                conf->is_reversed = false;
+            }
+        }
+    } else {
+        // increase the index
+        conf->current_value += increment;                           
 
-    // increase the index
-    conf->current_value += conf->increment;                           
-
-    // check if max_count has been reached
-    if (current_value >= conf->max_value) {     
-        // reset index and toggle counting
-        conf->current_value = 0;                     
-        conf->is_switched = !conf->is_switched;
+        // check if max_count has been reached
+        if (current_value >= max_value) {     
+            conf->current_value = 0;                     
+            conf->is_reversed = !is_switched;
+        }
     }
 }
 
 
 void cycle_step(
     uint64_t current_time, bool bouncing, uint8_t index,
-    step_sequence_config_t* conf, step_sequence_cb callback
+    step_sequence_config_t* conf,
+    step_sequence_cb callback
 ) {
     // check refresh time
     if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
@@ -99,7 +127,8 @@ void cycle_step(
     if (bouncing) {
         if (!is_reversed) {
             conf->current_value += increment;
-    
+
+            // revert if reached max value
             if (conf->current_value >= max_value) {
                 conf->current_value = max_value - 1;
                 conf->is_reversed = true;
@@ -107,6 +136,7 @@ void cycle_step(
         } else {
             conf->current_value -= increment;
     
+            // revert if reached min value
             if (conf->current_value < 0) {
                 conf->current_value = 0;
                 conf->is_reversed = false;

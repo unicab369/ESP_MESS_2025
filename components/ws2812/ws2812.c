@@ -125,22 +125,6 @@ void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index) {
     cycle_fades[index] = ref;
 }
 
-//! Cycle Index
-sequence_config_t cycleIndex = {
-    .current_value = 0,
-    .is_switched = true,
-    .increment = 1,
-    .max_value = 7,
-    .refresh_time_uS = 60000,
-    .last_refresh_time = 0
-};
-
-static void on_cycleIndex_cb(int16_t index, bool is_switched) {
-    RGB_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
-    RGB_t value = is_switched ? rgb_on : rgb_off;
-    request_update_leds(index, value);
-}
-
 static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
     RGB_t new_color;
     hsv_to_rgb(fading_value, 1.0f, 1.0f, &new_color);
@@ -150,17 +134,34 @@ static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
     request_update_leds(ref->led_index, new_color2);
 }
 
+//! fill_sequence
+step_sequence_config_t fill_sequence = {
+    .current_value = 0,
+    .is_reversed = true,
+    .increment = 1,
+    .max_value = 7,
+    .refresh_time_uS = 600000,
+    .last_refresh_time = 0
+};
+
+static void fill_sequence_callback(uint8_t obj_index, int16_t current_value, int16_t previous_value, bool is_reversed) {
+    RGB_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
+    RGB_t value = is_reversed ? rgb_on : rgb_off;
+    request_update_leds(current_value, value);
+}
+
+//! step_sequence
 step_sequence_config_t step_sequence = {
     .current_value = 0,
     .previous_value = -1,
     .is_reversed = false,
     .increment = 1,
     .max_value = 7,
-    .refresh_time_uS = 300000,
+    .refresh_time_uS = 200000,
     .last_refresh_time = 0
 };
 
-void step_sequence_callback(uint8_t index, int16_t current_value, int16_t previous_value, bool is_reversed) {
+static void step_sequence_callback(uint8_t obj_index, int16_t current_value, int16_t previous_value, bool is_reversed) {
     RGB_t value = { .red = 0, .green = 0, .blue = 150 };
 
     if (previous_value >= 0) {
@@ -168,15 +169,14 @@ void step_sequence_callback(uint8_t index, int16_t current_value, int16_t previo
     }
 
     request_update_leds(current_value, value);
-    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
 
 void ws2812_loop(uint64_t current_time) {
     //! handle moving leds
-    // cycle_move(current_time, &cycleIndex, on_cycleIndex_cb);
+    cycle_fill(current_time, false, &fill_sequence, fill_sequence_callback);
 
     //! handle stepping led
-    cycle_step(current_time, false, 0, &step_sequence, step_sequence_callback);
+    // cycle_step(current_time, false, 0, &step_sequence, step_sequence_callback);
 
     //! handle pulsing led
     // for (int i=0; i < OBJECT_COUNT; i++) {
