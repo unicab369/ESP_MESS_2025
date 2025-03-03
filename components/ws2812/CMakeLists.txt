@@ -1,4 +1,6 @@
-idf_component_register(SRCS "ws2812.c"
+idf_component_register(SRCS
+                              "ws2812.c"
+                              "color_helper.c"
                          INCLUDE_DIRS "."
                          PRIV_REQUIRES
                               esp_driver_rmt

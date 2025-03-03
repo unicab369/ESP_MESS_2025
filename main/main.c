@@ -158,7 +158,7 @@ void app_main(void)
 
     behavior_setup(esp_mac, output_interface);
 
-    ws2812_pulse_obj_t ojb1 = {
+    ws2812_cyclePulse_t ojb1 = {
         .obj_index = 0,
         .led_index = 4,
         .rgb = { .red = 150, .green = 0, .blue = 0 },
@@ -171,7 +171,7 @@ void app_main(void)
     ws2812_load_pulse(ojb1);
 
 
-    ws2812_pulse_obj_t ojb2 = {
+    ws2812_cyclePulse_t ojb2 = {
         .obj_index = 1,
         .led_index = 3,
         .rgb =  { .red = 0, .green = 150, .blue = 0 },
@@ -196,7 +196,7 @@ void app_main(void)
         }
     };
 
-    ws2812_load_fades(obj3, 0);
+    ws2812_load_fadeColor(obj3, 0);
 
     ws2812_cycleFade_t obj4 = {
         .led_index = 2,
@@ -206,10 +206,10 @@ void app_main(void)
             .is_increasing = true,
             .increment = 5,
             .max_value = 150,       // hue max 360
-            .refresh_time_uS = 40000,
+            .refresh_time_uS = 20000,
         }
     };
-    ws2812_load_fades(obj4, 1);
+    ws2812_load_fadeColor(obj4, 1);
 
 
     while (1) {

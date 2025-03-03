@@ -1,9 +1,9 @@
-#include "serv_cycleIndex.h"
+#include "cycle_sequence.h"
 
 
-void serv_cycleIndex_check(
+void cycleIndex_check(
     uint64_t current_time,
-    serv_cycleIndex_t* obj, 
+    cycleIndex_config_t* obj, 
     void (*callback)(uint16_t current_index, bool is_firstHalfCycle)
 ) {
     // check refresh time
@@ -24,10 +24,10 @@ void serv_cycleIndex_check(
     }
 }
 
-void serv_cycleFade_check(
+void cycleFade_check(
     uint64_t current_time,
     uint16_t obj_index,
-    serv_cycleFade_t* obj,
+    cycleFade_config_t* obj,
     void (*callback)(uint16_t index, int16_t current_value)
 ) {
     // check refresh time

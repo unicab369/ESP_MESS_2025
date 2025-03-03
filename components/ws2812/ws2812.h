@@ -8,7 +8,8 @@
 #include "driver/rmt_tx.h"
 
 #include "timer_pulse.h"
-#include "serv_cycleIndex.h"
+#include "cycle_sequence.h"
+#include "color_helper.h"
 
 #define RMT_LED_STRIP_RESOLUTION_HZ 10000000 // 10MHz resolution, 1 tick = 0.1us (led strip needs a high resolution)
 
@@ -35,33 +36,23 @@ static const rmt_symbol_word_t ws2812_reset = {
 };
 
 typedef struct {
-    uint8_t red;
-    uint8_t green;
-    uint8_t blue;
-} ws2812_rgb_t;
-
-static ws2812_rgb_t rgb_off = {
-    .red = 0, .green = 0, .blue = 0
-};
-
-typedef struct {
     uint8_t obj_index;
     uint8_t led_index;
-    ws2812_rgb_t rgb;
+    RGB_t rgb;
     timer_pulse_config_t config;
     void (*callback)(void);
-} ws2812_pulse_obj_t;
+} ws2812_cyclePulse_t;
 
 
 typedef struct {
     uint8_t led_index;
-    ws2812_rgb_t active_channels;
-    serv_cycleFade_t config;
+    RGB_t active_channels;
+    cycleFade_config_t config;
 } ws2812_cycleFade_t;
 
 void ws2812_setup(void);
-void ws2812_load_pulse(ws2812_pulse_obj_t object);
-void ws2812_load_fades(ws2812_cycleFade_t ref, uint8_t index);
+void ws2812_load_pulse(ws2812_cyclePulse_t object);
+void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index);
 
 void ws2812_toggle(bool state, uint8_t led_index);
 void ws2812_run1(uint64_t current_time);

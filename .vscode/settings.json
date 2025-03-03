@@ -60,7 +60,8 @@
         "stdlib.h": "c",
         "ratio": "c",
         "serv_cycleindex.h": "c",
-        "variant": "c"
+        "variant": "c",
+        "math.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

@@ -1,6 +1,6 @@
 idf_component_register(SRCS 
                          "timer_pulse.c"
-                         "serv_cycleIndex.c"
+                         "cycle_sequence.c"
                     INCLUDE_DIRS "."
                     REQUIRES
                          driver
