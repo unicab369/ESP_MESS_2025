@@ -92,9 +92,9 @@ void ws2812_setup(void) {
 
 void ws2812_load_pulse(ws2812_pulse_obj_t object) {
     last_transmit_time = esp_timer_get_time();
-    ws2812_pulse_objs[object.pulse_idx] = object;
+    ws2812_pulse_objs[object.obj_index] = object;
 
-    timer_pulse_obj_t* timer_obj = &timer_objs[object.pulse_idx];
+    timer_pulse_obj_t* timer_obj = &timer_objs[object.obj_index];
     timer_pulse_setup(object.config, timer_obj);
     timer_pulse_reset(esp_timer_get_time(), timer_obj);
 }
@@ -115,23 +115,40 @@ static void request_update_leds(uint16_t index, ws2812_rgb_t rgb) {
 static void on_pulse_handler(uint8_t index, bool state) {
     ws2812_pulse_obj_t* obj = &ws2812_pulse_objs[index];
     ws2812_rgb_t output = state ? obj->rgb : rgb_off;
-    request_update_leds(obj->led_idx, output);
+    request_update_leds(obj->led_index, output);
 }
 
 int led_index = 0;
 
+//! Cycle Index
 serv_cycleIndex_obj cycleIndex_obj = {
     .current_index = 0,
     .is_firstHalfCycle = true,
-    .max_count = 7,
+    .increment = 1,
+    .max_value = 7,
     .refresh_time_uS = 60000,
     .last_refresh_time = 0
 };
 
-void on_cycleIndex_callback(uint16_t index, bool is_firstHalfCycle) {
+void on_cycleIndex_cb(uint16_t index, bool is_firstHalfCycle) {
     ws2812_rgb_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
     ws2812_rgb_t value = is_firstHalfCycle ? rgb_on : rgb_off;
     request_update_leds(index, value);
+}
+
+//! Cycle Fade
+serv_cycleFade_obj cycleFade_obj = {
+    .current_value = 0,
+    .is_increasing = true,
+    .increment = 7,
+    .max_value = 200,
+    .refresh_time_uS = 20000,
+    .last_refresh_time = 0
+};
+
+void onCycleFade_cb(uint16_t fading_value) {
+    ws2812_rgb_t rgb_on = { .red = fading_value, .green = 0, .blue = fading_value };
+    request_update_leds(2, rgb_on);
 }
 
 void ws2812_loop(uint64_t current_time) {
@@ -142,43 +159,16 @@ void ws2812_loop(uint64_t current_time) {
     }
 
     //! handle moving leds
-    serv_cycleIndex_check(current_time, &cycleIndex_obj, on_cycleIndex_callback);
+    // serv_cycleIndex_check(current_time, &cycleIndex_obj, on_cycleIndex_cb);
+
+    //! handle fading leds
+    serv_cycleFade_check(current_time, &cycleFade_obj, onCycleFade_cb);
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
     last_transmit_time = current_time;
     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
-
-bool is_increasing = false;
-int brightness = 0;
-
-static void set_pixel_color(uint8_t *pixels, int pixel, uint8_t red, uint8_t green, uint8_t blue)
-{
-    led_pixels[pixel * 3] = green;
-    led_pixels[pixel * 3 + 1] = red;
-    led_pixels[pixel * 3 + 2] = blue;
-}
-
-// void ws2812_loop(uint64_t current_time) {
-//     if (is_increasing) {
-//         brightness += 5;
-//         if (brightness >= 255) {
-//             brightness = 255;
-//             is_increasing = false;
-//         }
-//     } else {
-//         brightness -= 5;
-//         if (brightness <= 0) {
-//             brightness = 0;
-//             is_increasing = true;
-//         }
-//     }
-
-//     set_pixel_color(led_pixels, 3, brightness, 0, 0);  // Red fade
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-//     vTaskDelay(pdMS_TO_TICKS(20));
-// }
 
 
 float offset = 0;

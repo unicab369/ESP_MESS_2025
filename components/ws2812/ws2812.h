@@ -44,8 +44,8 @@ static ws2812_rgb_t rgb_off = {
 };
 
 typedef struct {
-    uint8_t led_idx;
-    uint8_t pulse_idx;
+    uint8_t led_index;
+    uint8_t obj_index;
     ws2812_rgb_t rgb;
     timer_pulse_config_t config;
     void (*pulse_cb)(void);

@@ -159,8 +159,8 @@ void app_main(void)
     behavior_setup(esp_mac, output_interface);
 
     ws2812_pulse_obj_t ojb1 = {
-        .pulse_idx = 0,
-        .led_idx = 4,
+        .obj_index = 0,
+        .led_index = 4,
         .rgb = { .red = 150, .green = 0, .blue = 0 },
         .config = {
             .pulse_count = 1,
@@ -172,8 +172,8 @@ void app_main(void)
 
 
     ws2812_pulse_obj_t ojb2 = {
-        .pulse_idx = 1,
-        .led_idx = 3,
+        .obj_index = 1,
+        .led_index = 3,
         .rgb =  { .red = 0, .green = 150, .blue = 0 },
         .config = {
             .pulse_count = 2,
