@@ -239,6 +239,6 @@ void app_main(void)
         ws2812_loop(current_time);
 
         // Small delay to avoid busy-waiting
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
