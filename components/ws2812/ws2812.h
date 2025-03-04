@@ -50,6 +50,19 @@ typedef struct {
     sequence_config_t config;
 } ws2812_cycleFade_t;
 
+typedef struct {
+    uint8_t hue;
+    bool direction;
+    bool is_bounced;
+    uint16_t start_index;
+    uint16_t end_index;
+    uint8_t value;
+    uint8_t speed;
+    uint16_t refresh_time_uS;
+    uint16_t last_refresh_time
+} hue_animation_t;
+
+
 void ws2812_setup(void);
 void ws2812_load_pulse(ws2812_cyclePulse_t object);
 void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index);

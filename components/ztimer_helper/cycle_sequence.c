@@ -79,7 +79,7 @@ void cycle_indexes(
     bool direction = conf->direction;
 
     // call the callback
-    printf("curr = %d | toggled = %s\n", conf->current_value, isToggled ? "true" : "false");
+    // printf("curr = %d | toggled = %s\n", conf->current_value, isToggled ? "true" : "false");
     callback(obj_index, conf);
     conf->previous_value = conf->current_value;
     

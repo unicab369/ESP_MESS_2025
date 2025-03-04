@@ -104,9 +104,9 @@ static void reset_leds(bool transmit) {
 }
 
 static void request_update_leds(uint16_t index, RGB_t rgb) {
-    led_pixels[index * 3] = rgb.green;        // Green
-    led_pixels[index * 3 + 1] = rgb.red;          // Red
-    led_pixels[index * 3 + 2] = rgb.blue;         // Blue
+    led_pixels[index * 3] = rgb.green;          // Green
+    led_pixels[index * 3 + 1] = rgb.red;        // Red
+    led_pixels[index * 3 + 2] = rgb.blue;       // Blue
 }
 
 static void on_pulse_handler(uint8_t index, bool state) {
@@ -144,11 +144,8 @@ step_sequence_config_t fill_sequence = {
 };
 
 static void fill_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
-    printf("IM HERE: %d\n", conf->current_value);
-
     RGB_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
     RGB_t value = conf->is_toggled ? rgb_on : rgb_off;
-
     request_update_leds(conf->current_value, value);
 }
 
@@ -175,204 +172,205 @@ static void step_sequence_callback(uint8_t obj_index, step_sequence_config_t* co
     request_update_leds(conf->current_value, value);
 }
 
-// void ws2812_loop(uint64_t current_time) {
-//     //! handle moving leds
-//     // cycle_indexes(current_time, 0, &fill_sequence, fill_sequence_callback);
+//! hue animation
 
-//     //! handle stepping led
-//     cycle_indexes(current_time, 0, &step_sequence, step_sequence_callback);
+hue_animation_t hue_ani2 = {
+    .hue = 0,
+    .direction = true,
+    .is_bounced = false,
+    .start_index = 0,
+    .end_index = LEDS_COUNT - 1,
+    .value = 30,
+    .speed = 1,
+    .refresh_time_uS = 20,
+    .last_refresh_time = 0
+};
 
-//     //! handle pulsing led
-//     // for (int i=0; i < OBJECT_COUNT; i++) {
-//     //     timer_pulse_obj_t* obj = &timer_objs[i];
-//     //     timer_pulse_handler(current_time, i, obj, on_pulse_handler);
-//     // }
+void hue_animation(uint64_t current_time) {
+    if (current_time - hue_ani2.last_refresh_time < hue_ani2.refresh_time_uS) return;
+    hue_ani2.last_refresh_time = current_time;
 
-//     //! handle fading led
-//     // for (int i=0; i < OBJECT_COUNT; i++) {
-//     //     cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
-//     // }
+    for (int i = hue_ani2.start_index; i <= hue_ani2.end_index; i++) {
+        RGB_t rgb_value;
+        uint8_t offset = hue_ani2.direction ?  hue_ani2.end_index - i : i;
 
-//     //! transmit the updated leds
-//     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
-//     last_transmit_time = current_time;
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-// }
+        hsv_to_rgb_ints((hue_ani2.hue + offset * 10) % 256, 255, 40, &rgb_value);
+        request_update_leds(i, rgb_value);
+    }
 
-#define EXAMPLE_FRAME_DURATION_MS   20
-#define EXAMPLE_ANGLE_INC_FRAME     0.02
+    // Increment hue for animation
+    hue_ani2.hue = (hue_ani2.hue + hue_ani2.speed) % 256;
 
+    if (hue_ani2.is_bounced) {
+        // Switch direction when hue completes a full cycle
+        if (hue_ani2.hue == 0) {
+            hue_ani2.direction = ! hue_ani2.direction;  // Toggle direction
+        }
+    }
+}
+
+
+void ws2812_loop(uint64_t current_time) {
+    //! handle hue animation
+    hue_animation(current_time);
+
+    //! handle moving leds
+    // cycle_indexes(current_time, 0, &fill_sequence, fill_sequence_callback);
+
+    //! handle stepping led
+    cycle_indexes(current_time, 0, &step_sequence, step_sequence_callback);
+
+    //! handle pulsing led
+    // for (int i=0; i < OBJECT_COUNT; i++) {
+    //     timer_pulse_obj_t* obj = &timer_objs[i];
+    //     timer_pulse_handler(current_time, i, obj, on_pulse_handler);
+    // }
+
+    //! handle fading led
+    // for (int i=0; i < OBJECT_COUNT; i++) {
+    //     cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
+    // }
+
+    //! transmit the updated leds
+    if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
+    last_transmit_time = current_time;
+    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+}
+
+
+
+//! hue animation
 
 // void ws2812_loop(uint64_t current_time) {
 //     static float offset = 0;
 //     static float angle_increment = 0.3;
 
 //     for (int led = 0; led < LEDS_COUNT; led++) {
-//         // Build RGB pixels. Each color is an offset sine, which gives a
-//         // hue-like effect.
 //         float angle = offset + (led * angle_increment);
 //         const float color_off = (M_PI * 2) / 3;
-//         led_pixels[led * 3 + 0] = sin(angle + color_off * 0) * 127 + 128;
+
+//         // request_update_leds(led, )
+//         led_pixels[led * 3] = sin(angle + color_off * 0) * 127 + 128;
 //         led_pixels[led * 3 + 1] = sin(angle + color_off * 1) * 127 + 128;
 //         led_pixels[led * 3 + 2] = sin(angle + color_off * 2) * 127 + 128;;
 //     }
-//     // Flush RGB values to LEDs
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-//     rmt_tx_wait_all_done(led_chan, portMAX_DELAY);
-//     vTaskDelay(pdMS_TO_TICKS(EXAMPLE_FRAME_DURATION_MS));
 
 //     //Increase offset to shift pattern
-//     offset += EXAMPLE_ANGLE_INC_FRAME;
+//     offset += 0.02;
 //     if (offset > 2 * M_PI) offset -= 2 * M_PI;
-// }
 
-// Function to convert HSV to RGB
-static void hsv_to_rgb2(uint8_t h, uint8_t s, uint8_t v, uint8_t *r, uint8_t *g, uint8_t *b) {
-    uint8_t region = h / 43;
-    uint8_t remainder = (h % 43) * 6;
-    uint8_t p = (v * (255 - s)) / 255;
-    uint8_t q = (v * (255 - ((s * remainder) / 255))) / 255;
-    uint8_t t = (v * (255 - ((s * (255 - remainder)) / 255))) / 255;
-
-    switch (region) {
-        case 0: *r = v; *g = t; *b = p; break;
-        case 1: *r = q; *g = v; *b = p; break;
-        case 2: *r = p; *g = v; *b = t; break;
-        case 3: *r = p; *g = q; *b = v; break;
-        case 4: *r = t; *g = p; *b = v; break;
-        default: *r = v; *g = p; *b = q; break;
-    }
-}
-
-
-// void ws2812_loop(uint64_t current_time) {
-//     static uint8_t hue = 0;
-
-//     for (int i = 0; i < LEDS_COUNT; i++) {
-//         uint8_t r, g, b;
-//         hsv_to_rgb2((hue + (i * 10)) % 256, 255, 100, &r, &g, &b);
-//         led_pixels[i * 3] = g; // WS2812 format: GRB
-//         led_pixels[i * 3 + 1] = r;
-//         led_pixels[i * 3 + 2] = b;
-//     }
-
-//     // Transmit data to LED strip
-//     rmt_transmit_config_t tx_cfg = {
-//         .loop_count = 0
-//     };
 //     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-
-//     // Increment hue for animation
-//     hue = (hue + 5) % 256;
 //     vTaskDelay(pdMS_TO_TICKS(20));
 // }
 
 
-typedef struct {
-    RGB_t color;             // Color of the star
-    uint8_t length;          // Length of the star and tail
-    uint8_t speed;           // Speed of the star (in LEDs per frame)
-    uint16_t frame_delay;    // Delay between frames (in milliseconds)
-    bool direction;          // true = left-to-right, false = right-to-left
-    bool is_bounced;
-} StarConfig_t;
+//! Trailing star start
+// typedef struct {
+//     RGB_t color;             // Color of the star
+//     uint8_t length;          // Length of the star and tail
+//     uint8_t speed;           // Speed of the star (in LEDs per frame)
+//     uint16_t frame_delay;    // Delay between frames (in milliseconds)
+//     bool direction;          // true = left-to-right, false = right-to-left
+//     bool is_bounced;
+// } StarConfig_t;
 
 
-// Configure the trailing star animation
-StarConfig_t config = {
-    .color = {255, 0, 0},   // Red color
-    .length = 3,            // Length of the star and tail
-    .speed = 1,             // Speed of the star
-    .frame_delay = 100,      // 50ms delay between frames
-    .direction = true,      // Left-to-right direction
-    .is_bounced = true
-};
+// // Configure the trailing star animation
+// StarConfig_t config = {
+//     .color = {255, 0, 0},   // Red color
+//     .length = 3,            // Length of the star and tail
+//     .speed = 1,             // Speed of the star
+//     .frame_delay = 100,      // 50ms delay between frames
+//     .direction = true,      // Left-to-right direction
+//     .is_bounced = true
+// };
 
 
-void ws2812_loop(uint64_t current_time) {
-    static int16_t star_position = 0; 
+// void ws2812_loop(uint64_t current_time) {
+//     static int16_t star_position = 0; 
 
-    // Clear all LEDs
-    memset(led_pixels, 0, sizeof(led_pixels));
+//     // Clear all LEDs
+//     memset(led_pixels, 0, sizeof(led_pixels));
 
-    if (config.is_bounced) {
-        // Bouncing
-        if (config.direction) {
-            star_position += config.speed;
+//     if (config.is_bounced) {
+//         // Bouncing
+//         if (config.direction) {
+//             star_position += config.speed;
 
-            if (star_position >= LEDS_COUNT) {
-                star_position = LEDS_COUNT - 1;         // Stay within bounds
-                config.direction = false;               // Reverse direction
-            }
-        } else {
-            star_position -= config.speed;
+//             if (star_position >= LEDS_COUNT) {
+//                 star_position = LEDS_COUNT - 1;         // Stay within bounds
+//                 config.direction = false;               // Reverse direction
+//             }
+//         } else {
+//             star_position -= config.speed;
 
-            if (star_position < -config.length) {
-                star_position = -config.length + 1;     // Stay within bounds
-                config.direction = true;                // Reverse direction
-            }
-        }
-    } else {
-        // Update star position
-        if (config.direction) {
-            star_position += config.speed;
+//             if (star_position < -config.length) {
+//                 star_position = -config.length + 1;     // Stay within bounds
+//                 config.direction = true;                // Reverse direction
+//             }
+//         }
+//     } else {
+//         // Update star position
+//         if (config.direction) {
+//             star_position += config.speed;
 
-            if (star_position >= LEDS_COUNT) {
-                star_position = -config.length;     // Reset to start (left side)
-            }
-        } else {
-            star_position -= config.speed;
+//             if (star_position >= LEDS_COUNT) {
+//                 star_position = -config.length;     // Reset to start (left side)
+//             }
+//         } else {
+//             star_position -= config.speed;
 
-            if (star_position < -config.length) {
-                star_position = LEDS_COUNT;         // Reset to end (right side)
-            }
-        }
-    }
+//             if (star_position < -config.length) {
+//                 star_position = LEDS_COUNT;         // Reset to end (right side)
+//             }
+//         }
+//     }
 
-    // Draw star and tail
-    for (uint8_t i = 0; i < config.length; i++) {
-        int16_t pos = config.direction ? (star_position - i) : (star_position + i);
+//     // Draw star and tail
+//     for (uint8_t i = 0; i < config.length; i++) {
+//         int16_t pos = config.direction ? (star_position - i) : (star_position + i);
 
-        if (pos >= 0 && pos < LEDS_COUNT) {
-            uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
+//         if (pos >= 0 && pos < LEDS_COUNT) {
+//             uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
             
-            request_update_leds(pos, (RGB_t){
-                .red = (config.color.red * fade) >> 8,
-                .green = (config.color.green * fade) >> 8,
-                .blue = (config.color.blue * fade) >> 8
-            });
-        }
-    }
+//             request_update_leds(pos, (RGB_t){
+//                 .red = (config.color.red * fade) >> 8,
+//                 .green = (config.color.green * fade) >> 8,
+//                 .blue = (config.color.blue * fade) >> 8
+//             });
+//         }
+//     }
 
-    // // Draw wave 1 and its tail
-    // for (uint8_t i = 0; i < wave1->length; i++) {
-    //     int16_t pos = wave1->direction ? (wave1->position - i) : (wave1->position + i);
-    //     if (pos >= 0 && pos < NUM_LEDS) {
-    //         uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
-    //         led_pixels[pos * 3] += (wave1->color.red * fade) >> 8;
-    //         led_pixels[pos * 3 + 1] += (wave1->color.green * fade) >> 8;
-    //         led_pixels[pos * 3 + 2] += (wave1->color.blue * fade) >> 8;
-    //     }
-    // }
+//     // // Draw wave 1 and its tail
+//     // for (uint8_t i = 0; i < wave1->length; i++) {
+//     //     int16_t pos = wave1->direction ? (wave1->position - i) : (wave1->position + i);
+//     //     if (pos >= 0 && pos < NUM_LEDS) {
+//     //         uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
+//     //         led_pixels[pos * 3] += (wave1->color.red * fade) >> 8;
+//     //         led_pixels[pos * 3 + 1] += (wave1->color.green * fade) >> 8;
+//     //         led_pixels[pos * 3 + 2] += (wave1->color.blue * fade) >> 8;
+//     //     }
+//     // }
 
-    // // Draw wave 2 and its tail
-    // for (uint8_t i = 0; i < wave2->length; i++) {
-    //     int16_t pos = wave2->direction ? (wave2->position - i) : (wave2->position + i);
-    //     if (pos >= 0 && pos < NUM_LEDS) {
-    //         uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
-    //         led_pixels[pos * 3] += (wave2->color.red * fade) >> 8;
-    //         led_pixels[pos * 3 + 1] += (wave2->color.green * fade) >> 8;
-    //         led_pixels[pos * 3 + 2] += (wave2->color.blue * fade) >> 8;
-    //     }
-    // }
+//     // // Draw wave 2 and its tail
+//     // for (uint8_t i = 0; i < wave2->length; i++) {
+//     //     int16_t pos = wave2->direction ? (wave2->position - i) : (wave2->position + i);
+//     //     if (pos >= 0 && pos < NUM_LEDS) {
+//     //         uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
+//     //         led_pixels[pos * 3] += (wave2->color.red * fade) >> 8;
+//     //         led_pixels[pos * 3 + 1] += (wave2->color.green * fade) >> 8;
+//     //         led_pixels[pos * 3 + 2] += (wave2->color.blue * fade) >> 8;
+//     //     }
+//     // }
 
 
-    // Transmit the updated LED data
-    rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
+//     // Transmit the updated LED data
+//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 
-    // Delay for the next frame
-    vTaskDelay(pdMS_TO_TICKS(config.frame_delay));
-}
+//     // Delay for the next frame
+//     vTaskDelay(pdMS_TO_TICKS(config.frame_delay));
+// }
+//! Trailing star end
 
 
 // void ws2812_loop(uint64_t current_time) {

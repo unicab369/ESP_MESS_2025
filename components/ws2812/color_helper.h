@@ -18,5 +18,6 @@ static RGB_t rgb_off = {
 
 RGB_t set_color_byChannels(int16_t value, RGB_t channels);
 void hsv_to_rgb(float h, float s, float v, RGB_t* rgb);
+void hsv_to_rgb_ints(uint8_t hue, uint8_t sat, uint8_t value, RGB_t* rgb);
 
 #endif

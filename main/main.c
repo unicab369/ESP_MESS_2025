@@ -231,14 +231,14 @@ void app_main(void)
         gpio_digital_loop(current_time);
         led_fade_loop(current_time);
 
-        // uart_run();
         button_click_loop(current_time);
         rotary_loop(current_time);
-
-        // espnow_controller_send();
         ws2812_loop(current_time);
 
+        // uart_run();
+        // espnow_controller_send();
+
         // Small delay to avoid busy-waiting
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
