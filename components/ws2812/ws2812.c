@@ -107,6 +107,10 @@ static void request_update_leds(uint16_t index, RGB_t rgb) {
     led_pixels[index * 3 + 2] = rgb.blue;       // Blue
 }
 
+static void request_clear_allLeds() {
+    memset(led_pixels, 0, sizeof(led_pixels));
+}
+
 static void on_pulse_handler(uint8_t index, bool state) {
     ws2812_cyclePulse_t* obj = &ws2812_pulse_objs[index];
     RGB_t output = state ? obj->rgb : rgb_off;
@@ -219,6 +223,7 @@ void hue_animation(uint64_t current_time) {
 
 typedef struct {
     uint16_t current_index;
+    RGB_t neigative_color;
     int offset;
     int total_period;
     float frequency;
@@ -233,19 +238,20 @@ typedef struct {
 
 sequenced_wave_t sequence1 = {
     .current_index = 0,
+    .neigative_color = { 0, 0, 0 },
     .offset = 0,
     .total_period = SEQUENCE_LENGTH + LEDS_COUNT,
     .frequency = (2 * M_PI) / SEQUENCE_LENGTH,
     .is_bounced = false,
-    .direction = -1,
+    .direction = 1,
     .length = LEDS_COUNT,
     .gap = 3,
-    .refresh_time_uS = 50000,
+    .refresh_time_uS = 200000,
     .last_refresh_time = 0,
     .phase = 0,
 };
 
-//! moving_wave1
+//! moving_wave1: repeated sequence
 void moving_wave1(uint64_t current_time) {
     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
     sequence1.last_refresh_time = current_time;
@@ -256,11 +262,11 @@ void moving_wave1(uint64_t current_time) {
     uint8_t cycle_length = sequence1.length;
 
     for (int i = 0; i < LEDS_COUNT; i++) {
-        int cycle_position = i % (cycle_length + sequence1.gap);
-        request_update_leds(i, (RGB_t){0, 0, 0});
+        int position = i % (cycle_length + sequence1.gap);
+        request_update_leds(i, sequence1.neigative_color);
 
-        if (cycle_position < cycle_length) {
-            float sin_offset = 1.0f + sinf((cycle_position / (float)cycle_length) * 2 * M_PI + sequence1.phase);
+        if (position < cycle_length) {
+            float sin_offset = 1.0f + sinf((position / (float)cycle_length) * 2 * M_PI + sequence1.phase);
             uint8_t brightness = (uint8_t)(127.5f * sin_offset);
             RGB_t color = { brightness, 0, 0 };
             request_update_leds(i, color);
@@ -269,7 +275,7 @@ void moving_wave1(uint64_t current_time) {
 }
 
 
-//! moving_wave2: working
+//! moving_wave2: single sequence
 void moving_wave2(uint64_t current_time) {
     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
     sequence1.last_refresh_time = current_time;
@@ -290,9 +296,9 @@ void moving_wave2(uint64_t current_time) {
 
     for (int i = 0; i < LEDS_COUNT; i++) {
         int position = (i + sequence1.offset) % sequence1.total_period;        
-        request_update_leds(i, (RGB_t){0, 0, 0});
-        // printf("%d ", position);
+        request_update_leds(i, sequence1.neigative_color);
 
+        // printf("%d ", position);
         if (position < SEQUENCE_LENGTH) {
             float sin_offset = 1.0f + sinf(position * sequence1.frequency);
             uint8_t brightness = (uint8_t)(127.5f * sin_offset);
@@ -303,9 +309,46 @@ void moving_wave2(uint64_t current_time) {
     // printf("\nDONE\n");
 }
 
+//! moving_wave2: expanding sequence
+void moving_wave3(uint64_t current_time) {
+    int8_t center_led = LEDS_COUNT / 2;
+
+    if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
+    sequence1.last_refresh_time = current_time;
+
+    static int8_t expansion = 0;
+    expansion += sequence1.direction;
+
+    // Change direction if limits are reached
+    if ((expansion >= center_led && sequence1.direction != -1)
+        || (expansion < 0 && sequence1.direction != 1)) {
+            sequence1.direction *= -1;
+    }
+    
+    // printf("expansion = %d\n", expansion);
+    request_clear_allLeds();
+
+    RGB_t value = (RGB_t){255, 0, 0};
+    if (expansion >= 0) {
+        request_update_leds(center_led, value);  // Center LED on only when not fully contracted
+    }
+    for (int i = 1; i <= expansion; i++) {
+        uint16_t upperBound = center_led + i;
+        uint16_t lowerBound = center_led - i;
+
+        if (upperBound < LEDS_COUNT) {
+            request_update_leds(upperBound, value);  // Right side
+        }
+        if (lowerBound >= 0) {
+            request_update_leds(lowerBound, value);  // Left side
+        }
+    }
+}
+
+
 
 void ws2812_loop(uint64_t current_time) {
-    moving_wave2(current_time);
+    moving_wave3(current_time);
 
     //! handle hue animation
     // hue_animation(current_time);
@@ -335,7 +378,6 @@ void ws2812_loop(uint64_t current_time) {
 
 
 
-
 //! hue animation
 
 // void ws2812_loop(uint64_t current_time) {
@@ -361,116 +403,9 @@ void ws2812_loop(uint64_t current_time) {
 // }
 
 
-//! Trailing star start
-// typedef struct {
-//     RGB_t color;             // Color of the star
-//     uint8_t length;          // Length of the star and tail
-//     uint8_t speed;           // Speed of the star (in LEDs per frame)
-//     uint16_t frame_delay;    // Delay between frames (in milliseconds)
-//     bool direction;          // true = left-to-right, false = right-to-left
-//     bool is_bounced;
-// } StarConfig_t;
 
-
-// // Configure the trailing star animation
-// StarConfig_t config = {
-//     .color = {255, 0, 0},   // Red color
-//     .length = 3,            // Length of the star and tail
-//     .speed = 1,             // Speed of the star
-//     .frame_delay = 100,      // 50ms delay between frames
-//     .direction = true,      // Left-to-right direction
-//     .is_bounced = true
-// };
-
-
-// void ws2812_loop(uint64_t current_time) {
-//     static int16_t star_position = 0; 
-
-//     // Clear all LEDs
-//     memset(led_pixels, 0, sizeof(led_pixels));
-
-//     if (config.is_bounced) {
-//         // Bouncing
-//         if (config.direction) {
-//             star_position += config.speed;
-
-//             if (star_position >= LEDS_COUNT) {
-//                 star_position = LEDS_COUNT - 1;         // Stay within bounds
-//                 config.direction = false;               // Reverse direction
-//             }
-//         } else {
-//             star_position -= config.speed;
-
-//             if (star_position < -config.length) {
-//                 star_position = -config.length + 1;     // Stay within bounds
-//                 config.direction = true;                // Reverse direction
-//             }
-//         }
-//     } else {
-//         // Update star position
-//         if (config.direction) {
-//             star_position += config.speed;
-
-//             if (star_position >= LEDS_COUNT) {
-//                 star_position = -config.length;     // Reset to start (left side)
-//             }
-//         } else {
-//             star_position -= config.speed;
-
-//             if (star_position < -config.length) {
-//                 star_position = LEDS_COUNT;         // Reset to end (right side)
-//             }
-//         }
-//     }
-
-//     // Draw star and tail
-//     for (uint8_t i = 0; i < config.length; i++) {
-//         int16_t pos = config.direction ? (star_position - i) : (star_position + i);
-
-//         if (pos >= 0 && pos < LEDS_COUNT) {
-//             uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
-            
-//             request_update_leds(pos, (RGB_t){
-//                 .red = (config.color.red * fade) >> 8,
-//                 .green = (config.color.green * fade) >> 8,
-//                 .blue = (config.color.blue * fade) >> 8
-//             });
-//         }
-//     }
-
-//     // // Draw wave 1 and its tail
-//     // for (uint8_t i = 0; i < wave1->length; i++) {
-//     //     int16_t pos = wave1->direction ? (wave1->position - i) : (wave1->position + i);
-//     //     if (pos >= 0 && pos < NUM_LEDS) {
-//     //         uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
-//     //         led_pixels[pos * 3] += (wave1->color.red * fade) >> 8;
-//     //         led_pixels[pos * 3 + 1] += (wave1->color.green * fade) >> 8;
-//     //         led_pixels[pos * 3 + 2] += (wave1->color.blue * fade) >> 8;
-//     //     }
-//     // }
-
-//     // // Draw wave 2 and its tail
-//     // for (uint8_t i = 0; i < wave2->length; i++) {
-//     //     int16_t pos = wave2->direction ? (wave2->position - i) : (wave2->position + i);
-//     //     if (pos >= 0 && pos < NUM_LEDS) {
-//     //         uint8_t fade = 255 >> i; // Fade tail (brightness decreases by half each step)
-//     //         led_pixels[pos * 3] += (wave2->color.red * fade) >> 8;
-//     //         led_pixels[pos * 3 + 1] += (wave2->color.green * fade) >> 8;
-//     //         led_pixels[pos * 3 + 2] += (wave2->color.blue * fade) >> 8;
-//     //     }
-//     // }
-
-
-//     // Transmit the updated LED data
-//     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
-
-//     // Delay for the next frame
-//     vTaskDelay(pdMS_TO_TICKS(config.frame_delay));
-// }
-//! Trailing star end
-
-
-// update this code to make repeating sequences of leds with `x` length for a strip of length `y` using sine function
+//! Example
+// update this code to create a gradient light
 
 // void ws2812_loop(uint64_t current_time) {
 //     request_update_leds(5, (RGB_t){ 255, 0, 0});
