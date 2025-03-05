@@ -243,10 +243,10 @@ sequenced_wave_t sequence1 = {
     .total_period = SEQUENCE_LENGTH + LEDS_COUNT,
     .frequency = (2 * M_PI) / SEQUENCE_LENGTH,
     .is_bounced = false,
-    .direction = 1,
+    .direction = -1,
     .length = LEDS_COUNT,
     .gap = 3,
-    .refresh_time_uS = 200000,
+    .refresh_time_uS = 800000,
     .last_refresh_time = 0,
     .phase = 0,
 };
@@ -273,7 +273,6 @@ void moving_wave1(uint64_t current_time) {
         }
     }
 }
-
 
 //! moving_wave2: single sequence
 void moving_wave2(uint64_t current_time) {
@@ -347,8 +346,37 @@ void moving_wave3(uint64_t current_time) {
 
 
 
+RGB_t gradient_array[LEDS_COUNT] = {
+    {255, 0, 0},
+    {255, 127, 0},
+    {255, 255, 0},
+    {0, 255, 0},
+    {0, 0, 255}
+};
+
+static uint32_t last_update = 0;
+
+//! moving wave: fixed gradient array;
+void moving_wave4(uint64_t current_time) {
+    if (current_time - last_update < 100000) return;
+    last_update = current_time;
+
+    memset(led_pixels, 0, sizeof(led_pixels));
+    sequence1.offset = (sequence1.offset - sequence1.direction + LEDS_COUNT) % LEDS_COUNT;
+
+    if (sequence1.is_bounced && (sequence1.offset == 0 || sequence1.offset == LEDS_COUNT - 1)) {
+        sequence1.direction *= -1;  // Reverse direction
+    }
+
+    for (int i = 0; i < LEDS_COUNT; i++) {
+        int position = (i + sequence1.offset) % LEDS_COUNT;
+        RGB_t color = gradient_array[position];
+        request_update_leds(i, color);
+    }
+}
+
 void ws2812_loop(uint64_t current_time) {
-    moving_wave3(current_time);
+    moving_wave4(current_time);
 
     //! handle hue animation
     // hue_animation(current_time);
@@ -375,6 +403,54 @@ void ws2812_loop(uint64_t current_time) {
     last_transmit_time = current_time;
     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
+
+
+// // Define color points
+// #define MAX_COLOR_POINTS 10
+// RGB_t color_points[MAX_COLOR_POINTS] = {
+//     {255, 0, 0},    // Red
+//     {0, 255, 0},    // Green
+//     {0, 0, 255},    // Blue
+//     {255, 255, 0},  // Yellow
+//     // {0, 255, 255}   // Cyan
+// };
+// const int num_color_points = 4; // Change this to use fewer or more color points
+
+// #define GRADIENT_LENGTH (LEDS_COUNT * num_color_points)
+// #define FIXED_POINT_SCALE 256 // 8-bit fractional part
+
+// // Linear interpolation function using fixed-point arithmetic
+// static uint8_t lerp(uint8_t a, uint8_t b, int t) {
+//     return a + (((b - a) * t) >> 8);
+// }
+
+// void moving_wave4(uint64_t current_time) {
+//     static int offset = 0;
+
+//     // Clear all LEDs
+//     memset(led_pixels, 0, sizeof(led_pixels));
+//     // Move the gradient
+//     offset = (offset + 1) % GRADIENT_LENGTH;
+
+//     // Create gradient effect
+//     for (int i = 0; i < LEDS_COUNT; i++) {
+//         int position = (i + offset) % GRADIENT_LENGTH;
+//         int section = position / (GRADIENT_LENGTH / num_color_points);
+//         int t = (position % (GRADIENT_LENGTH / num_color_points)) * num_color_points * FIXED_POINT_SCALE / GRADIENT_LENGTH;
+
+//         RGB_t start_color = color_points[section];
+//         RGB_t end_color = color_points[(section + 1) % num_color_points];
+
+//         uint8_t r = lerp(start_color.red, end_color.red, t);
+//         uint8_t g = lerp(start_color.green, end_color.green, t);
+//         uint8_t b = lerp(start_color.blue, end_color.blue, t);
+
+//         request_update_leds(i, (RGB_t){r, g, b});
+//     }
+
+//     // Delay
+//     vTaskDelay(pdMS_TO_TICKS(200));
+// }
 
 
 
