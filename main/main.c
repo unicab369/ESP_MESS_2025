@@ -70,6 +70,7 @@
     #define BUTTON_PIN 23
     #define ROTARY_CLK 15
     #define ROTARY_DT 13
+    #define WS2812_PIN 12
 #endif
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
@@ -151,7 +152,7 @@ void app_main(void)
     led_fade_setup(LED_FADE_PIN);
     led_fade_restart(1023, 500);        // Brightness, fade_duration
 
-    ws2812_setup();
+    ws2812_setup(WS2812_PIN);                   
 
     rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     button_click_setup(BUTTON_PIN, button_event_handler);
@@ -239,7 +240,7 @@ void app_main(void)
 
         // button_click_loop(current_time);
         // rotary_loop(current_time);
-        
+
         ws2812_loop(current_time);
 
         // uart_run();

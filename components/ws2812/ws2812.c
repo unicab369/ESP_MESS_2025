@@ -9,9 +9,7 @@
 
 #include "esp_timer.h"
 
-
-#define RMT_LED_STRIP_GPIO_NUM      12
-#define LEDS_COUNT         20
+#define LEDS_COUNT         9
 
 
 static const char *TAG = "example";
@@ -74,10 +72,10 @@ uint64_t last_transmit_time;
 static uint64_t last_moved_time;
 bool is_filling = false;
 
-void ws2812_setup(void) {
+void ws2812_setup(uint8_t gpio_pin) {
     rmt_tx_channel_config_t tx_chan_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
-        .gpio_num = RMT_LED_STRIP_GPIO_NUM,
+        .gpio_num = gpio_pin,
         .mem_block_symbols = 64, // increase the block size can make the LED less flickering
         .resolution_hz = RMT_LED_STRIP_RESOLUTION_HZ,
         .trans_queue_depth = 4, // number of transactions that can be pending in the background
@@ -225,8 +223,8 @@ typedef struct {
     int total_period;
     float frequency;
     bool is_moving;
-    bool is_forward;
     bool is_bounced;
+    int8_t direction;
     uint8_t length;
     uint8_t gap;
     uint64_t refresh_time_uS;
@@ -240,22 +238,22 @@ sequenced_wave_t sequence1 = {
     .total_period = SEQUENCE_LENGTH + LEDS_COUNT,
     .frequency = (2 * M_PI) / SEQUENCE_LENGTH,
     .is_moving = true,
-    .is_forward = true,
-    .is_bounced = true,
-    .length = 5,
+    .is_bounced = false,
+    .direction = 1,
+    .length = LEDS_COUNT,
     .gap = 3,
-    .refresh_time_uS = 50000,
+    .refresh_time_uS = 100000,
     .last_refresh_time = 0,
     .phase = 0,
 };
 
 //! moving_wave_filled
-void moving_wave(uint64_t current_time) {
+void moving_wave1(uint64_t current_time) {
     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
     sequence1.last_refresh_time = current_time;
 
     // Update phase based on direction
-    sequence1.phase += (sequence1.is_forward ? -0.1f : 0.1f);
+    sequence1.phase += -0.1f * sequence1.direction;
     if (sequence1.phase >= 2 * M_PI) sequence1.phase -= 2 * M_PI;
     
     uint8_t cycle_length = sequence1.length;
@@ -273,33 +271,42 @@ void moving_wave(uint64_t current_time) {
     }
 }
 
-// //! moving 1 wave: working
-// void moving_wave(uint64_t current_time) {
-//     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
-//     sequence1.last_refresh_time = current_time;
 
-//     for (int i = 0; i < LEDS_COUNT; i++) {
-//         int position = (i + sequence1.offset) % sequence1.total_period;
-//         if (sequence1.is_forward) {
-//             position = sequence1.total_period - 1 - position;
-//         }
+//! moving 1 wave: working
+void moving_wave(uint64_t current_time) {
+    if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
+    sequence1.last_refresh_time = current_time;
+    
+    if (sequence1.is_bounced) {
+        sequence1.offset += sequence1.direction;
         
-//         request_update_leds(i, (RGB_t){0, 0, 0});
+        // printf("offset = %d\n", sequence1.offset);    
+        // check for dirrection change
+        if ((sequence1.offset >= sequence1.total_period + SEQUENCE_LENGTH)
+            || (sequence1.offset <= SEQUENCE_LENGTH && sequence1.direction != 1)) {
+                sequence1.direction = sequence1.direction * -1;
+        } 
+    } else {
+        int offsetAdjustment = (sequence1.direction == 1) ? sequence1.total_period - 1 : 1;
+        sequence1.offset = (offsetAdjustment + sequence1.offset) % sequence1.total_period;
+    }
 
-//         if (position < SEQUENCE_LENGTH) {
-//             float sine_value = sinf(position * sequence1.frequency);
-//             uint8_t brightness = (uint8_t)((sine_value + 1.0f) * 127.5f);
-//             RGB_t color = { brightness, 0, 0 };
-//             request_update_leds(i, color);
-//         }
-//     }
+    // printf("position = ");
+    for (int i = 0; i < LEDS_COUNT; i++) {
+        int position = (i + sequence1.offset) % sequence1.total_period;        
+        request_update_leds(i, (RGB_t){0, 0, 0});
+        // printf("%d ", position);
 
-//     // check for moving
-//     if (sequence1.is_moving) {
-//         int offset = sequence1.is_forward ?  sequence1.total_period - 1 : 1;
-//         sequence1.offset = (offset + sequence1.offset) % sequence1.total_period;
-//     }
-// }
+        if (position < SEQUENCE_LENGTH) {
+            float sin_offset = 1.0f + sinf(position * sequence1.frequency);
+            uint8_t brightness = (uint8_t)(127.5f * sin_offset);
+            RGB_t color = { brightness, 0, 0 };
+            request_update_leds(i, color);
+        }
+    }
+    // printf("\nDONE\n");
+}
+
 
 //! moving wave
 // #define SPACING 5

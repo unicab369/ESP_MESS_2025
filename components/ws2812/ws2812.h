@@ -62,7 +62,7 @@ typedef struct {
 } hue_animation_t;
 
 
-void ws2812_setup(void);
+void ws2812_setup(uint8_t gpio_pin);
 void ws2812_load_pulse(ws2812_cyclePulse_t object);
 void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index);
 
