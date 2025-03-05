@@ -1,12 +1,18 @@
 #include <math.h>
 #include "color_helper.h"
 
-RGB_t set_color_byChannels(int16_t value, RGB_t channels) {
+RGB_t make_color_byChannels(int16_t value, RGB_t input) {
     return (RGB_t){
-        .red = channels.red & value,
-        .green = channels.green & value,
-        .blue = channels.blue & value
+        .red = input.red & value,
+        .green = input.green & value,
+        .blue = input.blue & value
     };
+}
+
+void fill_color_byValue(RGB_t* input, int16_t value) {
+    input->red = value;
+    input->green = value;
+    input->blue = value;
 }
 
 void hsv_to_rgb(float h, float s, float v, RGB_t* rgb) {

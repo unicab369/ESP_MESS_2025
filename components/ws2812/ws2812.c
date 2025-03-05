@@ -130,7 +130,7 @@ static void fade_sequence_callback(uint8_t obj_index, step_sequence_config_t* co
     hsv_to_rgb(curentValue, 1.0f, 1.0f, &new_color);
 
     ws2812_cycleFade_t* ref = &cycle_fades[obj_index];
-    RGB_t new_color2 = set_color_byChannels(curentValue, ref->active_channels);
+    RGB_t new_color2 = make_color_byChannels(curentValue, ref->active_channels);
     request_update_leds(ref->led_index, new_color2);
 }
 
@@ -242,8 +242,8 @@ sequenced_wave_t sequence1 = {
     .offset = 0,
     .total_period = SEQUENCE_LENGTH + LEDS_COUNT,
     .frequency = (2 * M_PI) / SEQUENCE_LENGTH,
-    .is_bounced = false,
-    .direction = -1,
+    .is_bounced = true,
+    .direction = 1,
     .length = LEDS_COUNT,
     .gap = 3,
     .refresh_time_uS = 800000,
@@ -251,7 +251,7 @@ sequenced_wave_t sequence1 = {
     .phase = 0,
 };
 
-//! moving_wave1: repeated sequence
+//! moving wave: repeated sequence
 void moving_wave1(uint64_t current_time) {
     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
     sequence1.last_refresh_time = current_time;
@@ -274,7 +274,7 @@ void moving_wave1(uint64_t current_time) {
     }
 }
 
-//! moving_wave2: single sequence
+//! moving wave: single sequence
 void moving_wave2(uint64_t current_time) {
     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
     sequence1.last_refresh_time = current_time;
@@ -308,7 +308,7 @@ void moving_wave2(uint64_t current_time) {
     // printf("\nDONE\n");
 }
 
-//! moving_wave2: expanding sequence
+//! moving wave: expanding sequence
 void moving_wave3(uint64_t current_time) {
     int8_t center_led = LEDS_COUNT / 2;
 
@@ -345,7 +345,6 @@ void moving_wave3(uint64_t current_time) {
 }
 
 
-
 RGB_t gradient_array[LEDS_COUNT] = {
     {255, 0, 0},
     {255, 127, 0},
@@ -364,10 +363,6 @@ void moving_wave4(uint64_t current_time) {
     memset(led_pixels, 0, sizeof(led_pixels));
     sequence1.offset = (sequence1.offset - sequence1.direction + LEDS_COUNT) % LEDS_COUNT;
 
-    if (sequence1.is_bounced && (sequence1.offset == 0 || sequence1.offset == LEDS_COUNT - 1)) {
-        sequence1.direction *= -1;  // Reverse direction
-    }
-
     for (int i = 0; i < LEDS_COUNT; i++) {
         int position = (i + sequence1.offset) % LEDS_COUNT;
         RGB_t color = gradient_array[position];
@@ -375,8 +370,70 @@ void moving_wave4(uint64_t current_time) {
     }
 }
 
+typedef struct {
+    int position;
+    int value;          // brightness
+    bool increasing;
+} Star;
+
+typedef struct {
+    int start_index;
+    int end_index;
+    uint8_t twinkle_chance;
+    uint8_t max_brightness;
+    uint8_t fade_rate;
+    uint64_t refresh_time_uS;
+    uint64_t last_refresh_time;
+} sequenced_star_t;
+
+sequenced_star_t seq_star = {
+    .start_index = 2,
+    .end_index = 7,
+    .twinkle_chance = 10,
+    .max_brightness = 200,
+    .fade_rate = 3,
+    .refresh_time_uS = 50000,
+    .last_refresh_time = 0
+};
+
+#define MAX_STARS 5
+Star stars[MAX_STARS] = {0};
+
+void moving_wave5(uint64_t current_time) {
+    memset(led_pixels, 0, sizeof(led_pixels));
+
+    for (int i = 0; i < MAX_STARS; i++) {
+        if (stars[i].value > 0) {
+            // Update existing star
+            if (stars[i].increasing) {
+                stars[i].value += seq_star.fade_rate;
+
+                if (stars[i].value >= seq_star.max_brightness) {
+                    stars[i].value = seq_star.max_brightness;
+                    stars[i].increasing = false;
+                }
+            } else {
+                stars[i].value -= seq_star.fade_rate;
+                if (stars[i].value <= 0) stars[i].value = 0;
+            }
+
+            RGB_t new_color;
+            fill_color_byValue(&new_color, stars[i].value);
+            request_update_leds(seq_star.start_index + stars[i].position, new_color);
+
+        } else if (rand() % seq_star.twinkle_chance == 0) {
+            // Create new star
+            int effect_length = seq_star.end_index - seq_star.start_index + 1;
+            
+            stars[i].position = rand() % effect_length;
+            stars[i].value = seq_star.fade_rate;
+            stars[i].increasing = true;
+        }
+    }
+}
+
 void ws2812_loop(uint64_t current_time) {
-    moving_wave4(current_time);
+    moving_wave5(current_time);
 
     //! handle hue animation
     // hue_animation(current_time);
@@ -483,7 +540,7 @@ void ws2812_loop(uint64_t current_time) {
 //! Example
 // update this code to create a gradient light
 
-// void ws2812_loop(uint64_t current_time) {
+// void moving_wave4(uint64_t current_time) {
 //     request_update_leds(5, (RGB_t){ 255, 0, 0});
 //     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 //     vTaskDelay(pdMS_TO_TICKS(500));
