@@ -43,11 +43,10 @@ typedef struct {
     void (*callback)(void);
 } ws2812_cyclePulse_t;
 
-
 typedef struct {
     uint8_t led_index;
     RGB_t active_channels;
-    sequence_config_t config;
+    step_sequence_config_t config;
 } ws2812_cycleFade_t;
 
 typedef struct {

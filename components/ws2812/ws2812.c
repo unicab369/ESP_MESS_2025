@@ -122,14 +122,16 @@ void ws2812_load_fadeColor(ws2812_cycleFade_t ref, uint8_t index) {
     cycle_fades[index] = ref;
 }
 
-static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
+static void fade_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
     RGB_t new_color;
-    hsv_to_rgb(fading_value, 1.0f, 1.0f, &new_color);
+    int16_t curentValue = conf->current_value;
+    hsv_to_rgb(curentValue, 1.0f, 1.0f, &new_color);
 
     ws2812_cycleFade_t* ref = &cycle_fades[obj_index];
-    RGB_t new_color2 = set_color_byChannels(fading_value, ref->active_channels);
+    RGB_t new_color2 = set_color_byChannels(curentValue, ref->active_channels);
     request_update_leds(ref->led_index, new_color2);
 }
+
 
 //! fill_sequence
 step_sequence_config_t fill_sequence = {
@@ -219,10 +221,10 @@ void ws2812_loop(uint64_t current_time) {
     // hue_animation(current_time);
 
     //! handle filling leds
-    // cycle_indexes(current_time, 0, &fill_sequence, fill_sequence_callback);
+    // cycle_values(current_time, 0, &fill_sequence, fill_sequence_callback);
 
     //! handle stepping led
-    // cycle_indexes(current_time, 0, &step_sequence, step_sequence_callback);
+    // cycle_values(current_time, 0, &step_sequence, step_sequence_callback);
 
     //! handle pulsing led
     // for (int i=0; i < OBJECT_COUNT; i++) {
@@ -232,7 +234,7 @@ void ws2812_loop(uint64_t current_time) {
 
     //! handle fading led
     for (int i=0; i < OBJECT_COUNT; i++) {
-        cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
+        cycle_values(current_time, i, &cycle_fades[i].config, fade_sequence_callback);
     }
 
     //! transmit the updated leds

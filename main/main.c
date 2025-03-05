@@ -199,9 +199,12 @@ void app_main(void)
         .config = {
             .current_value = 0,
             .direction = true,
+            .is_bounced = true,
             .increment = 5,
-            .max_value = 150,
-            .refresh_time_uS = 40000,
+            .start_index = 0,
+            .end_index = 150,       // hue max 360
+            .refresh_time_uS = 20000,
+            .last_refresh_time = 0
         }
     };
 
@@ -213,9 +216,12 @@ void app_main(void)
         .config = {
             .current_value = 0,
             .direction = true,
+            .is_bounced = false,
             .increment = 5,
-            .max_value = 150,       // hue max 360
-            .refresh_time_uS = 20000,
+            .start_index = 0,
+            .end_index = 150,       // hue max 360
+            .refresh_time_uS = 50000,
+            .last_refresh_time = 0
         }
     };
     ws2812_load_fadeColor(obj4, 1);

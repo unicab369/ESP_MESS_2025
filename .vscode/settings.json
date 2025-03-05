@@ -63,7 +63,8 @@
         "variant": "c",
         "math.h": "c",
         "*.tcc": "c",
-        "rmt_tx.h": "c"
+        "rmt_tx.h": "c",
+        "cycle_sequence.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
