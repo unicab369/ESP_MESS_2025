@@ -198,7 +198,7 @@ void app_main(void)
         .active_channels = { .red = 0xFF, .green = 0, .blue = 0xFF },
         .config = {
             .current_value = 0,
-            .is_switched = true,
+            .direction = true,
             .increment = 5,
             .max_value = 150,
             .refresh_time_uS = 40000,
@@ -212,7 +212,7 @@ void app_main(void)
         .active_channels = { .red = 0xFF, .green = 0, .blue = 0 },
         .config = {
             .current_value = 0,
-            .is_switched = true,
+            .direction = true,
             .increment = 5,
             .max_value = 150,       // hue max 360
             .refresh_time_uS = 20000,

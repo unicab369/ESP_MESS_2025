@@ -8,60 +8,43 @@
 // value = 2 + increment
 // value = 1 + increment
 
-void cycle_fade(
-    uint64_t current_time, uint16_t obj_index,
-    sequence_config_t* conf,
-    void (*callback)(uint16_t index, int16_t current_value)
-) {
-    // check refresh time
-    if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
-    conf->last_refresh_time = current_time;
+// void cycle_fade(
+//     uint64_t current_time, uint16_t obj_index,
+//     sequence_config_t* conf,
+//     void (*callback)(uint16_t index, int16_t current_value)
+// ) {
+//     // check refresh time
+//     if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
+//     conf->last_refresh_time = current_time;
 
-    int8_t increment = conf->increment;
-    int16_t max_value = conf->max_value;
-    int16_t current_value = conf->current_value;
+//     bool direction = conf->direction;
+//     int8_t increment = conf->increment;
+//     int16_t max_value = conf->max_value;
+//     int16_t current_value = conf->current_value;
 
-    if (conf->is_switched) {
-        conf->current_value += increment;
+//     if (direction) {
+//         conf->current_value += increment;
 
-        // check when max value has been reached
-        if (current_value > max_value) {
-            conf->current_value = max_value;
-            conf->is_switched = false;
-        }
-    } else {
-        conf->current_value -= increment;
+//         // check limit
+//         if (current_value > max_value) {
+//             conf->current_value = max_value;
+//             conf->direction = !direction;
+//         }
+//     } else {
+//         conf->current_value -= increment;
 
-        // check when the min value has been reached
-        if (current_value <= 0) {
-            conf->current_value = 0;
-            conf->is_switched = true;
-        }
-    }
+//         // check limit
+//         if (current_value <= 0) {
+//             conf->current_value = 0;
+//             conf->direction = !direction;
+//         }
+//     }
 
-    // call the callback
-    callback(obj_index, conf->current_value);
-}
+//     // call the callback
+//     callback(obj_index, conf->current_value);
+// }
 
-static void handle_switch_direction(step_sequence_config_t* conf) {
-    if (!conf->direction) {
-        conf->current_value += conf->increment;
 
-        if (conf->current_value >= conf->max_value) {
-            conf->current_value = conf->max_value - 1;
-            conf->direction = true;
-            conf->is_toggled = false;
-        }
-    } else {
-        conf->current_value -= conf->increment;
-        
-        if (conf->current_value < 0) {
-            conf->current_value = 0;
-            conf->direction = false;
-            conf->is_toggled = true;
-        }
-    }
-}
 
 // example sequence:
 void cycle_indexes(
@@ -73,39 +56,61 @@ void cycle_indexes(
     if (current_time - conf->last_refresh_time < conf->refresh_time_uS) return;
     conf->last_refresh_time = current_time;
 
-    int8_t increment = conf->increment;
-    int16_t maxValue = conf->max_value;
-    bool isToggled = conf->is_toggled;
-    bool direction = conf->direction;
-
     // call the callback
-    // printf("curr = %d | toggled = %s\n", conf->current_value, isToggled ? "true" : "false");
     callback(obj_index, conf);
     conf->previous_value = conf->current_value;
+
+    bool isToggled = conf->is_toggled;
+    bool direction = conf->direction;
+    int8_t increment = conf->increment;
+    int16_t startIndex = conf->start_index;
+    int16_t endIndex = conf->end_index;
+    // printf("curr = %d | toggled = %s\n", conf->current_value, isToggled ? "true" : "false");
     
-    // check for bouncing
     if (conf->is_bounced) {
-        // revert direction if reaches min or max
-        handle_switch_direction(conf);
+        //! bouncing
+        // filling cycle is not uniform because the half cycles are not the same
+        // this value affects by is_bounced only
+
+        if (direction) {
+            int16_t endOffset = conf->is_uniformed ? -1 : 0;
+            conf->current_value += increment;
+    
+            // check limit
+            if (conf->current_value > endIndex + endOffset) {
+                conf->current_value = endIndex;
+                conf->direction = !direction;       // switch direction
+                conf->is_toggled = !isToggled;      // switch toggle
+            }
+        } else {
+            uint16_t startOffset = conf->is_uniformed ? 1 : 0;
+            conf->current_value -= increment;
+            
+            // check limit
+            if (conf->current_value < startIndex + startOffset) {
+                conf->current_value = startIndex;
+                conf->direction = !direction;       // switch direction
+                conf->is_toggled = !isToggled;      // switch toggle
+            }
+        }
 
     } else {
-        // reverse if reaches min or max
+        //! no bouncing
         if (direction) {
-            // normal
             conf->current_value += increment;                           
 
-            // check if max value has been reached
-            if (conf->current_value >= maxValue) {     
-                conf->current_value = 0;                     
-                conf->is_toggled = !conf->is_toggled;
+            // check limit
+            if (conf->current_value > endIndex) {  
+                conf->current_value = startIndex;                     
+                conf->is_toggled = !isToggled;          // switch toggle
             }
         } else {
             conf->current_value -= increment;                           
 
-            // check if min value has been reached
-            if (conf->current_value < 0) {     
-                conf->current_value = maxValue - 1;                     
-                conf->is_toggled = !conf->is_toggled;
+            // check limit
+            if (conf->current_value < startIndex) {     
+                conf->current_value = endIndex;                     
+                conf->is_toggled = !isToggled;          // switch toggle
             }
         }
     }

@@ -133,30 +133,34 @@ static void on_cycleFade_cb(uint16_t obj_index, int16_t fading_value) {
 
 //! fill_sequence
 step_sequence_config_t fill_sequence = {
-    .current_value = 0,
+    .current_value = 2,
     .direction = true,
-    .is_bounced = false,
+    .is_bounced = true,
     .is_toggled = true,
+    .is_uniformed = false,
     .increment = 1,
-    .max_value = 7,
+    .start_index = 2,
+    .end_index = 5,
     .refresh_time_uS = 600000,
     .last_refresh_time = 0
 };
 
 static void fill_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
-    RGB_t rgb_on = { .red = 0, .green = 0, .blue = 150 };
+    RGB_t rgb_on = { .red = 150, .green = 0, .blue = 0 };
     RGB_t value = conf->is_toggled ? rgb_on : rgb_off;
     request_update_leds(conf->current_value, value);
 }
 
 //! step_sequence
 step_sequence_config_t step_sequence = {
-    .current_value = 0,
+    .current_value = 1,
     .previous_value = -1,
-    .direction = true,
+    .direction = false,
     .is_bounced = true,
+    .is_uniformed = true,
     .increment = 1,
-    .max_value = 7,
+    .start_index = 1,
+    .end_index = 4,
     .refresh_time_uS = 200000,
     .last_refresh_time = 0
 };
@@ -212,13 +216,13 @@ void hue_animation(uint64_t current_time) {
 
 void ws2812_loop(uint64_t current_time) {
     //! handle hue animation
-    hue_animation(current_time);
+    // hue_animation(current_time);
 
-    //! handle moving leds
+    //! handle filling leds
     // cycle_indexes(current_time, 0, &fill_sequence, fill_sequence_callback);
 
     //! handle stepping led
-    cycle_indexes(current_time, 0, &step_sequence, step_sequence_callback);
+    // cycle_indexes(current_time, 0, &step_sequence, step_sequence_callback);
 
     //! handle pulsing led
     // for (int i=0; i < OBJECT_COUNT; i++) {
@@ -227,9 +231,9 @@ void ws2812_loop(uint64_t current_time) {
     // }
 
     //! handle fading led
-    // for (int i=0; i < OBJECT_COUNT; i++) {
-    //     cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
-    // }
+    for (int i=0; i < OBJECT_COUNT; i++) {
+        cycle_fade(current_time, i, &cycle_fades[i].config, on_cycleFade_cb);
+    }
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;

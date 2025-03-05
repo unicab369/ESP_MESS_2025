@@ -9,7 +9,7 @@
 typedef struct {
     int16_t current_value;
     int16_t previous_value;
-    bool is_switched;
+    bool direction;
     int8_t increment;
     int16_t max_value;
     uint64_t refresh_time_uS;
@@ -22,8 +22,13 @@ typedef struct {
     bool direction;
     bool is_bounced;
     bool is_toggled;        // toggled when reaches max or min
+
+    // filling cycle is not uniform because the half cycles are not the same
+    // this value affects by is_bounced only
+    bool is_uniformed;
     int8_t increment;
-    int16_t max_value;
+    int16_t start_index;
+    int16_t end_index;
     uint64_t refresh_time_uS;
     uint64_t last_refresh_time;
 } step_sequence_config_t;
