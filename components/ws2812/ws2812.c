@@ -11,7 +11,7 @@
 
 
 #define RMT_LED_STRIP_GPIO_NUM      12
-#define LEDS_COUNT         7
+#define LEDS_COUNT         20
 
 
 static const char *TAG = "example";
@@ -132,7 +132,6 @@ static void fade_sequence_callback(uint8_t obj_index, step_sequence_config_t* co
     request_update_leds(ref->led_index, new_color2);
 }
 
-
 //! fill_sequence
 step_sequence_config_t fill_sequence = {
     .current_value = 2,
@@ -216,7 +215,137 @@ void hue_animation(uint64_t current_time) {
 }
 
 
+// update this code to make the wave move by adjusting the phase instead of is_moving
+
+#define SEQUENCE_LENGTH 5
+
+typedef struct {
+    uint16_t current_index;
+    int offset;
+    int total_period;
+    float frequency;
+    bool is_moving;
+    bool is_forward;
+    bool is_bounced;
+    uint8_t length;
+    uint8_t gap;
+    uint64_t refresh_time_uS;
+    uint64_t last_refresh_time;
+    float phase;
+} sequenced_wave_t;
+
+sequenced_wave_t sequence1 = {
+    .current_index = 0,
+    .offset = 0,
+    .total_period = SEQUENCE_LENGTH + LEDS_COUNT,
+    .frequency = (2 * M_PI) / SEQUENCE_LENGTH,
+    .is_moving = true,
+    .is_forward = true,
+    .is_bounced = true,
+    .length = 5,
+    .gap = 3,
+    .refresh_time_uS = 50000,
+    .last_refresh_time = 0,
+    .phase = 0,
+};
+
+//! moving_wave_filled
+void moving_wave(uint64_t current_time) {
+    if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
+    sequence1.last_refresh_time = current_time;
+
+    // Update phase based on direction
+    sequence1.phase += (sequence1.is_forward ? -0.1f : 0.1f);
+    if (sequence1.phase >= 2 * M_PI) sequence1.phase -= 2 * M_PI;
+    
+    uint8_t cycle_length = sequence1.length;
+
+    for (int i = 0; i < LEDS_COUNT; i++) {
+        int cycle_position = i % (cycle_length + sequence1.gap);
+        request_update_leds(i, (RGB_t){0, 0, 0});
+
+        if (cycle_position < cycle_length) {
+            float sine_value = sinf((cycle_position / (float)cycle_length) * 2 * M_PI + sequence1.phase);
+            uint8_t brightness = (uint8_t)((sine_value + 1.0f) * 127.5f);
+            RGB_t color = { brightness, 0, 0 };
+            request_update_leds(i, color);
+        }
+    }
+}
+
+// //! moving 1 wave: working
+// void moving_wave(uint64_t current_time) {
+//     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
+//     sequence1.last_refresh_time = current_time;
+
+//     for (int i = 0; i < LEDS_COUNT; i++) {
+//         int position = (i + sequence1.offset) % sequence1.total_period;
+//         if (sequence1.is_forward) {
+//             position = sequence1.total_period - 1 - position;
+//         }
+        
+//         request_update_leds(i, (RGB_t){0, 0, 0});
+
+//         if (position < SEQUENCE_LENGTH) {
+//             float sine_value = sinf(position * sequence1.frequency);
+//             uint8_t brightness = (uint8_t)((sine_value + 1.0f) * 127.5f);
+//             RGB_t color = { brightness, 0, 0 };
+//             request_update_leds(i, color);
+//         }
+//     }
+
+//     // check for moving
+//     if (sequence1.is_moving) {
+//         int offset = sequence1.is_forward ?  sequence1.total_period - 1 : 1;
+//         sequence1.offset = (offset + sequence1.offset) % sequence1.total_period;
+//     }
+// }
+
+//! moving wave
+// #define SPACING 5
+
+// void moving_wave(uint64_t current_time) {
+//     if (current_time - sequence1.last_refresh_time < sequence1.refresh_time_uS) return;
+//     sequence1.last_refresh_time = current_time;
+
+//     // // Use float-based phase tracking to maintain smooth movement
+//     // sequence1.phase += (sequence1.is_forward ? sequence1.frequency : -sequence1.frequency);
+
+//     // // Ensure phase stays within bounds **without abrupt jumps**
+//     // sequence1.phase = fmodf(sequence1.phase + (SEQUENCE_LENGTH + SPACING), (SEQUENCE_LENGTH + SPACING));
+
+//     // Smooth phase update without sudden jumps
+//     sequence1.phase = fmodf(sequence1.phase + (sequence1.is_forward ? sequence1.frequency : -sequence1.frequency), 
+//                             (SEQUENCE_LENGTH + SPACING));
+
+//     // Ensure phase is positive
+//     if (sequence1.phase < 0) sequence1.phase += (SEQUENCE_LENGTH + SPACING);
+
+
+//     // // Keep phase within a valid range [0, total_period)
+//     // if (sequence1.phase < 0) {
+//     //     sequence1.phase += (SEQUENCE_LENGTH + SPACING);
+//     // } else if (sequence1.phase >= (SEQUENCE_LENGTH + SPACING)) {
+//     //     sequence1.phase -= (SEQUENCE_LENGTH + SPACING);
+//     // }
+
+//     for (int i = 0; i < LEDS_COUNT; i++) {
+//         float position = i + sequence1.phase;
+//         int led_in_sequence = (int)position % (SEQUENCE_LENGTH + SPACING);
+//         request_update_leds(i, (RGB_t){0, 0, 0});
+
+//         if (led_in_sequence < SEQUENCE_LENGTH) {
+//             float sine_value = sinf(led_in_sequence * sequence1.frequency);
+//             uint8_t brightness = (uint8_t)((sine_value + 1.0f) * 127.5f);
+//             RGB_t color = { brightness, 0, 0 };
+//             request_update_leds(i, color);
+//         }
+//     }
+// }
+
 void ws2812_loop(uint64_t current_time) {
+    moving_wave(current_time);
+
     //! handle hue animation
     // hue_animation(current_time);
 
@@ -233,15 +362,16 @@ void ws2812_loop(uint64_t current_time) {
     // }
 
     //! handle fading led
-    for (int i=0; i < OBJECT_COUNT; i++) {
-        cycle_values(current_time, i, &cycle_fades[i].config, fade_sequence_callback);
-    }
+    // for (int i=0; i < OBJECT_COUNT; i++) {
+    //     cycle_values(current_time, i, &cycle_fades[i].config, fade_sequence_callback);
+    // }
 
     //! transmit the updated leds
     if (current_time - last_transmit_time < WS2812_TRANSMIT_FREQUENCY) return;
     last_transmit_time = current_time;
     rmt_transmit(led_chan, simple_encoder, led_pixels, sizeof(led_pixels), &tx_config);
 }
+
 
 
 
@@ -378,6 +508,8 @@ void ws2812_loop(uint64_t current_time) {
 // }
 //! Trailing star end
 
+
+// update this code to make repeating sequences of leds with `x` length for a strip of length `y` using sine function
 
 // void ws2812_loop(uint64_t current_time) {
 //     request_update_leds(5, (RGB_t){ 255, 0, 0});
