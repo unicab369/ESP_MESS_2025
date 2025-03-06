@@ -1,3 +1,5 @@
+#include "dev_config.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -20,6 +22,14 @@
 #include "behavior/behavior.h"
 #include "ws2812.h"
 #include "timer_pulse.h"
+
+#ifndef WIFI_SSID
+#define WIFI_SSID "default_ssid"
+#endif
+
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD "default_password"
+#endif
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -128,6 +138,10 @@ void uart_read_handler(uint8_t* data, size_t len) {
 
 void app_main(void)
 {
+
+    // printf("ssid: %s\n", WIFI_SSID);
+    // printf("password: %s\n", WIFI_PASSWORD);
+    
     ESP_LOGI(TAG, "APP START");
     #if CONFIG_IDF_TARGET_ESP32C3
         cdc_setup();
@@ -237,8 +251,8 @@ void app_main(void)
         #if CONFIG_IDF_TARGET_ESP32C3
             cdc_read_task();
         #endif
-
-        // gpio_digital_loop(current_time);
+            
+        // gpio_digital_loop(current    _time);
         led_fade_loop(current_time);
 
         // button_click_loop(current_time);
@@ -251,7 +265,7 @@ void app_main(void)
         #if WIFI_ENABLED
             // wifi_nan_checkPeers(current_time);
             // wifi_nan_sendData(current_time);
-            wifi_check_status(current_time);
+            // wifi_check_status(current_time);
             // espnow_controller_send();
         #endif
 

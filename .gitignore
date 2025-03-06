@@ -1,3 +1,6 @@
 build/
+main/dev_config.h
+
+.VSCodeCounter/
 sdkconfig
 sdkconfig.old

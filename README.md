@@ -1,32 +1,58 @@
-# _Sample project_
-
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
-
-This is the simplest buildable example. The example is used by command `idf.py create-project`
-that copies the project to user specified path and set it's name. For more information follow the [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project)
-
-
-
-## How to use example
-We encourage the users to use the example as a template for the new projects.
-A recommended way is to follow the instructions on a [docs page](https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/build-system.html#start-a-new-project).
-
-## Example folder contents
-
-The project **sample_project** contains one source file in C language [main.c](main/main.c). The file is located in folder [main](main).
-
-ESP-IDF projects are built using CMake. The project build configuration is contained in `CMakeLists.txt`
-files that provide set of directives and instructions describing the project's source files and targets
-(executable, library, or both). 
-
-Below is short explanation of remaining files in the project folder.
+## Make dev_config.h file
+Create a `dev_config.h` file under `main/` with the following template. You can also make a copy of the `dev_config_copy.h` file and renamed it to `dev_config.h`
 
 ```
-├── CMakeLists.txt
-├── main
-│   ├── CMakeLists.txt
-│   └── main.c
-└── README.md                  This is the file you are currently reading
+#define WIFI_SSID "My_SSID"
+#define WIFI_PASSWORD "MY_PASSWORD"
+#define DEVICE_NAME "Device Name"
 ```
-Additionally, the sample project contains Makefile and component.mk files, used for the legacy Make based build system. 
-They are not used or needed when building with CMake and idf.py.
+
+## Open ESP-IDF terminal on vsCode
+1. Use shortcut `Ctrl+Shift+P` to open the `Command Pallet`. Next type `terminal`, on the suggested options, select `ESP-IDF: Open ESP-IDF Terminal`.
+2. Or use the shortcut `Ctrl+E`  `T` (wait for split second after `Ctrl+E` before typing `T`)
+
+## Build the app
+1. Build the project: `idf.py build`
+2. Flash the project: `idf.py flash -p COMx` if a COM port already selected then use `idf.py flash`
+3. Open the monitor: `idf.py monitor`
+   
+    Example: `idf.py flash monitor -p COM4`
+
+## Suggested vsCode plugins
+1. `ESP-IDF`: required for this project.
+2. `Better Comments`: Commenting styles.
+3. `Back & Forth`: Back and Forth button to navigate between files. 
+4. `Indent-Rainbow`: Code Indent styles (enable light mode).
+5. `Numbered Bookmarks`: hotkey your code line similar to Starcraft control group hotkeys.
+6. `Power Mode`: Unleash your magical typing power.
+
+## Keyboard Shortcuts:
+| Shortcuts     | Description |
+| ------------- | --------- |
+|Ctrl+`         | Open terminal |
+|Ctrl+T         | New Tab |
+|Ctrl+W         | Close tab |
+
+## List of idf.py commands
+
+`idf.py --version`: Displays the version of ESP-IDF being used in the current environment.<br>
+`idf.py partition-table`: Prints the partition table information for the project.<br>
+`idf.py show_targets`: Lists all supported target chips.<br>
+`build`: Build the project.<br>
+`flash`: Flash the project to the target.<br>
+`monitor`: Display serial output from the ESP32.<br>
+`app-flash`: Flash only the app part of the project.<br>
+`erase_flash`: Erase the ESP32's entire flash chip.<br>
+`reconfigure`: Re-run CMake even if it doesn't seem to need re-running.<br>
+`clean`: Remove the build output.<br>
+`fullclean`: Delete the entire build contents.<br>
+`create-component`: Create a new component.<br>
+`set-target` [esp32x]: Select the target chip.<br>
+`menuconfig`: Start the graphical configuration tool.<br>
+`size`: Print app size information.<br>
+`size-components`: Print size information for each component.<br>
+`size-files`: Print size information per source file.<br>
+`partition-table-flash`: Flash only the partition table to the device.<br>
+`esptool.py flash_id`: queries the connected ESP device to retrieve its flash memory ID.<br>
+`idf.py check`: check for common coding issues in your project.<br>
+`idf.py sdkconfig`: Opens the project's sdkconfig file in a text editor for manual editing. This is an alternative to idf.py menuconfig.<br>

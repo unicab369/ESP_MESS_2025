@@ -161,7 +161,7 @@ void wifi_nan_sendData(uint64_t current_time) {
 
     if (esp_wifi_nan_send_message(&fup) == ESP_OK)
         ESP_LOGI(TAG, "Sending message '%s' to Publisher "MACSTR" ...",
-                      "Hello", MAC2STR(sub_match_event.pub_if_mac));
+                    "Hello", MAC2STR(sub_match_event.pub_if_mac));
 }
 
 bool wifi_nan_checkPeers(uint64_t current_time) {
