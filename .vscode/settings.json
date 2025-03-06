@@ -65,7 +65,9 @@
         "*.tcc": "c",
         "rmt_tx.h": "c",
         "cycle_sequence.h": "c",
-        "color_helper.h": "c"
+        "color_helper.h": "c",
+        "ping_sock.h": "c",
+        "esp_nan.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

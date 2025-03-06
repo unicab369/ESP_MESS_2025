@@ -192,14 +192,14 @@ void wifi_check_status(uint64_t current_time) {
     if (current_time - last_update_time < 1000000) return;
     last_update_time = current_time;
 
-    // wifi_ap_record_t ap_info;
-    // esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_info);
-    // if (ret == ESP_OK) {
-    //     // ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
-    // } else {
-    //     ESP_LOGE(TAG_STA, "Not connected to AP: %s", esp_err_to_name(ret));
-    //     esp_wifi_disconnect();
-    //     // esp_wifi_stop();     // stop driver
-    //     // esp_wifi_deinit();
-    // }
+    wifi_ap_record_t ap_info;
+    esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_info);
+    if (ret == ESP_OK) {
+        // ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
+    } else {
+        ESP_LOGE(TAG_STA, "Not connected to AP: %s", esp_err_to_name(ret));
+        esp_wifi_disconnect();
+        // esp_wifi_stop();     // stop driver
+        // esp_wifi_deinit();
+    }
 }

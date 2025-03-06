@@ -21,13 +21,29 @@
 #include "ws2812.h"
 #include "timer_pulse.h"
 
+#if CONFIG_IDF_TARGET_ESP32C3
+    #include "cdc_driver.h"
+    #define LED_FADE_PIN 2
+    #define BLINK_PIN 10
+    #define BUTTON_PIN 9
+#elif CONFIG_IDF_TARGET_ESP32
+    #define LED_FADE_PIN 22
+    #define BLINK_PIN 5
+    // #define BUTTON_PIN 16
+    #define BUTTON_PIN 23
+    #define ROTARY_CLK 15
+    #define ROTARY_DT 13
+    #define WS2812_PIN 12
+#endif
+
+#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define WIFI_ENABLED true
 
 static const char *TAG = "MAIN";
 
-
 #if WIFI_ENABLED
-    #include "wifi.c"
+    #include "wifi.h"
+    #include "wifi_nan.h"
     #include "espnow_driver.h"
 
     void espnow_message_handler(espnow_received_message_t received_message) {
@@ -40,8 +56,7 @@ static const char *TAG = "MAIN";
         ESP_LOGI(TAG, "msg_id: %d", received_message.message->msg_id);
         ESP_LOGI(TAG, "access_code: %u", received_message.message->access_code);
         ESP_LOGI(TAG, "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
-    }
-    
+    } 
     
     void espnow_controller_send() {
         uint8_t dest_mac[6] = { 0xAA };
@@ -60,23 +75,6 @@ static const char *TAG = "MAIN";
         espnow_send((uint8_t*)&message, sizeof(message));
     }
 #endif
-
-#if CONFIG_IDF_TARGET_ESP32C3
-    #include "cdc_driver.h"
-    #define LED_FADE_PIN 2
-    #define BLINK_PIN 10
-    #define BUTTON_PIN 9
-#elif CONFIG_IDF_TARGET_ESP32
-    #define LED_FADE_PIN 22
-    #define BLINK_PIN 5
-    // #define BUTTON_PIN 16
-    #define BUTTON_PIN 23
-    #define ROTARY_CLK 15
-    #define ROTARY_DT 13
-    #define WS2812_PIN 12
-#endif
-
-#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 
 
 
@@ -130,8 +128,6 @@ void uart_read_handler(uint8_t* data, size_t len) {
     ESP_LOGI(TAG, "IM HERE");
 }
 
-
-
 void app_main(void)
 {
     ESP_LOGI(TAG, "APP START");
@@ -163,8 +159,11 @@ void app_main(void)
 
     #if WIFI_ENABLED
         wifi_setup();
-        espnow_setup(esp_mac, espnow_message_handler);
+        // espnow_setup(esp_mac, espnow_message_handler);
         ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+
+        wifi_nan_subscribe();
+        // wifi_nan_publish();
     #endif
     
     behavior_output_interface output_interface;
@@ -240,7 +239,7 @@ void app_main(void)
         #endif
 
         // gpio_digital_loop(current_time);
-        // led_fade_loop(current_time);
+        led_fade_loop(current_time);
 
         // button_click_loop(current_time);
         // rotary_loop(current_time);
@@ -250,7 +249,10 @@ void app_main(void)
         // uart_run();
 
         #if WIFI_ENABLED
-            wifi_check_status(current_time);
+            // wifi_check_status(current_time);
+            // wifi_nan_checkPeers(current_time);
+            wifi_nan_sendData(current_time);
+
             // espnow_controller_send();
         #endif
 

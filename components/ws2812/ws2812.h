@@ -58,7 +58,7 @@ typedef struct {
     uint8_t value;
     uint8_t speed;
     uint16_t refresh_time_uS;
-    uint16_t last_refresh_time
+    uint16_t last_refresh_time;
 } hue_animation_t;
 
 

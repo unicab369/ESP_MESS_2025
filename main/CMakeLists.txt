@@ -5,6 +5,7 @@ idf_component_register(SRCS "main.c"
                     PRIV_REQUIRES
                         esp_driver_rmt
                         wifi
+                        wifi_nan
                     REQUIRES
                         driver
                         led_driver
