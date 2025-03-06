@@ -26,19 +26,6 @@ static uint64_t last_update_time = 0;
 static uint64_t current_time;
 static espnow_message_cb message_callback = NULL;
 
-/* WiFi should start before using ESPNOW */
-static void wifi_setup(void)
-{
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
-    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
-    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
-    ESP_ERROR_CHECK( esp_wifi_start());
-    ESP_ERROR_CHECK( esp_wifi_set_channel(ESPNOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
-}
-
 static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
 {
     if (message_callback == NULL) return;
@@ -61,16 +48,6 @@ static void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *
 esp_err_t espnow_setup(uint8_t* esp_mac, espnow_message_cb callback)
 {
     message_callback = callback;
-
-    // Initialize NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK( nvs_flash_erase() );
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK( ret );
-
-    wifi_setup();
     esp_read_mac(esp_mac, 6);       //! ORDER DOES MATTER: after wifi_setup()
 
     /* Initialize ESPNOW and register sending and receiving callback function. */

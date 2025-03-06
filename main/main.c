@@ -21,10 +21,13 @@
 #include "ws2812.h"
 #include "timer_pulse.h"
 
+#define WIFI_ENABLED true
 
-#define ESPNOW_ENABLED false
+static const char *TAG = "MAIN";
 
-#if ESPNOW_ENABLED
+
+#if WIFI_ENABLED
+    #include "wifi.c"
     #include "espnow_driver.h"
 
     void espnow_message_handler(espnow_received_message_t received_message) {
@@ -75,7 +78,7 @@
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 
-static const char *TAG = "MAIN";
+
 
 uint8_t esp_mac[6];
 
@@ -158,7 +161,8 @@ void app_main(void)
     button_click_setup(BUTTON_PIN, button_event_handler);
     uart_setup(uart_read_handler);
 
-    #if ESPNOW_ENABLED
+    #if WIFI_ENABLED
+        wifi_setup();
         espnow_setup(esp_mac, espnow_message_handler);
         ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
     #endif
@@ -244,7 +248,12 @@ void app_main(void)
         ws2812_loop(current_time);
 
         // uart_run();
-        // espnow_controller_send();
+
+        #if WIFI_ENABLED
+            wifi_check_status(current_time);
+            // espnow_controller_send();
+        #endif
+
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));
