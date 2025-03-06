@@ -67,7 +67,9 @@
         "cycle_sequence.h": "c",
         "color_helper.h": "c",
         "ping_sock.h": "c",
-        "esp_nan.h": "c"
+        "esp_nan.h": "c",
+        "event_groups.h": "c",
+        "esp_netif_net_stack.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

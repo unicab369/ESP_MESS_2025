@@ -7,6 +7,7 @@
 
 // Function prototypes
 void wifi_setup(void);
+void wifi_scan(void);
 void wifi_check_status(uint64_t current_time);
 
 #endif

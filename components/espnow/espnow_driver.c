@@ -13,7 +13,7 @@
 #include "esp_crc.h"
 
 #define ESPNOW_MAXDELAY 512
-#define ESPNOW_CHANNEL 1
+#define ESPNOW_CHANNEL 6
 #define CONFIG_ESPNOW_PMK "pmk1234567890123"
 #define ESPNOW_QUEUE_SIZE           6
 
@@ -58,7 +58,7 @@ esp_err_t espnow_setup(uint8_t* esp_mac, espnow_message_cb callback)
     ESP_ERROR_CHECK( esp_now_set_pmk((uint8_t *)CONFIG_ESPNOW_PMK) );
 
     esp_now_peer_info_t peerInfo = {
-        .channel = 0,
+        .channel = ESPNOW_CHANNEL,
         .encrypt = false,
     };
     memcpy(peerInfo.peer_addr, broadcast_mac, 6); // Copy address

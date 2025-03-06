@@ -71,11 +71,9 @@ static const char *TAG = "MAIN";
     
         memcpy(message.target_addr, dest_mac, sizeof(message.target_addr));
         memcpy(message.data, data, sizeof(message.data));
-    
         espnow_send((uint8_t*)&message, sizeof(message));
     }
 #endif
-
 
 
 uint8_t esp_mac[6];
@@ -160,9 +158,11 @@ void app_main(void)
     #if WIFI_ENABLED
         wifi_setup();
         // espnow_setup(esp_mac, espnow_message_handler);
-        ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+        // ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
 
-        wifi_nan_subscribe();
+        // wifi_scan();
+
+        // wifi_nan_subscribe();
         // wifi_nan_publish();
     #endif
     
@@ -249,10 +249,9 @@ void app_main(void)
         // uart_run();
 
         #if WIFI_ENABLED
-            // wifi_check_status(current_time);
             // wifi_nan_checkPeers(current_time);
-            wifi_nan_sendData(current_time);
-
+            // wifi_nan_sendData(current_time);
+            wifi_check_status(current_time);
             // espnow_controller_send();
         #endif
 
