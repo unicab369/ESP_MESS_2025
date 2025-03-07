@@ -17,3 +17,6 @@ dependencies:
   # espressif/ir_learn: ^1.0.0
 
   joltwallet/littlefs: ^1.17.0
+
+  sd_card:
+    path: ${IDF_PATH}/examples/storage/sd_card/sdmmc/components/sd_card

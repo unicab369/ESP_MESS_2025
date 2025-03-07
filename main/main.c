@@ -24,9 +24,11 @@
 #include "ws2812.h"
 #include "timer_pulse.h"
 #include "console/app_console.h"
+#include "storage_sd.h"
 
 static const char *TAG = "MAIN";
 
+#define ESP32_BOARD_V3 true
 
 #ifndef WIFI_SSID
 #define WIFI_SSID "default_ssid"
@@ -42,17 +44,30 @@ static const char *TAG = "MAIN";
     #define BLINK_PIN 10
     #define BUTTON_PIN 9
 #elif CONFIG_IDF_TARGET_ESP32
-    #define LED_FADE_PIN 22
-    #define BLINK_PIN 5
-    // #define BUTTON_PIN 16
-    #define BUTTON_PIN 23
-    #define ROTARY_CLK 15
-    #define ROTARY_DT 13
-    #define WS2812_PIN 12
+    #ifdef ESP32_BOARD_V3
+        #define LED_FADE_PIN 22
+        #define BUTTON_PIN 16
+        #define ROTARY_CLK 15
+        #define ROTARY_DT 13
+        #define SCL_PIN 32
+        #define SDA_PIN 33
+        #define BUZZER_PIN 5
+        #define WS2812_PIN 4
+        #define SPI_MISO 19
+        #define SPI_MOSI 23
+        #define SPI_SCLK 18
+        #define SPI_CS 26
+        
+    #else
+        #define LED_FADE_PIN 22
+        #define BLINK_PIN 5
+        #define BUTTON_PIN 23
+        #define WS2812_PIN 12
+    #endif
 #endif
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
-#define WIFI_ENABLED true
+#define WIFI_ENABLED false
 
 
 #if WIFI_ENABLED
@@ -171,6 +186,15 @@ void app_main(void)
 
     app_console_setup();
 
+    storage_sd_config_t config = {
+        .mosi = SPI_MOSI,
+        .miso = SPI_MISO,
+        .sclk = SPI_SCLK,
+        .cs = SPI_CS
+    };
+    storage_sd_configure(&config);
+    storage_sd_test();
+
     gpio_digital_setup(LED_FADE_PIN);
 
     gpio_toggle_obj obj0 = {
@@ -210,7 +234,6 @@ void app_main(void)
     };
     ws2812_load_pulse(ojb1);
 
-
     ws2812_cyclePulse_t ojb2 = {
         .obj_index = 1,
         .led_index = 3,
@@ -222,7 +245,6 @@ void app_main(void)
         }
     };
     ws2812_load_pulse(ojb2);
-
 
     ws2812_cycleFade_t obj3 = {
         .led_index = 1,
@@ -238,7 +260,6 @@ void app_main(void)
             .last_refresh_time = 0
         }
     };
-
     ws2812_load_fadeColor(obj3, 0);
 
     ws2812_cycleFade_t obj4 = {
@@ -268,7 +289,7 @@ void app_main(void)
         // gpio_digital_loop(current    _time);
         led_fade_loop(current_time);
 
-        // button_click_loop(current_time);
+        button_click_loop(current_time);
         // rotary_loop(current_time);
 
         ws2812_loop(current_time);
@@ -286,3 +307,4 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
+

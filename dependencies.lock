@@ -4,7 +4,7 @@ dependencies:
       type: idf
     version: 5.4.0
   joltwallet/littlefs:
-    component_hash: 6d24e25b71528abb83f416085e52e766e909d5809653f33926415cd7265a37c0
+    component_hash: 8dd83825446dfdc7c22bcfa363731d24afc7bd0c8b23ede99359112cfe239e9d
     dependencies:
     - name: idf
       require: private
@@ -12,10 +12,17 @@ dependencies:
     source:
       registry_url: https://components.espressif.com/
       type: service
-    version: 1.17.0
+    version: 1.18.1
+  sd_card:
+    dependencies: []
+    source:
+      path: C:\Users\uni\esp\v5.4\esp-idf\examples\storage\sd_card\sdmmc\components\sd_card
+      type: local
+    version: '*'
 direct_dependencies:
 - idf
 - joltwallet/littlefs
-manifest_hash: 2cbde4ba06ca172b438a2d8bb81b29150ab068534ffad519475f0ed22e433fe3
+- sd_card
+manifest_hash: 2a2a3d2d4087adfb74d752d1a2adc828b9581b50cb66b7ef71be06e308264bd3
 target: esp32
 version: 2.0.0

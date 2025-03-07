@@ -14,10 +14,10 @@
 extern "C" {
 #endif
 
-#define ESP_LITTLEFS_VERSION_NUMBER "1.17.0"
+#define ESP_LITTLEFS_VERSION_NUMBER "1.18.1"
 #define ESP_LITTLEFS_VERSION_MAJOR 1
-#define ESP_LITTLEFS_VERSION_MINOR 17
-#define ESP_LITTLEFS_VERSION_PATCH 0
+#define ESP_LITTLEFS_VERSION_MINOR 18
+#define ESP_LITTLEFS_VERSION_PATCH 1
 
 #ifdef ESP8266
 // ESP8266 RTOS SDK default enables VFS DIR support
@@ -33,7 +33,8 @@ extern "C" {
  */
 typedef struct {
     const char *base_path;            /**< Mounting point. */
-    const char *partition_label;      /**< Label of partition to use. */
+    const char *partition_label;      /**< Label of partition to use. If partition_label, partition, and sdcard are all NULL,
+                                           then the first partition with data subtype 'littlefs' will be used. */
     const esp_partition_t* partition; /**< partition to use if partition_label is NULL */
 
 #ifdef CONFIG_LITTLEFS_SDMMC_SUPPORT

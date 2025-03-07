@@ -15,9 +15,10 @@ idf_component_register(SRCS "main.c"
                         nvs_flash
                         console
                         spi_flash
+                        storage
                     REQUIRES
                         driver
-                        led_driver
+                        app_gpio
                         button_driver
                         rotary_driver
                         uart_driver

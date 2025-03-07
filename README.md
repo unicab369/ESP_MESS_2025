@@ -35,6 +35,9 @@ show confuration menu: `idf.py menuconfig`
    - Enable lightsleep 
 2. Set custom partition table for littlefs:
    - Partition table -> Custom partition table CSV
+3. Set Log level:
+   - Component config -> Log -> Log Level -> Choose default log verbosity
+  
 
 Note: to clear and update the environment target and idf target, do the following<br>
 ```
