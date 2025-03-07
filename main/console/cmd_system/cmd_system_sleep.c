@@ -69,7 +69,7 @@ static int deep_sleep(int argc, char **argv)
             }
         }
         ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
-                 io_num, level ? "HIGH" : "LOW");
+                io_num, level ? "HIGH" : "LOW");
 
         ESP_ERROR_CHECK( esp_sleep_enable_ext1_wakeup_io(1ULL << io_num, level) );
         ESP_LOGE(TAG, "GPIO wakeup from deep sleep currently unsupported on ESP32-C3");
@@ -83,7 +83,7 @@ static int deep_sleep(int argc, char **argv)
     return 1;
 }
 
-void register_system_deep_sleep(void)
+void cmd_system_register_deep_sleep(void)
 {
     int num_args = 1;
     deep_sleep_args.wakeup_time =
@@ -91,7 +91,7 @@ void register_system_deep_sleep(void)
 #if SOC_PM_SUPPORT_EXT0_WAKEUP || SOC_PM_SUPPORT_EXT1_WAKEUP
     deep_sleep_args.wakeup_gpio_num =
         arg_int0(NULL, "io", "<n>",
-                 "If specified, wakeup using GPIO with given number");
+                "If specified, wakeup using GPIO with given number");
     deep_sleep_args.wakeup_gpio_level =
         arg_int0(NULL, "io_level", "<0|1>", "GPIO level to trigger wakeup");
     num_args += 2;
@@ -150,7 +150,7 @@ static int light_sleep(int argc, char **argv)
             return 1;
         }
         ESP_LOGI(TAG, "Enabling wakeup on GPIO%d, wakeup on %s level",
-                 io_num, level ? "HIGH" : "LOW");
+                io_num, level ? "HIGH" : "LOW");
 
         ESP_ERROR_CHECK( gpio_wakeup_enable(io_num, level ? GPIO_INTR_HIGH_LEVEL : GPIO_INTR_LOW_LEVEL) );
     }
@@ -186,7 +186,7 @@ static int light_sleep(int argc, char **argv)
     return 0;
 }
 
-void register_system_light_sleep(void)
+void cmd_system_register_light_sleep(void)
 {
     light_sleep_args.wakeup_time =
         arg_int0(NULL, "time", "<t>", "Wake up time, ms");

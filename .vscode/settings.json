@@ -82,7 +82,16 @@
         "base_console.h": "c",
         "esp_system.h": "c",
         "cmd_system.h": "c",
-        "usb_serial_jtag_vfs.h": "c"
+        "usb_serial_jtag_vfs.h": "c",
+        "deque": "c",
+        "forward_list": "c",
+        "list": "c",
+        "unordered_map": "c",
+        "vector": "c",
+        "io_context": "c",
+        "initializer_list": "c",
+        "text_encoding": "c",
+        "queue.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

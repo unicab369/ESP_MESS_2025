@@ -1,2 +1,2 @@
 
-void register_system_common(void);
+void cmd_system_register(void);

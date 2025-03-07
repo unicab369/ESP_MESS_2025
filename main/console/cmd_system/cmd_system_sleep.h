@@ -1,4 +1,4 @@
 
 
-void register_system_deep_sleep(void);
-void register_system_light_sleep(void);
+void cmd_system_register_deep_sleep(void);
+void cmd_system_register_light_sleep(void);

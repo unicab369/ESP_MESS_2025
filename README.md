@@ -50,7 +50,8 @@ idf.py set-target esp32x
 |Ctrl+`           | Open terminal |
 |Ctrl+T           | New Tab |
 |Ctrl+W           | Close tab |
-|Ctrl+E T         | open ESP-IDF Terminal |
+|Ctrl+E T         | Open ESP-IDF Terminal |
+|Ctrl+T Ctrl+X    | Close ESP-IDF Terminal |
 
 ## Suggested vsCode plugins
 

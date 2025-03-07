@@ -20,7 +20,6 @@
 #include "cmd_nvs/cmd_nvs.h"
 #include "base_console.h"
 #include "cmd_system/cmd_system.h"
-#include "cmd_system/cmd_system_sleep.h"
 #include "driver/uart.h"
 
 static const char *TAG = "APP_CONSOLE";
@@ -60,23 +59,13 @@ void app_console_setup(void)
     initialize_console_peripheral();            /* Initialize console output periheral (UART, USB_OTG, USB_JTAG) */
     initialize_console_library(HISTORY_PATH);   /* Initialize linenoise library and esp_console*/
 
-    #define PROMPT_STR CONFIG_IDF_TARGET
-    prompt = setup_prompt(PROMPT_STR ">");
+    cmd_system_register();
 
-    esp_console_register_help_command();        /* Register commands */
-    register_system_common();
-
-    #if SOC_LIGHT_SLEEP_SUPPORTED
-        register_system_light_sleep();
-    #endif
-    #if SOC_DEEP_SLEEP_SUPPORTED
-        register_system_deep_sleep();
-    #endif
     #if (CONFIG_ESP_WIFI_ENABLED || CONFIG_ESP_HOST_WIFI_ENABLED)
         register_wifi();
     #endif
     
-    register_nvs();
+    // register_nvs();
 
     printf("\nType 'help' to get the list of commands.\n"
         "Use UP/DOWN arrows to navigate through command history.\n"
@@ -100,8 +89,6 @@ static char input_buffer[BUF_SIZE];
 static int input_index = 0;
 
 static void handle_line() {
-    printf("\nSent: %s\n", input_buffer);
-
     /* Try to run the command */
     int ret;
     esp_err_t err = esp_console_run(input_buffer, &ret);
@@ -116,16 +103,30 @@ static void handle_line() {
     }
 }
 
-
 void app_console_run(void) {
     // Check for console input
     char c;
     int len = uart_read_bytes(UART_NUM_0, (uint8_t*)&c, 1, 0);
     if (len <= 0) return;
 
+    // Handle escape sequences (e.g., arrow keys)
+    if (c == '\x1b') {  // Escape character
+        // Read the next two characters to determine if it's an arrow key
+        char seq[2];
+        int seq_len = uart_read_bytes(UART_NUM_0, (uint8_t*)seq, 2, 0);
+
+        // Check for arrow keys. seq[1] == 'C' for left arrow - permitable
+        bool check_keys = seq[1] == 'A' || seq[1] == 'B' || seq[1] == 'D';
+        if (seq_len == 2 && seq[0] == '[' && check_keys) {
+            // Ignore arrow keys (up, down, left, right)
+            return;
+        }
+    }
+
     // Handle Enter key
     if (c == '\n' || c == '\r') {
         input_buffer[input_index] = '\0';  // Null-terminate
+        printf("\n\n");    // make new line
         handle_line();
         input_index = 0;
     }
