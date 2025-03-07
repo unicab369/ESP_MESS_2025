@@ -13,6 +13,7 @@
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
 #include "esp_err.h"
+#include "nvs_flash.h"
 
 #include "led_toggle.h"
 #include "led_fade.h"
@@ -22,6 +23,10 @@
 #include "behavior/behavior.h"
 #include "ws2812.h"
 #include "timer_pulse.h"
+#include "console/app_console.h"
+
+static const char *TAG = "MAIN";
+
 
 #ifndef WIFI_SSID
 #define WIFI_SSID "default_ssid"
@@ -49,7 +54,6 @@
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define WIFI_ENABLED true
 
-static const char *TAG = "MAIN";
 
 #if WIFI_ENABLED
     #include "wifi.h"
@@ -138,14 +142,34 @@ void uart_read_handler(uint8_t* data, size_t len) {
 
 void app_main(void)
 {
+    //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
 
     // printf("ssid: %s\n", WIFI_SSID);
     // printf("password: %s\n", WIFI_PASSWORD);
-    
     ESP_LOGI(TAG, "APP START");
+
     #if CONFIG_IDF_TARGET_ESP32C3
         cdc_setup();
     #endif
+
+    #if WIFI_ENABLED
+        wifi_setup();
+        // espnow_setup(esp_mac, espnow_message_handler);
+        // ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+
+        // wifi_scan();
+
+        // wifi_nan_subscribe();
+        // wifi_nan_publish();
+    #endif
+
+    app_console_setup();
 
     gpio_digital_setup(LED_FADE_PIN);
 
@@ -167,19 +191,8 @@ void app_main(void)
 
     rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     button_click_setup(BUTTON_PIN, button_event_handler);
-    uart_setup(uart_read_handler);
+    // uart_setup(uart_read_handler);
 
-    #if WIFI_ENABLED
-        wifi_setup();
-        // espnow_setup(esp_mac, espnow_message_handler);
-        // ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
-
-        // wifi_scan();
-
-        // wifi_nan_subscribe();
-        // wifi_nan_publish();
-    #endif
-    
     behavior_output_interface output_interface;
     // output_interface.on_gpio_set = 
 
@@ -259,8 +272,7 @@ void app_main(void)
         // rotary_loop(current_time);
 
         ws2812_loop(current_time);
-
-        // uart_run();
+        app_console_run();
 
         #if WIFI_ENABLED
             // wifi_nan_checkPeers(current_time);
