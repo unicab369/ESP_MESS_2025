@@ -1,0 +1,1 @@
+void app_mbedtls_setup(void) ;

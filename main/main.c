@@ -25,6 +25,7 @@
 #include "timer_pulse.h"
 #include "console/app_console.h"
 #include "storage_sd.h"
+#include "app_mbedtls.h"
 
 static const char *TAG = "MAIN";
 
@@ -155,8 +156,18 @@ void uart_read_handler(uint8_t* data, size_t len) {
     ESP_LOGI(TAG, "IM HERE");
 }
 
+static void print_hex(const char *label, const unsigned char *buf, size_t len) {
+    printf("%s: ", label);
+    for (size_t i = 0; i < len; i++) {
+        printf("%02X", buf[i]);
+    }
+    printf("\n");
+}
+
+
+
 void app_main(void)
-{
+{   
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -278,6 +289,7 @@ void app_main(void)
     };
     ws2812_load_fadeColor(obj4, 1);
 
+    app_mbedtls_setup();
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();

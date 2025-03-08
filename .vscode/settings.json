@@ -91,7 +91,10 @@
         "io_context": "c",
         "initializer_list": "c",
         "text_encoding": "c",
-        "queue.h": "c"
+        "queue.h": "c",
+        "entropy.h": "c",
+        "platform.h": "c",
+        "ctr_drbg.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
