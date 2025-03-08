@@ -133,7 +133,7 @@ uint8_t ssd1306_address = 0x3C;
 // Write command to SSD1306
 static void send_command(uint8_t cmd) {
     uint8_t buf[2] = {SSD1306_CMD, cmd};
-    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, sizeof(buf), SSD1306_DEFAULT_TIMEOUT);
+    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, sizeof(buf), pdMS_TO_TICKS(SSD1306_DEFAULT_TIMEOUT));
 }
 
 // Write data to SSD1306
@@ -141,7 +141,7 @@ static void send_data(const uint8_t *data, size_t len) {
     uint8_t *buf = malloc(len + 1);
     buf[0] = SSD1306_DATA;
     memcpy(buf + 1, data, len);
-    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, len + 1, SSD1306_DEFAULT_TIMEOUT);
+    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, len + 1, pdMS_TO_TICKS(SSD1306_DEFAULT_TIMEOUT));
     free(buf);
 }
 
@@ -312,4 +312,43 @@ void ssd1306_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t address) {
     // Vertical line - required vertical mode
     // uint8_t data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; 
     // send_data(data, sizeof(data));
+}
+
+
+#define I2C_MASTER_TIMEOUT_MS 50   // ms
+#define I2C_MASTER_NUM I2C_NUM_0
+
+int do_i2cdetect_cmd(uint8_t scl_pin, uint8_t sda_pin) {
+    // Initialize I2C
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = sda_pin,
+        .scl_io_num = scl_pin,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 400000,
+    };
+    i2c_param_config(I2C_PORT, &conf);
+    i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    
+    esp_err_t ret;
+    printf("Scanning I2C bus...\n");
+
+    for (uint8_t addr = 0x01; addr < 0x7F; addr++) {
+        // Try to read a byte from the device
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_stop(cmd);
+
+        esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 50 / portTICK_PERIOD_MS);
+        i2c_cmd_link_delete(cmd);
+
+        if (ret == ESP_OK) {
+            printf("Device found at address 0x%02X\n", addr);
+        }
+    }
+    printf("scanning done\n");
+
+    return 0;
 }

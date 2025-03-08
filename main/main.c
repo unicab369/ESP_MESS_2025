@@ -291,13 +291,14 @@ void app_main(void)
     ws2812_load_fadeColor(obj4, 1);
 
     // app_mbedtls_setup();
-    ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
+    // ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
 
-    ssd1306_display_str("Hello World aaaabbbbccccddddeeeffff!", 0);
-    ssd1306_display_str("Hello World 222222!", 1);
-    ssd1306_display_str("Hello World 333333!", 2);
-    ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
+    // ssd1306_display_str("Hello World aaaabbbbccccddddeeeffff!", 0);
+    // ssd1306_display_str("Hello World 222222!", 1);
+    // ssd1306_display_str("Hello World 333333!", 2);
+    // ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
 
+    do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();

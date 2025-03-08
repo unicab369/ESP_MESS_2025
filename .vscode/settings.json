@@ -94,7 +94,8 @@
         "queue.h": "c",
         "entropy.h": "c",
         "platform.h": "c",
-        "ctr_drbg.h": "c"
+        "ctr_drbg.h": "c",
+        "i2c_master.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

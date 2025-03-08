@@ -22,7 +22,8 @@ void uart_setup_pin(uint8_t tx_pin, uint8_t rx_pin, uart_read_callback_t callbac
         .data_bits = UART_DATA_8_BITS,
         .parity    = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
     };
     uart_param_config(UART_NUM_0, &uart_config);
 
