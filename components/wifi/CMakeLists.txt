@@ -1,5 +1,5 @@
 idf_component_register(SRCS
-                              "wifi.c"
+                              "wifi.c" "ntp.c"
                          INCLUDE_DIRS "."
                          PRIV_REQUIRES
                               esp_wifi

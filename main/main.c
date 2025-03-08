@@ -9,9 +9,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/ledc.h"
-#include "esp_log.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"
+#include "esp_log.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
 
@@ -29,6 +29,7 @@
 #include "app_ssd1306.h"
 
 static const char *TAG = "MAIN";
+#define WIFI_ENABLED true
 
 #define ESP32_BOARD_V3 true
 
@@ -70,7 +71,6 @@ static const char *TAG = "MAIN";
 #endif
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
-#define WIFI_ENABLED false
 
 
 #if WIFI_ENABLED
@@ -177,8 +177,6 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // printf("ssid: %s\n", WIFI_SSID);
-    // printf("password: %s\n", WIFI_PASSWORD);
     ESP_LOGI(TAG, "APP START");
 
     #if CONFIG_IDF_TARGET_ESP32C3
@@ -187,6 +185,8 @@ void app_main(void)
 
     #if WIFI_ENABLED
         wifi_setup();
+        wifi_start_sta(WIFI_SSID, WIFI_PASSWORD);
+
         // espnow_setup(esp_mac, espnow_message_handler);
         // ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
 
@@ -297,8 +297,9 @@ void app_main(void)
     // ssd1306_display_str("Hello World 222222!", 1);
     // ssd1306_display_str("Hello World 333333!", 2);
     // ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
+    // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
-    do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
+    // udp_server_task();
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
@@ -319,10 +320,9 @@ void app_main(void)
         #if WIFI_ENABLED
             // wifi_nan_checkPeers(current_time);
             // wifi_nan_sendData(current_time);
-            // wifi_check_status(current_time);
+            wifi_check_status(current_time);
             // espnow_controller_send();
         #endif
-
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));
