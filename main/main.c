@@ -26,6 +26,7 @@
 #include "console/app_console.h"
 #include "storage_sd.h"
 #include "app_mbedtls.h"
+#include "app_ssd1306.h"
 
 static const char *TAG = "MAIN";
 
@@ -50,8 +51,6 @@ static const char *TAG = "MAIN";
         #define BUTTON_PIN 16
         #define ROTARY_CLK 15
         #define ROTARY_DT 13
-        #define SCL_PIN 32
-        #define SDA_PIN 33
         #define BUZZER_PIN 5
         #define WS2812_PIN 4
         #define SPI_MISO 19
@@ -59,6 +58,9 @@ static const char *TAG = "MAIN";
         #define SPI_SCLK 18
         #define SPI_CS 26
         
+        #define SCL_PIN 32
+        #define SDA_PIN 33
+        #define SSD_1306_ADDR 0x3C
     #else
         #define LED_FADE_PIN 22
         #define BLINK_PIN 5
@@ -163,7 +165,6 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     }
     printf("\n");
 }
-
 
 
 void app_main(void)
@@ -289,7 +290,14 @@ void app_main(void)
     };
     ws2812_load_fadeColor(obj4, 1);
 
-    app_mbedtls_setup();
+    // app_mbedtls_setup();
+    ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
+
+    ssd1306_display_str("Hello World aaaabbbbccccddddeeeffff!", 0);
+    ssd1306_display_str("Hello World 222222!", 1);
+    ssd1306_display_str("Hello World 333333!", 2);
+    ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
+
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
@@ -319,4 +327,3 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
-

@@ -17,6 +17,7 @@ idf_component_register(SRCS "main.c"
                         spi_flash
                         storage
                         app_mbedtls
+                        app_ssd1306
                     REQUIRES
                         driver
                         app_gpio
