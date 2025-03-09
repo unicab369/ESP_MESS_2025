@@ -116,8 +116,8 @@ udp_status_t udp_socket_setup(uint64_t current_time) {
     return current_status;
 }
 
-char rx_buffer[128];
-char addr_str[128];
+static char rx_buffer[128];
+static char addr_str[128];
 
 void udp_socket_server_task()
 {
