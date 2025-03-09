@@ -218,13 +218,12 @@ void app_main(void)
 
     app_console_setup();
 
-    storage_sd_config_t config = {
+    storage_sd_configure(&(storage_sd_config_t) {
         .mosi = SPI_MOSI,
         .miso = SPI_MISO,
         .sclk = SPI_SCLK,
         .cs = SPI_CS
-    };
-    storage_sd_configure(&config);
+    });
     storage_sd_test();
 
     gpio_digital_setup(LED_FADE_PIN);

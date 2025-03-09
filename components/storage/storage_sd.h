@@ -1,4 +1,8 @@
 #include <stdint.h>
+#include <string.h>
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include "sdmmc_cmd.h"
 
 typedef struct {
     uint8_t mosi;
@@ -9,3 +13,5 @@ typedef struct {
 
 void storage_sd_configure(storage_sd_config_t *config);
 void storage_sd_test(void);
+
+esp_err_t storage_sd_write(const char *path, char *data);

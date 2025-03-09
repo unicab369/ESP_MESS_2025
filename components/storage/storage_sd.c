@@ -5,11 +5,12 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "sd_test_io.h"
+
 #if SOC_SDMMC_IO_POWER_EXTERNAL
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"
 #endif
 
-#define EXAMPLE_MAX_CHAR_SIZE    64
+#define EXAMPLE_MAX_CHAR_SIZE    255
 
 static const char *TAG = "STORAGE_SD";
 #define MOUNT_POINT "/sdcard"
@@ -38,7 +39,7 @@ pin_configuration_t config = {
 };
 #endif //CONFIG_EXAMPLE_DEBUG_PIN_CONNECTIONS
 
-static esp_err_t s_example_write_file(const char *path, char *data)
+esp_err_t storage_sd_write(const char *path, char *data)
 {
     ESP_LOGI(TAG, "Opening file %s", path);
     FILE *f = fopen(path, "w");
@@ -53,22 +54,23 @@ static esp_err_t s_example_write_file(const char *path, char *data)
     return ESP_OK;
 }
 
-static esp_err_t s_example_read_file(const char *path)
+esp_err_t storage_sd_read(const char *path, char *buffer, size_t len)
 {
     ESP_LOGI(TAG, "Reading file %s", path);
-    FILE *f = fopen(path, "r");
-    if (f == NULL) {
+    FILE *file = fopen(path, "r");
+    if (file == NULL) {
         ESP_LOGE(TAG, "Failed to open file for reading");
         return ESP_FAIL;
     }
-    char line[EXAMPLE_MAX_CHAR_SIZE];
-    fgets(line, sizeof(line), f);
-    fclose(f);
+
+    // char line[EXAMPLE_MAX_CHAR_SIZE];
+    fgets(buffer, len, file);
+    fclose(file);
 
     // strip newline
-    char *pos = strchr(line, '\n');
+    char *pos = strchr(buffer, '\n');
     if (pos) *pos = '\0';
-    ESP_LOGI(TAG, "Read from file: '%s'", line);
+    ESP_LOGI(TAG, "Read from file: '%s'", buffer);
 
     return ESP_OK;
 }
@@ -85,17 +87,6 @@ sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
 static esp_err_t ret;
 const char mount_point[] = MOUNT_POINT;
 
-// If format_if_mount_failed is set to true, SD card will be partitioned and
-// formatted in case when mounting fails.
-esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-    #ifdef CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED
-        .format_if_mount_failed = true,
-    #else
-        .format_if_mount_failed = false,
-    #endif // EXAMPLE_FORMAT_IF_MOUNT_FAILED
-        .max_files = 5,
-        .allocation_unit_size = 16 * 1024
-};
         
 void storage_sd_configure(storage_sd_config_t *config) {
     // Note: esp_vfs_fat_sdmmc/sdspi_mount is all-in-one convenience functions.
@@ -139,6 +130,11 @@ void storage_sd_configure(storage_sd_config_t *config) {
     slot_config.host_id = host.slot;
 
     ESP_LOGI(TAG, "Mounting filesystem");
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 5,
+        .allocation_unit_size = 16 * 1024
+    };
     ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card);
 
     if (ret != ESP_OK) {
@@ -148,9 +144,9 @@ void storage_sd_configure(storage_sd_config_t *config) {
         } else {
             ESP_LOGE(TAG, "Failed to initialize the card (%s). "
                     "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
-#ifdef CONFIG_EXAMPLE_DEBUG_PIN_CONNECTIONS
-            check_sd_card_pins(&config, pin_count);
-#endif
+            #ifdef CONFIG_EXAMPLE_DEBUG_PIN_CONNECTIONS
+                check_sd_card_pins(&config, pin_count);
+            #endif
         }
         return;
     }
@@ -160,14 +156,34 @@ void storage_sd_configure(storage_sd_config_t *config) {
     sdmmc_card_print_info(stdout, card);
 }
 
+void storage_sd_format_card() {
+    ret = esp_vfs_fat_sdcard_format(mount_point, card);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to format FATFS (%s)", esp_err_to_name(ret));
+        return;
+    }
+
+    struct stat st;
+    const char *file_foo = MOUNT_POINT"/foo.txt";
+
+    if (stat(file_foo, &st) == 0) {
+        ESP_LOGI(TAG, "file still exists");
+        return;
+    } else {
+        ESP_LOGI(TAG, "file doesn't exist, formatting done");
+    }
+}
+
 void storage_sd_test(void) {
     if (ret != ESP_OK) return;
     
     // First create a file.
     const char *file_hello = MOUNT_POINT"/hello.txt";
     char data[EXAMPLE_MAX_CHAR_SIZE];
+    printf("card name: %s", card->cid.name);
+
     snprintf(data, EXAMPLE_MAX_CHAR_SIZE, "%s %s!\n", "Hello", card->cid.name);
-    ret = s_example_write_file(file_hello, data);
+    ret = storage_sd_write(file_hello, data);
     if (ret != ESP_OK) return;
 
     const char *file_foo = MOUNT_POINT"/foo.txt";
@@ -186,33 +202,18 @@ void storage_sd_test(void) {
         return;
     }
 
-    ret = s_example_read_file(file_foo);
+    char line[EXAMPLE_MAX_CHAR_SIZE];
+    ret = storage_sd_read(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
-
-    // Format FATFS
-#ifdef CONFIG_EXAMPLE_FORMAT_SD_CARD
-    ret = esp_vfs_fat_sdcard_format(mount_point, card);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to format FATFS (%s)", esp_err_to_name(ret));
-        return;
-    }
-
-    if (stat(file_foo, &st) == 0) {
-        ESP_LOGI(TAG, "file still exists");
-        return;
-    } else {
-        ESP_LOGI(TAG, "file doesn't exist, formatting done");
-    }
-#endif // CONFIG_EXAMPLE_FORMAT_SD_CARD
 
     const char *file_nihao = MOUNT_POINT"/nihao.txt";
     memset(data, 0, EXAMPLE_MAX_CHAR_SIZE);
     snprintf(data, EXAMPLE_MAX_CHAR_SIZE, "%s %s!\n", "Nihao", card->cid.name);
-    ret = s_example_write_file(file_nihao, data);
+    ret = storage_sd_write(file_nihao, data);
     if (ret != ESP_OK) return;
 
     //Open file for reading
-    ret = s_example_read_file(file_nihao);
+    ret = storage_sd_read(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
 
     // All done, unmount partition and disable SPI peripheral

@@ -109,7 +109,8 @@
         "param.h": "c",
         "http.h": "c",
         "esp_wifi.h": "c",
-        "udp_socket.h": "c"
+        "udp_socket.h": "c",
+        "typeinfo": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
