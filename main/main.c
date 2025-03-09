@@ -79,7 +79,8 @@ static const char *TAG = "MAIN";
     #include "espnow_driver.h"
     #include "udp.h"
     #include "ntp.h"
-    #include "tcp.h"
+    #include "tcp_socket.h"
+    // #include "modbus/modbus.h"
 
     void espnow_message_handler(espnow_received_message_t received_message) {
         ESP_LOGW(TAG,"received data:");
@@ -330,16 +331,15 @@ void app_main(void)
             wifi_status_t status = wifi_check_status(current_time);
             
             if (status == WIFI_STATUS_CONNECTED) {
-                tcp_server_task();
-                // tcp_client(current_time);
+                // tcp_socket_server_task();
+                // tcp_socket_client(current_time);
 
-                // ntp_status_t ntp_status = ntp_task(current_time);
-
-                // udp_status_t udp_status = udp_setup(current_time);
+                ntp_status_t ntp_status = ntp_task(current_time);
+                udp_status_t udp_status = udp_socket_setup(current_time);
                 
                 // if (udp_status == UDP_STATUS_SETUP) {
-                //     udp_server_task();
-                //     // udp_send_message(current_time);
+                    // udp_socket_server_task();
+                    // udp_socket_client_send(current_time);
                 // }
             }
 

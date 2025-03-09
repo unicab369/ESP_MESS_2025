@@ -127,7 +127,7 @@ void ntp_setup(void) {
 
 ntp_status_t ntp_task(uint64_t current_time) {
     if (current_status == NTP_STATUS_SETUP) return current_status;
-    if (current_time - last_request_time < 100000) return current_status;
+    if (current_time - last_request_time < 1000000) return current_status;
     last_request_time = current_time;
 
     // Is time set? If not, tm_year will be (1970 - 1900).

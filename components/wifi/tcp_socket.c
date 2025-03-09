@@ -1,4 +1,4 @@
-#include "tcp.h"
+#include "tcp_socket.h"
 
 #include <string.h>
 #include <sys/param.h>
@@ -56,7 +56,7 @@ static void do_retransmit(const int sock)
 
 #define CONFIG_EXAMPLE_IPV4 true
 
-void tcp_server_task()
+void tcp_socket_server_task()
 {
     char addr_str[128];
     int addr_family = AF_INET;
@@ -162,7 +162,7 @@ static const char *payload = "Message from ESP32 ";
 uint64_t last_check_client_time;
 
 // IPV4
-void tcp_client(uint64_t current_time)
+void tcp_socket_client(uint64_t current_time)
 {
     if (current_time - last_check_client_time < 1000000) return;
     last_check_client_time = current_time;

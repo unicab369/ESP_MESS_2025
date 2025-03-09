@@ -100,7 +100,13 @@
         "regex.h": "c",
         "ip_addr.h": "c",
         "cerrno": "c",
-        "esp_mac.h": "c"
+        "esp_mac.h": "c",
+        "thread": "c",
+        "modbus.h": "c",
+        "esp_event.h": "c",
+        "mbcontroller.h": "c",
+        "tcp_socket.h": "c",
+        "param.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

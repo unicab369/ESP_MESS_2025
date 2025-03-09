@@ -38,7 +38,7 @@ void udp_close() {
     close(sock);
 }
 
-udp_status_t udp_setup(uint64_t current_time) {
+udp_status_t udp_socket_setup(uint64_t current_time) {
     if (current_status == UDP_STATUS_SETUP) return current_status;
     if (current_time - last_update_time < 1000000) return current_status;
     last_update_time = current_time;
@@ -119,7 +119,7 @@ udp_status_t udp_setup(uint64_t current_time) {
 char rx_buffer[128];
 char addr_str[128];
 
-void udp_server_task()
+void udp_socket_server_task()
 {
     if (current_status != UDP_STATUS_SETUP) return;
 
@@ -165,7 +165,7 @@ void udp_server_task()
 
 uint64_t last_sent_time = 0;
 
-void udp_send_message(uint64_t current_time) {
+void udp_socket_client_send(uint64_t current_time) {
     if (current_status != UDP_STATUS_SETUP) return;
     if (current_time - last_sent_time < 1000000) return;
     last_sent_time = current_time;
