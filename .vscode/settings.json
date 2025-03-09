@@ -98,7 +98,9 @@
         "i2c_master.h": "c",
         "esp_netif_sntp.h": "c",
         "regex.h": "c",
-        "ip_addr.h": "c"
+        "ip_addr.h": "c",
+        "cerrno": "c",
+        "esp_mac.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

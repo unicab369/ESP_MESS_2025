@@ -1,3 +1,4 @@
+#include "wifi.h"
 #include <string.h>
 
 #include "esp_mac.h"
@@ -15,22 +16,9 @@
 #include "ntp.h"
 #include "udp.h"
 
-// #include "lwip/inet.h"
-// #include "lwip/netdb.h"
-// #include "lwip/sockets.h"
-// #include "lwip/err.h"
-// #include "lwip/sys.h"
 
 /* STA Configuration */
 #define EXAMPLE_ESP_MAXIMUM_RETRY           20
-
-
-
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT      BIT1
 
 /*DHCP server option*/
 #define DHCPS_OFFER_DNS             0x02
@@ -40,6 +28,10 @@ static const char *TAG_STA = "WiFi Sta";
 static int s_retry_num = 0;
 
 static const char *TAG = "WIFI";
+
+static uint64_t last_update_time = 0;
+static uint8_t remaining_retries = 0;
+static wifi_status_t current_status = WIFI_STATUS_DISCONNECTED;
 
 void test_ntp(void);
 
@@ -78,8 +70,13 @@ void softap_set_dns_addr(esp_netif_t *esp_netif_ap,esp_netif_t *esp_netif_sta)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_start(esp_netif_ap));
 }
 
-void wifi_setup(void)
+app_wifi_config_t* wifi_config;
+
+void wifi_setup(app_wifi_config_t *config)
 {
+    wifi_config = config;
+    remaining_retries = config->max_retries;
+
     //! Minimum setup for ESP-NOW
     // ESP_ERROR_CHECK(esp_netif_init());
     // ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -112,7 +109,7 @@ void wifi_setup(void)
 
 }
 
-void wifi_start_softAP(const char* ap_ssid, const char* ap_passwd, uint8_t channel) {
+void wifi_setup_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel) {
     /* Initialize AP */
     ESP_LOGI(TAG_AP, "ESP_WIFI_MODE_AP");
 
@@ -122,6 +119,7 @@ void wifi_start_softAP(const char* ap_ssid, const char* ap_passwd, uint8_t chann
         .ap = {
             .max_connection = 1,
             .authmode = WIFI_AUTH_WPA2_PSK,
+            .channel = channel,
             .pmf_cfg = {
                 .required = false,
             },
@@ -146,7 +144,7 @@ void wifi_start_softAP(const char* ap_ssid, const char* ap_passwd, uint8_t chann
     // }
 }
 
-void wifi_start_sta(const char* sta_ssid, const char* sta_passwd) {
+void wifi_setup_sta(const char* sta_ssid, const char* sta_passwd) {
     printf("connecting to %s\n", sta_ssid);
 
     /* Initialize STA */
@@ -167,38 +165,48 @@ void wifi_start_sta(const char* sta_ssid, const char* sta_passwd) {
 
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_sta_config) );
     ESP_LOGI(TAG_STA, "wifi_init_sta finished.");
+}
 
-    /* Start WiFi */
+void wifi_connect() {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
+    current_status = WIFI_STATUS_INITIATED;
 }
 
 void wifi_disconnect() {
     esp_wifi_disconnect();
+    current_status = WIFI_STATUS_DISCONNECTED;
+
     // esp_wifi_stop();     // stop driver
     // esp_wifi_deinit();
 }
 
-static uint64_t last_update_time = 0;
-static bool is_connected = false;
+void wifi_stop() {
+    esp_wifi_stop();
+    // esp_wifi_deinit();
+}
 
-uint8_t wifi_check_status(uint64_t current_time) {
-    if (is_connected) return 0;
-    if (current_time - last_update_time < 1000000) return 2;
+
+wifi_status_t wifi_check_status(uint64_t current_time) {
+    if (current_status == WIFI_STATUS_CONNECTED) return current_status;
+    if (current_time - last_update_time < 1000000) return current_status;
     last_update_time = current_time;
 
     wifi_ap_record_t ap_info;
     esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_info);
     if (ret == ESP_OK) {
         ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
-        is_connected = true;
-        test_ntp();
-        udp_setup();
-        return 0;
+        current_status = WIFI_STATUS_CONNECTED;
+    } else if (remaining_retries < wifi_config->max_retries) {
+        ESP_LOGI(TAG_STA, "Retrying connection to AP: %s", esp_err_to_name(ret));
+        remaining_retries = 0;
+        current_status = WIFI_STATUS_RETRY;
     } else {
-        ESP_LOGE(TAG_STA, "Not connected to AP: %s", esp_err_to_name(ret));
-        return 1;
+        ESP_LOGE(TAG_STA, "Failed to connect to AP: %s", esp_err_to_name(ret));
+        current_status = WIFI_STATUS_FAILED;
     }
+
+    return current_status;
 }
 
 #define DEFAULT_SCAN_LIST_SIZE 10

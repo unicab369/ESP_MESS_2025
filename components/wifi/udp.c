@@ -1,3 +1,5 @@
+#include "udp.h"
+
 #include "esp_mac.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -22,10 +24,13 @@
 
 static const char *TAG = "UDP_STUFF";
 static int sock;
-static bool is_setup = false;
+static uint8_t retry_count = 5;
 
 struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
 socklen_t socklen = sizeof(source_addr);
+static uint64_t last_update_time = 0;
+
+udp_status_t current_status;
 
 void udp_close() {
     // Close the socket
@@ -33,7 +38,11 @@ void udp_close() {
     close(sock);
 }
 
-void udp_setup() {
+udp_status_t udp_setup(uint64_t current_time) {
+    if (current_status == UDP_STATUS_SETUP) return current_status;
+    if (current_time - last_update_time < 1000000) return current_status;
+    last_update_time = current_time;
+
     int addr_family = AF_INET;
     int ip_protocol = 0;
     struct sockaddr_in6 dest_addr;
@@ -54,7 +63,7 @@ void udp_setup() {
     sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
     if (sock < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        return;
+        current_status = UDP_STATUS_SOCKET_FAILED;
     }
     ESP_LOGI(TAG, "Socket created");
 
@@ -82,6 +91,7 @@ void udp_setup() {
     int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (err < 0) {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+        current_status = UDP_STATUS_BINDING_FAILED;
     }
     ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
@@ -102,7 +112,8 @@ void udp_setup() {
             msg.msg_namelen = socklen;
     #endif
     
-    is_setup = true;
+    current_status = UDP_STATUS_SETUP;
+    return current_status;
 }
 
 char rx_buffer[128];
@@ -110,7 +121,7 @@ char addr_str[128];
 
 void udp_server_task()
 {
-    if (!is_setup) return;
+    if (current_status != UDP_STATUS_SETUP) return;
 
     #if defined(CONFIG_LWIP_NETBUF_RECVINFO) && !defined(CONFIG_EXAMPLE_IPV6)
         int len = recvmsg(sock, &msg, 0);
@@ -152,22 +163,25 @@ void udp_server_task()
 #define MESSAGE_UDP "Hello, UDP!"
 #define BROADCAST_IP "10.0.0.255" 
 
-uint64_t last_udp_time = 0;
+uint64_t last_sent_time = 0;
 
 void udp_send_message(uint64_t current_time) {
-    if (current_time - last_udp_time < 1000000) return;
-    last_udp_time = current_time;
+    if (current_status != UDP_STATUS_SETUP) return;
+    if (current_time - last_sent_time < 1000000) return;
+    last_sent_time = current_time;
 
-    // if 
-    int sockfd;
+    // // if 
+    // int sockfd;
+    
+
+    // // Create UDP socket
+    // sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    // if (sockfd < 0) {
+    //     ESP_LOGE(TAG, "Failed to create socket: errno %d", errno);
+    //     return;
+    // }
+
     struct sockaddr_in dest_addr;
-
-    // Create UDP socket
-    sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    if (sockfd < 0) {
-        ESP_LOGE(TAG, "Failed to create socket: errno %d", errno);
-        return;
-    }
 
     // Configure destination address
     dest_addr.sin_family = AF_INET;
@@ -175,7 +189,7 @@ void udp_send_message(uint64_t current_time) {
     inet_pton(AF_INET, BROADCAST_IP, &dest_addr.sin_addr);
 
     // Send UDP message
-    int err = sendto(sockfd, MESSAGE_UDP, strlen(MESSAGE_UDP), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    int err = sendto(sock, MESSAGE_UDP, strlen(MESSAGE_UDP), 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (err < 0) {
         ESP_LOGE(TAG, "Failed to send UDP message: errno %d", errno);
     } else {
@@ -183,6 +197,6 @@ void udp_send_message(uint64_t current_time) {
     }
 
     // Close socket
-    close(sockfd);
+    // close(sock);
 }
 

@@ -77,6 +77,8 @@ static const char *TAG = "MAIN";
     #include "wifi.h"
     #include "wifi_nan.h"
     #include "espnow_driver.h"
+    #include "udp.h"
+    #include "ntp.h"
 
     void espnow_message_handler(espnow_received_message_t received_message) {
         ESP_LOGW(TAG,"received data:");
@@ -184,8 +186,13 @@ void app_main(void)
     #endif
 
     #if WIFI_ENABLED
-        wifi_setup();
-        wifi_start_sta(WIFI_SSID, WIFI_PASSWORD);
+        app_wifi_config_t wifi_conf = {
+            .max_retries = 10
+        };
+
+        wifi_setup(&wifi_conf);
+        wifi_setup_sta(WIFI_SSID, WIFI_PASSWORD);
+        wifi_connect();
 
         // espnow_setup(esp_mac, espnow_message_handler);
         // ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
@@ -318,10 +325,18 @@ void app_main(void)
         #if WIFI_ENABLED
             // wifi_nan_checkPeers(current_time);
             // wifi_nan_sendData(current_time);
-            uint8_t check = wifi_check_status(current_time);
-            if (check == 0) {
-                udp_server_task();
-                // udp_send_message(current_time);
+
+            wifi_status_t status = wifi_check_status(current_time);
+            
+            if (status == WIFI_STATUS_CONNECTED) {
+                ntp_status_t ntp_status = ntp_task(current_time);
+
+                udp_status_t udp_status = udp_setup(current_time);
+                
+                if (udp_status == UDP_STATUS_SETUP) {
+                    udp_server_task();
+                    // udp_send_message(current_time);
+                }
             }
 
             // espnow_controller_send();
