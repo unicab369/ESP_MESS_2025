@@ -319,6 +319,8 @@ void app_main(void)
     // ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
+    uint64_t second_interval_check = 0;
+
     while (1) {
         uint64_t current_time = esp_timer_get_time();
         
@@ -336,6 +338,11 @@ void app_main(void)
         app_console_run();
 
         #if WIFI_ENABLED
+            if (current_time - second_interval_check > 1000000) {
+                second_interval_check = current_time;
+
+            }
+
             // wifi_nan_checkPeers(current_time);
             // wifi_nan_sendData(current_time);
 

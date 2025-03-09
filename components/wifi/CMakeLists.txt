@@ -10,6 +10,7 @@ idf_component_register(SRCS
                               esp-tls
                               esp_eth
                               esp_http_server
+                              esp_http_client
                          REQUIRES
                               driver
                               esp_timer
