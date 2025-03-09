@@ -105,7 +105,7 @@ void wifi_setup(app_wifi_config_t *config)
 
 }
 
-void wifi_setup_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel) {
+void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel) {
     /* Initialize AP */
     ESP_LOGI(TAG_AP, "ESP_WIFI_MODE_AP");
 
@@ -140,7 +140,7 @@ void wifi_setup_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t chann
     // }
 }
 
-void wifi_setup_sta(const char* sta_ssid, const char* sta_passwd) {
+void wifi_configure_sta(const char* sta_ssid, const char* sta_passwd) {
     printf("connecting to %s\n", sta_ssid);
 
     /* Initialize STA */

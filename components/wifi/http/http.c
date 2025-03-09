@@ -9,25 +9,21 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include <esp_wifi.h>
+
 #include <esp_event.h>
 #include <esp_log.h>
 #include <esp_system.h>
 #include <sys/param.h>
 #include "esp_netif.h"
 #include "esp_eth.h"
-// #include "protocol_examples_common.h"
+
+
 #include "esp_tls_crypto.h"
 #include <esp_http_server.h>
 
-/* An example that demonstrates multiple
-   long running http requests running in parallel.
 
-   In this example, multiple long http request can run at
-   the same time. (uri: /long)
-
-   While these long requests are running, the server can still
-   respond to other incoming synchronous requests. (uri: /quick)
- */
+#include "esp_mac.h"
+#include "lwip/inet.h"
 
 #define ASYNC_WORKER_TASK_PRIORITY      5
 #define ASYNC_WORKER_TASK_STACK_SIZE    2048
@@ -226,6 +222,29 @@ static esp_err_t index_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+// HTTP Error (404) Handler - Redirects all requests to the root page
+esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
+{
+    // Set status
+    httpd_resp_set_status(req, "302 Temporary Redirect");
+    // Redirect to the "/" root directory
+    httpd_resp_set_hdr(req, "Location", "/");
+    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
+    httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
+
+    ESP_LOGI(TAG, "Redirecting to root");
+    return ESP_OK;
+}
+
+// HTML for the captive portal page
+static const char *CAPTIVE_PORTAL_HTML = "<html><body><h1>Welcome to the Captive Portal!</h1></body></html>";
+
+// HTTP GET handler for the captive portal
+static esp_err_t captive_portal_get_handler(httpd_req_t *req) {
+    httpd_resp_send(req, CAPTIVE_PORTAL_HTML, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
 static httpd_handle_t start_webserver(void)
 {
     httpd_handle_t server = NULL;
@@ -247,12 +266,18 @@ static httpd_handle_t start_webserver(void)
     }
 
     // Set URI handlers
-    ESP_LOGI(TAG, "Registering URI handlers");
     httpd_register_uri_handler(server, &(const httpd_uri_t) {
         .uri       = "/",
         .method    = HTTP_GET,
-        .handler   = index_handler,
+        .handler   = captive_portal_get_handler,
+        .user_ctx  = NULL
     });
+
+    // httpd_register_uri_handler(server, &(const httpd_uri_t) {
+    //     .uri       = "/",
+    //     .method    = HTTP_GET,
+    //     .handler   = index_handler,
+    // });
     
     httpd_register_uri_handler(server, &(const httpd_uri_t) {
         .uri       = "/long",
@@ -264,6 +289,8 @@ static httpd_handle_t start_webserver(void)
         .method    = HTTP_GET,
         .handler   = quick_handler,
     });
+
+    httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
 
     return server;
 }
@@ -298,12 +325,37 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-bool is_configured = false;
+// bool is_configured = false;
+
+static void dhcp_set_captiveportal_url(void) {
+    // get the IP of the access point to redirect to
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
+
+    char ip_addr[16];
+    inet_ntoa_r(ip_info.ip.addr, ip_addr, 16);
+    ESP_LOGI(TAG, "Set up softAP with IP: %s", ip_addr);
+
+    // turn the IP into a URI
+    char* captiveportal_uri = (char*) malloc(32 * sizeof(char));
+    assert(captiveportal_uri && "Failed to allocate captiveportal_uri");
+    strcpy(captiveportal_uri, "http://");
+    strcat(captiveportal_uri, ip_addr);
+
+    // get a handle to configure DHCP with
+    esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+
+    // set the DHCP option 114
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_stop(netif));
+    ESP_ERROR_CHECK(esp_netif_dhcps_option(netif, ESP_NETIF_OP_SET, ESP_NETIF_CAPTIVEPORTAL_URI, captiveportal_uri, strlen(captiveportal_uri)));
+    ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_start(netif));
+}
+
 
 void http_setup(void)
 {
-    if (is_configured) return;
-    is_configured = true;
+    // if (is_configured) return;
+    // is_configured = true;
 
     static httpd_handle_t server = NULL;
 
@@ -318,6 +370,8 @@ void http_setup(void)
 
     // start workers
     start_workers();
+
+    dhcp_set_captiveportal_url();
 
     /* Start the server for the first time */
     server = start_webserver();

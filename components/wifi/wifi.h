@@ -19,14 +19,14 @@ typedef struct {
 
 
 void wifi_setup(app_wifi_config_t *config);
+void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel);
+void wifi_configure_sta(const char* sta_ssid, const char* sta_passwd);
+
+void wifi_connect(void);
 void wifi_scan(void);
 wifi_status_t wifi_check_status(uint64_t current_time);
 
-void wifi_connect(void);
-
-void wifi_setup_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel);
-void wifi_setup_sta(const char* sta_ssid, const char* sta_passwd);
-void udp_server_task();
-void udp_send_message(uint64_t current_time);
+// void udp_server_task();
+// void udp_send_message(uint64_t current_time);
 
 #endif

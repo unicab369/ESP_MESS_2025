@@ -34,11 +34,19 @@ static const char *TAG = "MAIN";
 #define ESP32_BOARD_V3 true
 
 #ifndef WIFI_SSID
-#define WIFI_SSID "default_ssid"
+#define WIFI_SSID "My_SSID"
 #endif
 
 #ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "default_password"
+#define WIFI_PASSWORD "MY_PASSWORD"
+#endif
+
+#ifndef AP_WIFI_SSID
+#define AP_WIFI_SSID "ESP_MESS_AP"
+#endif
+
+#ifndef AP_WIFI_PASSWORD
+#define AP_WIFI_PASSWORD "password"
 #endif
 
 #if CONFIG_IDF_TARGET_ESP32C3
@@ -190,12 +198,13 @@ void app_main(void)
     #endif
 
     #if WIFI_ENABLED
-        app_wifi_config_t wifi_conf = {
+        wifi_setup(&(app_wifi_config_t){
             .max_retries = 10
-        };
+        });
 
-        wifi_setup(&wifi_conf);
-        wifi_setup_sta(WIFI_SSID, WIFI_PASSWORD);
+        wifi_configure_softAp(AP_WIFI_SSID, AP_WIFI_PASSWORD, 1);
+        wifi_configure_sta(WIFI_SSID, WIFI_PASSWORD);
+        http_setup();
         wifi_connect();
 
         // espnow_setup(esp_mac, espnow_message_handler);
@@ -334,7 +343,6 @@ void app_main(void)
             
             if (status == WIFI_STATUS_CONNECTED) {
                 ntp_status_t ntp_status = ntp_task(current_time);
-                http_setup();
 
                 //! tcp sockets block, need to find a solution
                 // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
