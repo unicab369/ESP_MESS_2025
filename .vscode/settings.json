@@ -106,7 +106,10 @@
         "esp_event.h": "c",
         "mbcontroller.h": "c",
         "tcp_socket.h": "c",
-        "param.h": "c"
+        "param.h": "c",
+        "http.h": "c",
+        "esp_wifi.h": "c",
+        "udp_socket.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

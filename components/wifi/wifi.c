@@ -13,8 +13,6 @@
 #include "esp_nan.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "ntp.h"
-#include "udp.h"
 
 
 /* STA Configuration */
@@ -32,8 +30,6 @@ static const char *TAG = "WIFI";
 static uint64_t last_update_time = 0;
 static uint8_t remaining_retries = 0;
 static wifi_status_t current_status = WIFI_STATUS_DISCONNECTED;
-
-void test_ntp(void);
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
