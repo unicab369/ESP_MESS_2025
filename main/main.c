@@ -299,8 +299,6 @@ void app_main(void)
     // ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
-    // udp_server_task();
-
     while (1) {
         uint64_t current_time = esp_timer_get_time();
         
@@ -320,7 +318,12 @@ void app_main(void)
         #if WIFI_ENABLED
             // wifi_nan_checkPeers(current_time);
             // wifi_nan_sendData(current_time);
-            wifi_check_status(current_time);
+            uint8_t check = wifi_check_status(current_time);
+            if (check == 0) {
+                udp_server_task();
+                // udp_send_message(current_time);
+            }
+
             // espnow_controller_send();
         #endif
 

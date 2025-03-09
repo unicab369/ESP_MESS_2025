@@ -8,9 +8,10 @@
 // Function prototypes
 void wifi_setup(void);
 void wifi_scan(void);
-void wifi_check_status(uint64_t current_time);
+uint8_t wifi_check_status(uint64_t current_time);
 
 void wifi_start_sta(const char* sta_ssid, const char* sta_passwd);
 void udp_server_task();
+void udp_send_message(uint64_t current_time);
 
 #endif
