@@ -10,6 +10,6 @@ typedef enum __attribute__((packed)) {
     UDP_STATUS_FAILED = 0x08,
 } udp_status_t;
 
-udp_status_t udp_socket_setup(uint64_t current_time);
-void udp_socket_client_send(uint64_t current_time);
-void udp_socket_server_task(void);
+udp_status_t udp_server_socket_setup(uint64_t current_time);
+void udp_server_socket_task(void);
+void udp_client_socket_send(uint64_t current_time);

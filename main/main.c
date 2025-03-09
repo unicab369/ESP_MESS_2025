@@ -333,23 +333,21 @@ void app_main(void)
             wifi_status_t status = wifi_check_status(current_time);
             
             if (status == WIFI_STATUS_CONNECTED) {
-                // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
+                ntp_status_t ntp_status = ntp_task(current_time);
+                http_setup();
 
+                //! tcp sockets block, need to find a solution
+                // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
                 // if (tcp_status == TCP_STATUS_SETUP) {
                 //     tcp_server_socket_task(current_time);
                 // }
-                tcp_client_socket_task(current_time);
+                // tcp_client_socket_task(current_time);
 
-                // http_setup();
-                // tcp_server_socket_task();
-                
-
-                // ntp_status_t ntp_status = ntp_task(current_time);
-                // udp_status_t udp_status = udp_socket_setup(current_time);
-                
+                //! udp sockets block, need to find a solution
+                // udp_status_t udp_status = udp_server_socket_setup(current_time);
                 // if (udp_status == UDP_STATUS_SETUP) {
-                //     // udp_socket_server_task();
-                //     // udp_socket_client_send(current_time);
+                //     udp_server_socket_task();
+                //     // udp_client_socket_send(current_time);
                 // }
             }
 

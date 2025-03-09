@@ -23,29 +23,30 @@
 #define PORT 3333
 
 static const char *TAG = "UDP_STUFF";
-static int sock;
+static int listening_socket;
 static uint8_t retry_count = 5;
 
 struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
 socklen_t socklen = sizeof(source_addr);
 static uint64_t last_update_time = 0;
+struct sockaddr_in6 dest_addr;
 
 udp_status_t current_status;
 
 void udp_close() {
     // Close the socket
-    shutdown(sock, 0);
-    close(sock);
+    shutdown(listening_socket, 0);
+    close(listening_socket);
 }
 
-udp_status_t udp_socket_setup(uint64_t current_time) {
+udp_status_t udp_server_socket_setup(uint64_t current_time) {
     if (current_status == UDP_STATUS_SETUP) return current_status;
     if (current_time - last_update_time < 1000000) return current_status;
     last_update_time = current_time;
 
     int addr_family = AF_INET;
     int ip_protocol = 0;
-    struct sockaddr_in6 dest_addr;
+    
 
     if (addr_family == AF_INET) {
         struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
@@ -60,8 +61,8 @@ udp_status_t udp_socket_setup(uint64_t current_time) {
         ip_protocol = IPPROTO_IPV6;
     }
 
-    sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-    if (sock < 0) {
+    listening_socket = socket(addr_family, SOCK_DGRAM, ip_protocol);
+    if (listening_socket < 0) {
         ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
         current_status = UDP_STATUS_SOCKET_FAILED;
     }
@@ -86,12 +87,47 @@ udp_status_t udp_socket_setup(uint64_t current_time) {
     struct timeval timeout;
     timeout.tv_sec = 10;
     timeout.tv_usec = 0;
-    setsockopt (sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+    setsockopt (listening_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
-    int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    // int err = bind(listening_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    // if (err < 0) {
+    //     ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+    //     current_status = UDP_STATUS_BINDING_FAILED;
+    // }
+    // ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+
+    // #if defined(CONFIG_LWIP_NETBUF_RECVINFO) && !defined(CONFIG_EXAMPLE_IPV6)
+    //         struct iovec iov;
+    //         struct msghdr msg;
+    //         struct cmsghdr *cmsgtmp;
+    //         u8_t cmsg_buf[CMSG_SPACE(sizeof(struct in_pktinfo))];
+
+    //         iov.iov_base = rx_buffer;
+    //         iov.iov_len = sizeof(rx_buffer);
+    //         msg.msg_control = cmsg_buf;
+    //         msg.msg_controllen = sizeof(cmsg_buf);
+    //         msg.msg_flags = 0;
+    //         msg.msg_iov = &iov;
+    //         msg.msg_iovlen = 1;
+    //         msg.msg_name = (struct sockaddr *)&source_addr;
+    //         msg.msg_namelen = socklen;
+    // #endif
+    
+    current_status = UDP_STATUS_SETUP;
+    return current_status;
+}
+
+static char rx_buffer[128];
+static char addr_str[128];
+
+void udp_server_socket_task()
+{
+    if (current_status != UDP_STATUS_SETUP) return;
+
+    int err = bind(listening_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
     if (err < 0) {
         ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-        current_status = UDP_STATUS_BINDING_FAILED;
+        // current_status = UDP_STATUS_BINDING_FAILED;
     }
     ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
@@ -111,22 +147,11 @@ udp_status_t udp_socket_setup(uint64_t current_time) {
             msg.msg_name = (struct sockaddr *)&source_addr;
             msg.msg_namelen = socklen;
     #endif
-    
-    current_status = UDP_STATUS_SETUP;
-    return current_status;
-}
-
-static char rx_buffer[128];
-static char addr_str[128];
-
-void udp_socket_server_task()
-{
-    if (current_status != UDP_STATUS_SETUP) return;
 
     #if defined(CONFIG_LWIP_NETBUF_RECVINFO) && !defined(CONFIG_EXAMPLE_IPV6)
-        int len = recvmsg(sock, &msg, 0);
+        int len = recvmsg(server_socket, &msg, 0);
     #else
-        int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
+        int len = recvfrom(listening_socket, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
     #endif
 
     if (len < 0) return;
@@ -153,7 +178,7 @@ void udp_socket_server_task()
         ESP_LOGI(TAG, "Received %d bytes from %s:", len, addr_str);
         ESP_LOGI(TAG, "%s", rx_buffer);
 
-        int err = sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+        int err = sendto(listening_socket, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
         if (err < 0) {
             ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
         }
@@ -165,21 +190,19 @@ void udp_socket_server_task()
 
 uint64_t last_sent_time = 0;
 
-void udp_socket_client_send(uint64_t current_time) {
+void udp_client_socket_send(uint64_t current_time) {
     if (current_status != UDP_STATUS_SETUP) return;
     if (current_time - last_sent_time < 1000000) return;
     last_sent_time = current_time;
 
-    // // if 
-    // int sockfd;
+    int sock;
     
-
-    // // Create UDP socket
-    // sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-    // if (sockfd < 0) {
-    //     ESP_LOGE(TAG, "Failed to create socket: errno %d", errno);
-    //     return;
-    // }
+    // Create UDP socket
+    sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Failed to create socket: errno %d", errno);
+        return;
+    }
 
     struct sockaddr_in dest_addr;
 
