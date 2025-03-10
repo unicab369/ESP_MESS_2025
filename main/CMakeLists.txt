@@ -8,6 +8,7 @@ idf_component_register(SRCS "main.c"
                             "console/cmd_system/cmd_system.c"
                             "console/cmd_system/cmd_system_sleep.c"
                             "modbus/modbus.c"
+                            "display/display.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES
                         esp_driver_rmt

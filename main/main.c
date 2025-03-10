@@ -1,84 +1,4 @@
-#include "dev_config.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdint.h>
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "driver/ledc.h"
-#include "driver/usb_serial_jtag.h"
-#include "esp_timer.h"
-#include "esp_log.h"
-#include "esp_err.h"
-#include "nvs_flash.h"
-
-#include "led_toggle.h"
-#include "led_fade.h"
-#include "button_click.h"
-#include "rotary_driver.h"
-#include "uart_driver.h"
-#include "behavior/behavior.h"
-#include "ws2812.h"
-#include "timer_pulse.h"
-#include "console/app_console.h"
-#include "storage_sd.h"
-#include "app_mbedtls.h"
-#include "app_ssd1306.h"
-
-static const char *TAG = "MAIN";
-#define WIFI_ENABLED true
-
-#define ESP32_BOARD_V3 true
-
-#ifndef WIFI_SSID
-#define WIFI_SSID "My_SSID"
-#endif
-
-#ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "MY_PASSWORD"
-#endif
-
-#ifndef AP_WIFI_SSID
-#define AP_WIFI_SSID "ESP_MESS_AP"
-#endif
-
-#ifndef AP_WIFI_PASSWORD
-#define AP_WIFI_PASSWORD "password"
-#endif
-
-#if CONFIG_IDF_TARGET_ESP32C3
-    #include "cdc_driver.h"
-    #define LED_FADE_PIN 2
-    #define BLINK_PIN 10
-    #define BUTTON_PIN 9
-#elif CONFIG_IDF_TARGET_ESP32
-    #ifdef ESP32_BOARD_V3
-        #define LED_FADE_PIN 22
-        #define BUTTON_PIN 16
-        #define ROTARY_CLK 15
-        #define ROTARY_DT 13
-        #define BUZZER_PIN 5
-        #define WS2812_PIN 4
-        #define SPI_MISO 19
-        #define SPI_MOSI 23
-        #define SPI_SCLK 18
-        #define SPI_CS 26
-        
-        #define SCL_PIN 32
-        #define SDA_PIN 33
-        #define SSD_1306_ADDR 0x3C
-    #else
-        #define LED_FADE_PIN 22
-        #define BLINK_PIN 5
-        #define BUTTON_PIN 23
-        #define WS2812_PIN 12
-    #endif
-#endif
-
-#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+#include "main.h"
 
 
 #if WIFI_ENABLED
@@ -196,25 +116,41 @@ void app_main(void)
         cdc_setup();
     #endif
 
+
+    display_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
+
+    // ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
+
+    // ssd1306_print_str("Hello World aaaabbbbccccddddeeeffff!", 0);
+    // ssd1306_print_str("Hello World 222222!", 1);
+    // ssd1306_print_str("Hello World 333333!", 2);
+    // ssd1306_print_str("Hello World 333333!", 3, 5*5);
+    // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
+
     #if WIFI_ENABLED
-        wifi_setup(&(app_wifi_config_t){
-            .max_retries = 10
+        wifi_setup(&(app_wifi_interface_t) {
+            .on_display_print = display_print_str,
+            .max_retries = 10,
         });
 
         wifi_configure_softAp(AP_WIFI_SSID, AP_WIFI_PASSWORD, 1);
         wifi_configure_sta(WIFI_SSID, WIFI_PASSWORD);
 
-        http_interface_t temp_interface = {
+    
+        http_setup(&(http_interface_t){
             .on_file_fopen_cb = storage_sd_fopen,
             .on_file_fread_cb = storage_sd_fread,
-            .on_file_fclose_cb = storage_sd_fclose
-        };
-    
-        http_setup(&temp_interface);
+            .on_file_fclose_cb = storage_sd_fclose,
+            .on_display_print = display_print_str
+        });
         wifi_connect();
 
-        // espnow_setup(esp_mac, espnow_message_handler);
-        // ESP_LOGW(TAG, "ESP mac: %02x:%02x:%02x:%02x:%02x:%02x", MAC2STR(esp_mac));
+        espnow_setup(esp_mac, espnow_message_handler);
+
+        char mac_str[32];
+        snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(esp_mac));
+        ESP_LOGW(TAG, "ESP mac: %s\n", mac_str);
+        // display_print_str(mac_str, 0);
 
         // wifi_scan();
 
@@ -222,16 +158,26 @@ void app_main(void)
         // wifi_nan_publish();
     #endif
 
-    app_console_setup();
+    storage_sd_spi_config(&(storage_sd_config_t) {
+        .mmc_enabled = true,
 
-    storage_sd_configure(&(storage_sd_config_t) {
-        .mosi = SPI_MOSI,
-        .miso = SPI_MISO,
-        .sclk = SPI_SCLK,
-        .cs = SPI_CS
+        //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
+        .mmc = {
+            .enable_width4 = false,
+            .clk = MMC_CLK,
+            .di = MMC_DI,
+            .d0 = MMC_D0
+        },
+        .spi = {
+            .mosi = SPI_MOSI,
+            .miso = SPI_MISO,
+            .sclk = SPI_CLK,
+            .cs = SPI_CS
+        },
     });
     // storage_sd_test();
 
+    app_console_setup();
 
     gpio_digital_setup(LED_FADE_PIN);
 
@@ -317,13 +263,7 @@ void app_main(void)
     ws2812_load_fadeColor(obj4, 1);
 
     // app_mbedtls_setup();
-    // ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
 
-    // ssd1306_display_str("Hello World aaaabbbbccccddddeeeffff!", 0);
-    // ssd1306_display_str("Hello World 222222!", 1);
-    // ssd1306_display_str("Hello World 333333!", 2);
-    // ssd1306_display_str_at("Hello World 333333!", 3, 5*5);
-    // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     uint64_t second_interval_check = 0;
 

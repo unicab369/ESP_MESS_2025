@@ -110,7 +110,10 @@
         "http.h": "c",
         "esp_wifi.h": "c",
         "udp_socket.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "display.h": "c",
+        "sdmmc_cmd.h": "c",
+        "esp_http_server.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

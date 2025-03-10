@@ -248,24 +248,23 @@ static esp_err_t captive_portal_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-#define MOUNT_POINT "/sdcard"
-
 // HTTP GET handler for serving the file
 static esp_err_t file_get_handler(httpd_req_t *req) {
-    char chunk_buffer[500];
+    char chunk_buffer[1000];
     char chunk_len = sizeof(chunk_buffer);
 
     uint64_t time_ref = esp_timer_get_time();
     size_t bytes_read;
     esp_err_t err = ESP_FAIL;
 
-    err = interface->on_file_fopen_cb(MOUNT_POINT"/foo.txt");
+    err = interface->on_file_fopen_cb("/foo.txt");
     uint64_t bytes = 0;
 
     if (err == ESP_OK) {
         // Read and send the file in chunks
-        while ((bytes_read = interface->on_file_fread_cb(MOUNT_POINT"/foo.txt", chunk_buffer, chunk_len)) > 0) {
+        while ((bytes_read = interface->on_file_fread_cb(chunk_buffer, chunk_len)) > 0) {
             bytes += bytes_read;
+            // printf(">>> bytes: %u\n", bytes_read);
 
             // Send the chunk
             err = httpd_resp_send_chunk(req, chunk_buffer, bytes_read);
@@ -279,22 +278,14 @@ static esp_err_t file_get_handler(httpd_req_t *req) {
     printf("total bytes: %llu\n", bytes);
     interface->on_file_fclose_cb();
 
-    //! wait for the while loop
-    if (err != ESP_OK) {
-        return ESP_FAIL;
-    }
-
-    // if (comp_interface->on_read_file_cb(MOUNT_POINT"/foo.txt", file_buffer, file_len) != ESP_OK) {
-    //     httpd_resp_send_500(req);
-    //     return ESP_FAIL;
-    // }
-
-    // // Send the file content as the HTTP response
-    // httpd_resp_set_type(req, "text/html");
-    // httpd_resp_send(req, file_buffer, file_len);
-
     uint64_t time_diff = esp_timer_get_time() - time_ref;
-    printf("***IM HERE load time = %lld\n\n", time_diff);
+    char str[255];
+    snprintf(str, sizeof(str), "total bytes: %llu, request_time = %llu\n", bytes, time_diff);
+    printf(str);
+
+    snprintf(str, sizeof(str), "bytes: %llu, ms: %llu", bytes, time_diff);
+    interface->on_display_print(str, 0);
+    esp_err_t ret = httpd_resp_send_chunk(req, NULL, 0);
 
     return ESP_OK;
 }
@@ -350,12 +341,6 @@ static httpd_handle_t start_webserver(void)
         .method    = HTTP_GET,
         .handler   = file_get_handler,
     });
-
-    // httpd_register_uri_handler(server, &(const httpd_uri_t) {
-    //     .uri       = "/file2/",
-    //     .method    = HTTP_GET,
-    //     .handler   = file_get_handler2,
-    // });
 
     httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
 

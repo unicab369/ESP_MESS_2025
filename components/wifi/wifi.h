@@ -15,10 +15,11 @@ typedef enum __attribute__((packed)) {
 
 typedef struct {
     uint8_t max_retries;
-} app_wifi_config_t;
+    void(*on_display_print)(const char *str, uint8_t line);
+} app_wifi_interface_t;
 
 
-void wifi_setup(app_wifi_config_t *config);
+void wifi_setup(app_wifi_interface_t *config);
 void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel);
 void wifi_configure_sta(const char* sta_ssid, const char* sta_passwd);
 

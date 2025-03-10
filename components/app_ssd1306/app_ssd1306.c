@@ -13,6 +13,7 @@
 // Display dimensions
 #define SSD1306_WIDTH 128
 #define SSD1306_HEIGHT 64
+#define SSD1306_MAX_CHAR (SSD1306_WIDTH/8)
 
 // I2C Configuration
 #define I2C_PORT I2C_NUM_0
@@ -24,12 +25,21 @@
 #define SSD1306_DATA 0x40
 #define SSD1306_DEFAULT_TIMEOUT 100     // ms
 
+
+// 0x00 - Horizontal: Column pointer increments, wraps to next page after reaching end of line.
+// 0x01 - Vertical: Page pointer increments, wraps to next column after reaching end of page.
+// 0x02 - Page: Column pointer increments, stops after reaching end of page.
+#define SSD1306_INITIAL_DISPLAY_MODE 0x00
+
 // static const char *TAG = "SSD1306";
 #define BUFFER_SIZE (SSD1306_WIDTH * SSD1306_HEIGHT / 8)
 
 static uint8_t buffer[BUFFER_SIZE]; // Buffer to hold pixel data
 static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
 #define END_COLUMN (SSD1306_WIDTH-1)
+
+uint8_t ssd1306_address = 0x3C;
+
 
 uint8_t font7x5[95][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // Space
@@ -128,7 +138,6 @@ uint8_t font7x5[95][5] = {
     {0x00, 0x41, 0x36, 0x08, 0x00}, // }
     {0x08, 0x08, 0x2A, 0x1C, 0x08}  // ~
 };
-uint8_t ssd1306_address = 0x3C;
 
 // Write command to SSD1306
 static void send_command(uint8_t cmd) {
@@ -264,27 +273,29 @@ void ssd1306_clear_all(void) {
     send_data(clear_buffer, sizeof(clear_buffer));
 }
 
-
-void ssd1306_display_str(const char *str, uint8_t page) {
-    set_page(page);
-    set_column(0); 
-
-    while (*str) {
-        uint8_t char_index = *str - 32; // Adjust for ASCII offset
-        send_data((uint8_t *)font7x5[char_index], 5); // Send font data
-        str++;
-    }
-}
-
-void ssd1306_display_str_at(const char *str, uint8_t page, uint8_t column) {
+void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool clear) {
     set_page(page);
     set_column(column); 
 
-    while (*str) {
-        uint8_t char_index = *str - 32; // Adjust for ASCII offset
-        send_data((uint8_t *)font7x5[char_index], 5); // Send font data
-        str++;
+    for (int i=0; i<SSD1306_MAX_CHAR; i++) {
+        if (*str) {
+            uint8_t char_index = *str - 32; // Adjust for ASCII offset
+            send_data((uint8_t *)font7x5[char_index], 5); // Send font data
+            str++;
+        } else {
+            // uint8_t empty_data[5] = {0};
+            // send_data(empty_data, 5); // Send font data
+        }
     }
+    // while (*str) {
+    //     uint8_t char_index = *str - 32; // Adjust for ASCII offset
+    //     send_data((uint8_t *)font7x5[char_index], 5); // Send font data
+    //     str++;
+    // }
+}
+
+void ssd1306_print_str(const char *str, uint8_t page) {
+    ssd1306_print_str_at(str, page, 0, true);
 }
 
 void ssd1306_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t address) {
@@ -307,7 +318,7 @@ void ssd1306_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t address) {
     ssd1306_clear_all();
 
     // Page addressing mode
-    set_addressing_mode(0x00);
+    set_addressing_mode(SSD1306_INITIAL_DISPLAY_MODE);
 
     // Vertical line - required vertical mode
     // uint8_t data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; 

@@ -27,9 +27,48 @@ static int s_retry_num = 0;
 
 static const char *TAG = "WIFI";
 
+static app_wifi_interface_t* interface;
 static uint64_t last_update_time = 0;
 static uint8_t remaining_retries = 0;
 static wifi_status_t current_status = WIFI_STATUS_DISCONNECTED;
+
+void wifi_get_status_info(wifi_event_t event, char *output, size_t len) {
+    const char *status_str = NULL;
+
+    switch (event) {
+        case WIFI_EVENT_WIFI_READY:             status_str = "WIFI_READY"; break;
+        case WIFI_EVENT_SCAN_DONE:              status_str = "SCAN_DONE"; break;
+        case WIFI_EVENT_STA_START:              status_str = "STA_START"; break;
+        case WIFI_EVENT_STA_STOP:               status_str = "STA_STOP"; break;
+        case WIFI_EVENT_STA_CONNECTED:          status_str = "STA_CONNECTED"; break;
+        case WIFI_EVENT_STA_DISCONNECTED:       status_str = "STA_DISCONNECTED"; break;
+        case WIFI_EVENT_STA_AUTHMODE_CHANGE:    status_str = "STA_AUTHMODE_CHANGE"; break;
+
+        case WIFI_EVENT_STA_WPS_ER_SUCCESS:     status_str = "STA_WPS_ER_SUCCESS"; break;
+        case WIFI_EVENT_STA_WPS_ER_FAILED:      status_str = "STA_WPS_ER_FAILED"; break;
+        case WIFI_EVENT_STA_WPS_ER_TIMEOUT:     status_str = "STA_WPS_ER_TIMEOUT"; break;
+        case WIFI_EVENT_STA_WPS_ER_PIN:         status_str = "STA_WPS_ER_PIN"; break;
+        case WIFI_EVENT_STA_WPS_ER_PBC_OVERLAP: status_str = "STA_WPS_ER_PBC_OVERLAP"; break;
+
+        case WIFI_EVENT_AP_START:               status_str = "AP_START"; break;
+        case WIFI_EVENT_AP_STOP:                status_str = "AP_STOP"; break;
+        case WIFI_EVENT_AP_STACONNECTED:        status_str = "AP_STA_CONNECTED"; break;
+        case WIFI_EVENT_AP_STADISCONNECTED:     status_str = "AP_STA_DISCONNECTED"; break;
+        case WIFI_EVENT_AP_PROBEREQRECVED:      status_str = "AP_PROBEREQRECVED"; break;
+        
+        case WIFI_EVENT_AP_WPS_RG_SUCCESS:      status_str = "AP_WPS_RG_SUCCESS"; break;
+        case WIFI_EVENT_AP_WPS_RG_FAILED:       status_str = "AP_WPS_RG_FAILED"; break;
+        case WIFI_EVENT_AP_WPS_RG_TIMEOUT:      status_str = "AP_WPS_RG_TIMEOUT"; break;
+        case WIFI_EVENT_AP_WPS_RG_PIN:          status_str = "AP_WPS_RG_PIN"; break;
+        case WIFI_EVENT_AP_WPS_RG_PBC_OVERLAP:  status_str = "AP_WPS_RG_PBC_OVERLAP"; break;
+        default:                                status_str = "UNKNOWN"; break;
+    }
+
+    strlcpy(output, "wifi: ", len);
+    strlcat(output, status_str, len);
+} 
+
+static int32_t current_status2;
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
@@ -53,6 +92,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG_STA, "Got IP:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
     }
+
+    current_status2 = event_id;
+    char output[32];
+    wifi_get_status_info(event_id, output, sizeof(output));
+    printf(">>> WIFI STATUS: %s\n", output);
+    interface->on_display_print(output, 1);
 }
 
 void softap_set_dns_addr(esp_netif_t *esp_netif_ap,esp_netif_t *esp_netif_sta)
@@ -66,12 +111,10 @@ void softap_set_dns_addr(esp_netif_t *esp_netif_ap,esp_netif_t *esp_netif_sta)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_start(esp_netif_ap));
 }
 
-app_wifi_config_t* wifi_config;
-
-void wifi_setup(app_wifi_config_t *config)
+void wifi_setup(app_wifi_interface_t *intf)
 {
-    wifi_config = config;
-    remaining_retries = config->max_retries;
+    interface = intf;
+    remaining_retries = intf->max_retries;
 
     //! Minimum setup for ESP-NOW
     // ESP_ERROR_CHECK(esp_netif_init());
@@ -193,7 +236,7 @@ wifi_status_t wifi_check_status(uint64_t current_time) {
     if (ret == ESP_OK) {
         ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
         current_status = WIFI_STATUS_CONNECTED;
-    } else if (remaining_retries < wifi_config->max_retries) {
+    } else if (remaining_retries < interface->max_retries) {
         ESP_LOGI(TAG_STA, "Retrying connection to AP: %s", esp_err_to_name(ret));
         remaining_retries = 0;
         current_status = WIFI_STATUS_RETRY;
