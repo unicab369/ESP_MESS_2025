@@ -180,7 +180,6 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
-
 void app_main(void)
 {   
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
@@ -204,7 +203,14 @@ void app_main(void)
 
         wifi_configure_softAp(AP_WIFI_SSID, AP_WIFI_PASSWORD, 1);
         wifi_configure_sta(WIFI_SSID, WIFI_PASSWORD);
-        http_setup();
+
+        http_interface_t temp_interface = {
+            .on_file_fopen_cb = storage_sd_fopen,
+            .on_file_fread_cb = storage_sd_fread,
+            .on_file_fclose_cb = storage_sd_fclose
+        };
+    
+        http_setup(&temp_interface);
         wifi_connect();
 
         // espnow_setup(esp_mac, espnow_message_handler);
@@ -224,7 +230,8 @@ void app_main(void)
         .sclk = SPI_SCLK,
         .cs = SPI_CS
     });
-    storage_sd_test();
+    // storage_sd_test();
+
 
     gpio_digital_setup(LED_FADE_PIN);
 

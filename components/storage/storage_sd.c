@@ -39,38 +39,62 @@ pin_configuration_t config = {
 };
 #endif //CONFIG_EXAMPLE_DEBUG_PIN_CONNECTIONS
 
-esp_err_t storage_sd_write(const char *path, char *data)
-{
+static FILE *file;
+
+esp_err_t storage_sd_fopen(const char *path) {
+    ESP_LOGI(TAG, "Open file %s", path);
+
+    file = fopen(path, "r");
+    if (file == NULL) {
+        ESP_LOGE(TAG, "Failed to open file for reading");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+
+size_t storage_sd_fread(const char *path, char *buff, size_t len) {
+    // Reads a specified number of bytes (or records) from a file.
+    return fread(buff, 1, len, file);
+}
+
+int storage_sd_fclose() {
+    if (file == NULL) return 0;
+    printf(">>>>> storage_sd_fclose()\n");
+    return fclose(file);
+}
+
+esp_err_t storage_sd_write(const char *path, char *buff) {
     ESP_LOGI(TAG, "Opening file %s", path);
     FILE *f = fopen(path, "w");
     if (f == NULL) {
         ESP_LOGE(TAG, "Failed to open file for writing");
         return ESP_FAIL;
     }
-    fprintf(f, data);
+    fprintf(f, buff);
     fclose(f);
     ESP_LOGI(TAG, "File written");
 
     return ESP_OK;
 }
 
-esp_err_t storage_sd_read(const char *path, char *buffer, size_t len)
-{
-    ESP_LOGI(TAG, "Reading file %s", path);
-    FILE *file = fopen(path, "r");
+esp_err_t storage_sd_get(const char *path, char *buff, size_t len) {
+    ESP_LOGI(TAG, "Reading file %s\n", path);
+    file = fopen(path, "r");
     if (file == NULL) {
         ESP_LOGE(TAG, "Failed to open file for reading");
         return ESP_FAIL;
     }
 
-    // char line[EXAMPLE_MAX_CHAR_SIZE];
-    fgets(buffer, len, file);
+    // Reads a line of text from a file (up to a specified number of characters 
+    // or until a newline is encountered).
+    fgets(buff, len, file);
     fclose(file);
 
     // strip newline
-    char *pos = strchr(buffer, '\n');
+    char *pos = strchr(buff, '\n');
     if (pos) *pos = '\0';
-    ESP_LOGI(TAG, "Read from file: '%s'", buffer);
+    ESP_LOGI(TAG, "Read from file: '%s'\n", buff);
 
     return ESP_OK;
 }
@@ -203,7 +227,7 @@ void storage_sd_test(void) {
     }
 
     char line[EXAMPLE_MAX_CHAR_SIZE];
-    ret = storage_sd_read(file_foo, line, sizeof(line));
+    ret = storage_sd_get(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
 
     const char *file_nihao = MOUNT_POINT"/nihao.txt";
@@ -213,22 +237,22 @@ void storage_sd_test(void) {
     if (ret != ESP_OK) return;
 
     //Open file for reading
-    ret = storage_sd_read(file_foo, line, sizeof(line));
+    ret = storage_sd_get(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
 
-    // All done, unmount partition and disable SPI peripheral
-    esp_vfs_fat_sdcard_unmount(mount_point, card);
-    ESP_LOGI(TAG, "Card unmounted");
+//     // All done, unmount partition and disable SPI peripheral
+//     esp_vfs_fat_sdcard_unmount(mount_point, card);
+//     ESP_LOGI(TAG, "Card unmounted");
 
-    //deinitialize the bus after all devices are removed
-    spi_bus_free(host.slot);
+//     //deinitialize the bus after all devices are removed
+//     spi_bus_free(host.slot);
 
-    // Deinitialize the power control driver if it was used
-#if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
-    ret = sd_pwr_ctrl_del_on_chip_ldo(pwr_ctrl_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to delete the on-chip LDO power control driver");
-        return;
-    }
-#endif
+//     // Deinitialize the power control driver if it was used
+// #if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+//     ret = sd_pwr_ctrl_del_on_chip_ldo(pwr_ctrl_handle);
+//     if (ret != ESP_OK) {
+//         ESP_LOGE(TAG, "Failed to delete the on-chip LDO power control driver");
+//         return;
+//     }
+// #endif
 }

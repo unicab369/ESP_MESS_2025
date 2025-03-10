@@ -14,4 +14,9 @@ typedef struct {
 void storage_sd_configure(storage_sd_config_t *config);
 void storage_sd_test(void);
 
+esp_err_t storage_sd_fopen(const char *path);
+size_t storage_sd_fread(const char *path, char *buff, size_t len);
+int storage_sd_fclose();
+
+esp_err_t storage_sd_get(const char *path, char *buffer, size_t len);
 esp_err_t storage_sd_write(const char *path, char *data);

@@ -6,6 +6,9 @@
    software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
    CONDITIONS OF ANY KIND, either express or implied.
 */
+
+#include "http.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include <esp_wifi.h>
@@ -16,11 +19,10 @@
 #include <sys/param.h>
 #include "esp_netif.h"
 #include "esp_eth.h"
-
+#include "esp_timer.h"
 
 #include "esp_tls_crypto.h"
 #include <esp_http_server.h>
-
 
 #include "esp_mac.h"
 #include "lwip/inet.h"
@@ -31,6 +33,7 @@
 #define CONFIG_EXAMPLE_CONNECT_WIFI true
 
 static const char *TAG = "APP_HTTP";
+static http_interface_t* interface;
 
 // Async requests are queued here while they wait to
 // be processed by the workers
@@ -245,6 +248,57 @@ static esp_err_t captive_portal_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+#define MOUNT_POINT "/sdcard"
+
+// HTTP GET handler for serving the file
+static esp_err_t file_get_handler(httpd_req_t *req) {
+    char chunk_buffer[500];
+    char chunk_len = sizeof(chunk_buffer);
+
+    uint64_t time_ref = esp_timer_get_time();
+    size_t bytes_read;
+    esp_err_t err = ESP_FAIL;
+
+    err = interface->on_file_fopen_cb(MOUNT_POINT"/foo.txt");
+    uint64_t bytes = 0;
+
+    if (err == ESP_OK) {
+        // Read and send the file in chunks
+        while ((bytes_read = interface->on_file_fread_cb(MOUNT_POINT"/foo.txt", chunk_buffer, chunk_len)) > 0) {
+            bytes += bytes_read;
+
+            // Send the chunk
+            err = httpd_resp_send_chunk(req, chunk_buffer, bytes_read);
+            if (err != ESP_OK) {
+                httpd_resp_send_500(req);
+                break;
+            }
+        }
+    }
+
+    printf("total bytes: %llu\n", bytes);
+    interface->on_file_fclose_cb();
+
+    //! wait for the while loop
+    if (err != ESP_OK) {
+        return ESP_FAIL;
+    }
+
+    // if (comp_interface->on_read_file_cb(MOUNT_POINT"/foo.txt", file_buffer, file_len) != ESP_OK) {
+    //     httpd_resp_send_500(req);
+    //     return ESP_FAIL;
+    // }
+
+    // // Send the file content as the HTTP response
+    // httpd_resp_set_type(req, "text/html");
+    // httpd_resp_send(req, file_buffer, file_len);
+
+    uint64_t time_diff = esp_timer_get_time() - time_ref;
+    printf("***IM HERE load time = %lld\n\n", time_diff);
+
+    return ESP_OK;
+}
+
 static httpd_handle_t start_webserver(void)
 {
     httpd_handle_t server = NULL;
@@ -284,11 +338,24 @@ static httpd_handle_t start_webserver(void)
         .method    = HTTP_GET,
         .handler   = long_handler,
     });
+
     httpd_register_uri_handler(server, &(const httpd_uri_t) {
         .uri       = "/quick",
         .method    = HTTP_GET,
         .handler   = quick_handler,
     });
+
+    httpd_register_uri_handler(server, &(const httpd_uri_t) {
+        .uri       = "/file/",
+        .method    = HTTP_GET,
+        .handler   = file_get_handler,
+    });
+
+    // httpd_register_uri_handler(server, &(const httpd_uri_t) {
+    //     .uri       = "/file2/",
+    //     .method    = HTTP_GET,
+    //     .handler   = file_get_handler2,
+    // });
 
     httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
 
@@ -302,8 +369,7 @@ static esp_err_t stop_webserver(httpd_handle_t server)
 }
 
 static void disconnect_handler(void* arg, esp_event_base_t event_base,
-                            int32_t event_id, void* event_data)
-{
+                            int32_t event_id, void* event_data) {
     httpd_handle_t* server = (httpd_handle_t*) arg;
     if (*server) {
         ESP_LOGI(TAG, "Stopping webserver");
@@ -316,8 +382,7 @@ static void disconnect_handler(void* arg, esp_event_base_t event_base,
 }
 
 static void connect_handler(void* arg, esp_event_base_t event_base,
-                            int32_t event_id, void* event_data)
-{
+                            int32_t event_id, void* event_data) {
     httpd_handle_t* server = (httpd_handle_t*) arg;
     if (*server == NULL) {
         ESP_LOGI(TAG, "Starting webserver");
@@ -325,7 +390,6 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-// bool is_configured = false;
 
 static void dhcp_set_captiveportal_url(void) {
     // get the IP of the access point to redirect to
@@ -352,11 +416,9 @@ static void dhcp_set_captiveportal_url(void) {
 }
 
 
-void http_setup(void)
+void http_setup(http_interface_t* intf)
 {
-    // if (is_configured) return;
-    // is_configured = true;
-
+    interface = intf;
     static httpd_handle_t server = NULL;
 
 #ifdef CONFIG_EXAMPLE_CONNECT_WIFI
@@ -465,3 +527,39 @@ void http_post_request() {
     // Clean up
     esp_http_client_cleanup(client);
 }
+
+
+// // HTTP GET handler to send file in chunks
+// static esp_err_t file_get_handler(httpd_req_t *req) {
+//     const char *file_path = "/sdcard/foo.txt";  // Path to the file
+//     FILE *file = fopen(file_path, "r");
+//     if (file == NULL) {
+//         ESP_LOGE(TAG, "Failed to open file: %s", file_path);
+//         httpd_resp_send_500(req);
+//         return ESP_FAIL;
+//     }
+
+//     // Set the response content type
+//     httpd_resp_set_type(req, "text/plain");
+
+//     // Buffer to hold each chunk of data
+//     char chunk_buffer[1024];  // 1 KB chunk size
+//     size_t bytes_read;
+
+//     // Read and send the file in chunks
+//     while ((bytes_read = fread(chunk_buffer, 1, sizeof(chunk_buffer), file)) > 0) {
+//         // Send the chunk
+//         if (httpd_resp_send_chunk(req, chunk_buffer, bytes_read) != ESP_OK) {
+//             ESP_LOGE(TAG, "Failed to send chunk");
+//             fclose(file);
+//             return ESP_FAIL;
+//         }
+//     }
+
+//     // Close the file
+//     fclose(file);
+
+//     // End the response
+//     httpd_resp_send_chunk(req, NULL, 0);
+//     return ESP_OK;
+// }
