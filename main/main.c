@@ -1,5 +1,6 @@
 #include "main.h"
 
+#define WIFI_ENABLED true
 
 #if WIFI_ENABLED
     #include "wifi.h"
@@ -116,7 +117,6 @@ void app_main(void)
         cdc_setup();
     #endif
 
-
     display_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
 
     // ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
@@ -138,9 +138,9 @@ void app_main(void)
 
     
         http_setup(&(http_interface_t){
-            .on_file_fopen_cb = storage_sd_fopen,
-            .on_file_fread_cb = storage_sd_fread,
-            .on_file_fclose_cb = storage_sd_fclose,
+            .on_file_fopen_cb = mod_sd_fopen,
+            .on_file_fread_cb = mod_sd_fread,
+            .on_file_fclose_cb = mod_sd_fclose,
             .on_display_print = display_print_str
         });
         wifi_connect();
@@ -158,7 +158,7 @@ void app_main(void)
         // wifi_nan_publish();
     #endif
 
-    storage_sd_spi_config(&(storage_sd_config_t) {
+    mod_sd_spi_config(&(storage_sd_config_t) {
         .mmc_enabled = true,
 
         //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
@@ -175,7 +175,7 @@ void app_main(void)
             .cs = SPI_CS
         },
     });
-    // storage_sd_test();
+    mod_sd_test();
 
     app_console_setup();
 
@@ -262,7 +262,7 @@ void app_main(void)
     };
     ws2812_load_fadeColor(obj4, 1);
 
-    // app_mbedtls_setup();
+    mod_mbedtls_setup();
 
 
     uint64_t second_interval_check = 0;
@@ -278,7 +278,7 @@ void app_main(void)
         led_fade_loop(current_time);
 
         button_click_loop(current_time);
-        // rotary_loop(current_time);
+        rotary_loop(current_time);
 
         ws2812_loop(current_time);
         app_console_task();
@@ -295,7 +295,7 @@ void app_main(void)
             wifi_status_t status = wifi_check_status(current_time);
             
             if (status == WIFI_STATUS_CONNECTED) {
-                ntp_status_t ntp_status = ntp_task(current_time);
+                // ntp_status_t ntp_status = ntp_task(current_time);
 
                 //! tcp sockets block, need to find a solution
                 // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);

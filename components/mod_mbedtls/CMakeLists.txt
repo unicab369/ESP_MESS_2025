@@ -1,4 +1,4 @@
-idf_component_register(SRCS "app_mbedtls.c"
+idf_component_register(SRCS "mod_mbedtls.c"
                     INCLUDE_DIRS "."
                     REQUIRES
                         mbedtls

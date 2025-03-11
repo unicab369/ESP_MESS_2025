@@ -38,7 +38,7 @@ static int handle_error(int ret, const char *msg) {
     return ret;
 }
 
-void app_mbedtls_setup(void) { 
+void mod_mbedtls_setup(void) { 
     mbedtls_entropy_context entropy;   
     int ret;
     char error_buf[200];

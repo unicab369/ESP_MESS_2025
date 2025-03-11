@@ -24,14 +24,13 @@
 #include "ws2812.h"
 #include "timer_pulse.h"
 #include "console/app_console.h"
-#include "storage_sd.h"
-#include "app_mbedtls.h"
-// #include "app_ssd1306.h"
+
+#include "mod_sd.h"
+#include "mod_mbedtls.h"
 #include "display/display.h"
 #include "sdkconfig.h"
 
 
-#define WIFI_ENABLED false
 #define ESP32_BOARD_V3 true
 
 static const char *TAG = "MAIN";

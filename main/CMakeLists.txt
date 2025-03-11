@@ -17,9 +17,9 @@ idf_component_register(SRCS "main.c"
                         nvs_flash
                         console
                         spi_flash
-                        storage
-                        app_mbedtls
-                        app_ssd1306
+                        mod_sd
+                        mod_mbedtls
+                        mod_ssd1306
                         mod_nvs
                     REQUIRES
                         driver

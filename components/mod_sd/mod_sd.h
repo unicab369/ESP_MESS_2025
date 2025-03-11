@@ -25,13 +25,13 @@ typedef struct {
 
 } storage_sd_config_t;
 
-void storage_sd_spi_config(storage_sd_config_t *config);
-void storage_sd_mmc_config(storage_sd_config_t *config);
-void storage_sd_test(void);
+void mod_sd_spi_config(storage_sd_config_t *config);
+void mod_sd_mmc_config(storage_sd_config_t *config);
+void mod_sd_test(void);
 
-esp_err_t storage_sd_fopen(const char *path);
-size_t storage_sd_fread(char *buff, size_t len);
-int storage_sd_fclose();
+esp_err_t mod_sd_fopen(const char *path);
+size_t mod_sd_fread(char *buff, size_t len);
+int mod_sd_fclose();
 
-esp_err_t storage_sd_get(const char *path, char *buffer, size_t len);
-esp_err_t storage_sd_write(const char *path, char *data);
+esp_err_t mod_sd_get(const char *path, char *buffer, size_t len);
+esp_err_t mod_sd_write(const char *path, char *data);

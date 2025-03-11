@@ -1,4 +1,5 @@
-#include "storage_sd.h"
+#include "mod_sd.h"
+
 #include <string.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
@@ -20,7 +21,7 @@ static const char *TAG = "STORAGE_SD";
 
 static FILE *file;
 
-esp_err_t storage_sd_fopen(const char *path) {
+esp_err_t mod_sd_fopen(const char *path) {
     char full_path[MAX_CHAR_SIZE];
     // Concatenate MOUNT_POINT and the provided path
     snprintf(full_path, sizeof(full_path), "%s%s", MOUNT_POINT, path);
@@ -37,18 +38,18 @@ esp_err_t storage_sd_fopen(const char *path) {
     return ESP_OK;
 }
 
-size_t storage_sd_fread(char *buff, size_t len) {
+size_t mod_sd_fread(char *buff, size_t len) {
     // Reads a specified number of bytes (or records) from a file.
     return fread(buff, 1, len, file);
 }
 
-int storage_sd_fclose() {
+int mod_sd_fclose() {
     if (file == NULL) return 0;
-    ESP_LOGI(TAG, "storage_sd_fclose");
+    ESP_LOGI(TAG, "mod_sd_fclose");
     return fclose(file);
 }
 
-esp_err_t storage_sd_write(const char *path, char *buff) {
+esp_err_t mod_sd_write(const char *path, char *buff) {
     ESP_LOGI(TAG, "Opening file %s", path);
 
     FILE *f = fopen(path, "w");
@@ -63,7 +64,7 @@ esp_err_t storage_sd_write(const char *path, char *buff) {
     return ESP_OK;
 }
 
-esp_err_t storage_sd_get(const char *path, char *buff, size_t len) {
+esp_err_t mod_sd_get(const char *path, char *buff, size_t len) {
     ESP_LOGI(TAG, "Reading file %s\n", path);
     file = fopen(path, "r");
     if (file == NULL) {
@@ -97,7 +98,7 @@ static esp_err_t ret;
 const char mount_point[] = MOUNT_POINT;
 
         
-void storage_sd_spi_config(storage_sd_config_t *config) {
+void mod_sd_spi_config(storage_sd_config_t *config) {
     // Note: esp_vfs_fat_sdmmc/sdspi_mount is all-in-one convenience functions.
     // Please check its source code and implement error recovery when developing
     // production applications.
@@ -183,7 +184,7 @@ void storage_sd_format_card() {
     }
 }
 
-void storage_sd_test(void) {
+void mod_sd_test(void) {
     if (ret != ESP_OK) return;
     
     // First create a file.
@@ -192,10 +193,10 @@ void storage_sd_test(void) {
     printf("card name: %s", card->cid.name);
 
     snprintf(data, MAX_CHAR_SIZE, "%s %s!\n", "Hello", card->cid.name);
-    ret = storage_sd_write(file_hello, data);
+    ret = mod_sd_write(file_hello, data);
     if (ret != ESP_OK) return;
 
-    const char *file_foo = MOUNT_POINT"/foo.txt";
+    const char *file_foo = MOUNT_POINT"/foo2.txt";
 
     // Check if destination file exists before renaming
     struct stat st;
@@ -212,17 +213,17 @@ void storage_sd_test(void) {
     }
 
     char line[MAX_CHAR_SIZE];
-    ret = storage_sd_get(file_foo, line, sizeof(line));
+    ret = mod_sd_get(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
 
     const char *file_nihao = MOUNT_POINT"/nihao.txt";
     memset(data, 0, MAX_CHAR_SIZE);
     snprintf(data, MAX_CHAR_SIZE, "%s %s!\n", "Nihao", card->cid.name);
-    ret = storage_sd_write(file_nihao, data);
+    ret = mod_sd_write(file_nihao, data);
     if (ret != ESP_OK) return;
 
     //Open file for reading
-    ret = storage_sd_get(file_foo, line, sizeof(line));
+    ret = mod_sd_get(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
 
 //     // All done, unmount partition and disable SPI peripheral
@@ -249,7 +250,7 @@ void storage_sd_test(void) {
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
 
-void storage_sd_mmc_config(storage_sd_config_t *config)
+void mod_sd_mmc_config(storage_sd_config_t *config)
 {
     // By default, SD card frequency is initialized to SDMMC_FREQ_DEFAULT (20MHz)
     // For setting a specific frequency, use host.max_freq_khz (range 400kHz - 40MHz for SDMMC)

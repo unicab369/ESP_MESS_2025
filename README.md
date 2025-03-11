@@ -15,7 +15,7 @@ Create a `dev_config.h` file under `main/` with the following template. You can 
 
 ## Build the app
 
-1. Build the project: `idf.py build`
+1. Build the project: `idf.py build` or `idf.py app build`
 2. Flash the project: `idf.py flash -p COMx` if a COM port already selected then use `idf.py flash`
 3. Open the monitor: `idf.py monitor`
    
@@ -68,15 +68,11 @@ idf.py set-target esp32x
 6. `Power Mode`: Unleash your magical typing power.
 
 
-## List of idf.py commands
+## Other idf.py commands
 
-`menuconfig`: Start the graphical configuration tool.<br>
 `idf.py --version`: Displays the version of ESP-IDF being used in the current environment.<br>
 `idf.py partition-table`: Prints the partition table information for the project.<br>
 `idf.py show_targets`: Lists all supported target chips.<br>
-`build`: Build the project.<br>
-`flash`: Flash the project to the target.<br>
-`monitor`: Display serial output from the ESP32.<br>
 `app-flash`: Flash only the app part of the project.<br>
 `erase_flash`: Erase the ESP32's entire flash chip.<br>
 `reconfigure`: Re-run CMake even if it doesn't seem to need re-running.<br>
