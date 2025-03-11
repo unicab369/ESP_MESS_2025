@@ -1,30 +1,10 @@
 #include "mod_nvs.h"
 
 
-
 static const char *TAG = "MOD_NVS";
 
-static char current_namespace[32] = "storage";
+static char sel_namespace[32] = "storage";
 static nvs_handle_t sel_handle;
-
-typedef struct {
-    nvs_type_t type;
-    const char *str;
-} type_str_pair_t;
-
-static const type_str_pair_t type_str_pair[] = {
-    { NVS_TYPE_I8, "i8" },
-    { NVS_TYPE_U8, "u8" },
-    { NVS_TYPE_U16, "u16" },
-    { NVS_TYPE_I16, "i16" },
-    { NVS_TYPE_U32, "u32" },
-    { NVS_TYPE_I32, "i32" },
-    { NVS_TYPE_U64, "u64" },
-    { NVS_TYPE_I64, "i64" },
-    { NVS_TYPE_STR, "str" },
-    { NVS_TYPE_BLOB, "blob" },
-    { NVS_TYPE_ANY, "any" },
-};
 
 static const size_t TYPE_STR_PAIR_SIZE = sizeof(type_str_pair) / sizeof(type_str_pair[0]);
 
@@ -52,14 +32,14 @@ void mod_nvs_setup(void) {
 
 int mod_nvs_set_namespace(const char* target)
 {
-    strlcpy(current_namespace, target, sizeof(current_namespace));
-    ESP_LOGI(TAG, "Namespace set to '%s'", current_namespace);
+    strlcpy(sel_namespace, target, sizeof(sel_namespace));
+    ESP_LOGI(TAG, "Namespace set to '%s'", sel_namespace);
     return 0;
 }
 
 
 static esp_err_t open_nvs() {
-    esp_err_t ret = nvs_open(current_namespace, NVS_READWRITE, &sel_handle);
+    esp_err_t ret = nvs_open(sel_namespace, NVS_READWRITE, &sel_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to open NVS namespace: %s", esp_err_to_name(ret));
     }
@@ -170,7 +150,6 @@ esp_err_t mod_nvs_get_value(const char *key, void* value, nvs_type_t type) {
     return ret;
 }
 
-
 esp_err_t mod_nvs_set_blob(const char *key, void* value, size_t len) {
     if (open_nvs() != ESP_OK) return ESP_FAIL;
 
@@ -180,39 +159,52 @@ esp_err_t mod_nvs_set_blob(const char *key, void* value, size_t len) {
     return err;
 }
 
-esp_err_t mod_nvs_get_blob(const char *key, void* value, size_t* len) {
-    if (open_nvs() != ESP_OK) return ESP_FAIL;
+uint8_t* mod_nvs_get_blob(const char *key, size_t* len) {
+    if (open_nvs() != ESP_OK) return NULL;
 
     // First, get the required size of the blob
-    size_t required_size = 0;
-    esp_err_t ret = nvs_get_blob(sel_handle, key, NULL, &required_size);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get blob size for key %s: %s", key, esp_err_to_name(ret));
-        nvs_close(sel_handle);
-        return ret;
+    esp_err_t err = nvs_get_blob(sel_handle, key, NULL, len);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get blob size for key %s: %s", key, esp_err_to_name(err));
+        return NULL;
     }
 
-    // Check if the provided buffer is large enough
-    if (*len < required_size) {
-        ESP_LOGE(TAG, "Buffer too small for blob (required: %d, provided: %d)", required_size, *len);
-        nvs_close(sel_handle);
-        return ESP_ERR_NVS_INVALID_LENGTH;
+    // Allocate memory for the blob
+    uint8_t *blob = (uint8_t *)malloc(*len);
+    if (blob == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for blob");
+        return NULL;
     }
 
-    // Read the blob into the provided buffer
-    ret = nvs_get_blob(sel_handle, key, value, &required_size);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to read blob for key %s: %s", key, esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "Read blob for key %s (size: %d)", key, required_size);
-        *len = required_size; // Update the length with the actual size of the blob
+    // Read the blob into the allocated memory
+    err = nvs_get_blob(sel_handle, key, blob, len);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read blob for key %s: %s", key, esp_err_to_name(err));
+        free(blob); // Free the allocated memory on failure
+        return NULL;
     }
 
-    // Close the NVS handle
-    nvs_close(sel_handle);
-
-    return ret; // Return the result of the operation
+    return blob; // Return the allocated blob
 }
+
+// esp_err_t mod_nvs_get_blob(const char *key, void* value, size_t* len) {
+//     if (open_nvs() != ESP_OK) return ESP_FAIL;
+
+//     // Read the blob into the provided buffer
+//     esp_err_t err = nvs_get_blob(sel_handle, key, NULL, len);
+//     if (err != ESP_OK) return err;
+    
+//     char *malloc_blob = (char *)malloc(len);
+//     err = nvs_get_blob(sel_handle, key, malloc_blob, len);
+
+//     if (err != ESP_OK) {
+//         ESP_LOGE(TAG, "Failed to read blob for key %s: %s", key, esp_err_to_name(err));
+//     }
+
+//     // Close the NVS handle
+//     nvs_close(sel_handle);
+//     return err;
+// }
 
 esp_err_t mod_nvs_erase(const char *key) {
     if (open_nvs() != ESP_OK) return ESP_FAIL;
@@ -238,41 +230,61 @@ esp_err_t mod_nvs_erase_all(void) {
             err = nvs_commit(sel_handle);
         }
 
-    ESP_LOGI(TAG, "Namespace '%s' was %s erased", current_namespace, (err == ESP_OK) ? "" : "not");
+    ESP_LOGI(TAG, "Namespace %s was %s erased", sel_namespace, (err == ESP_OK) ? "" : "not");
 
     nvs_close(sel_handle);
     return ESP_OK;
 }
 
+static nvs_type_t str_to_type2(const char *type) {
+    for (int i = 0; i < TYPE_STR_PAIR_SIZE; i++) {
+        const type_str_pair_t *p = &type_str_pair[i];
+        if (strcmp(type, p->str) == 0) {
+            return  p->type;
+        }
+    }
 
-int mod_nvs_list(const char *part, const char *name, const char *str_type) {
-    // nvs_type_t type = str_to_type(str_type);
+    return NVS_TYPE_ANY;
+}
 
-    // nvs_iterator_t it = NULL;
-    // esp_err_t result = nvs_entry_find(part, NULL, type, &it);
-    // if (result == ESP_ERR_NVS_NOT_FOUND) {
-    //     ESP_LOGE(TAG, "No such entry was found");
-    //     return 1;
-    // }
+static const char *type_to_str2(nvs_type_t type) {
+    for (int i = 0; i < TYPE_STR_PAIR_SIZE; i++) {
+        const type_str_pair_t *p = &type_str_pair[i];
+        if (p->type == type) {
+            return  p->str;
+        }
+    }
 
-    // if (result != ESP_OK) {
-    //     ESP_LOGE(TAG, "NVS error: %s", esp_err_to_name(result));
-    //     return 1;
-    // }
+    return "Unknown";
+}
 
-    // do {
-    //     nvs_entry_info_t info;
-    //     nvs_entry_info(it, &info);
-    //     result = nvs_entry_next(&it);
 
-    //     printf("namespace '%s', key '%s', type '%s' \n",
-    //         info.namespace_name, info.key, type_to_str(info.type));
-    // } while (result == ESP_OK);
+int mod_nvs_list(const char *partition, const char *name, nvs_type_t type) {
+    nvs_iterator_t it = NULL;
+    esp_err_t result = nvs_entry_find(partition, name, type, &it);
+    if (result == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGE(TAG, "No such entry was found");
+        return 1;
+    }
 
-    // if (result != ESP_ERR_NVS_NOT_FOUND) { // the last iteration ran into an internal error
-    //     ESP_LOGE(TAG, "NVS error %s at current iteration, stopping.", esp_err_to_name(result));
-    //     return 1;
-    // }
+    if (result != ESP_OK) {
+        ESP_LOGE(TAG, "NVS error: %s", esp_err_to_name(result));
+        return 1;
+    }
+
+    do {
+        nvs_entry_info_t info;
+        nvs_entry_info(it, &info);
+        result = nvs_entry_next(&it);
+
+        printf("namespace = %s, key = %s, type = %s\n",
+            info.namespace_name, info.key, type_to_str2(info.type));
+    } while (result == ESP_OK);
+
+    if (result != ESP_ERR_NVS_NOT_FOUND) { // the last iteration ran into an internal error
+        ESP_LOGE(TAG, "NVS error %s at current iteration, stopping.", esp_err_to_name(result));
+        return 1;
+    }
 
     return 0;
 }
