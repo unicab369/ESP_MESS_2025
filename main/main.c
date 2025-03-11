@@ -150,7 +150,7 @@ void app_main(void)
         char mac_str[32];
         snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(esp_mac));
         ESP_LOGW(TAG, "ESP mac: %s\n", mac_str);
-        // display_print_str(mac_str, 0);
+        display_print_str(mac_str, 0);
 
         // wifi_scan();
 
@@ -281,7 +281,7 @@ void app_main(void)
         // rotary_loop(current_time);
 
         ws2812_loop(current_time);
-        app_console_run();
+        app_console_task();
 
         #if WIFI_ENABLED
             if (current_time - second_interval_check > 1000000) {

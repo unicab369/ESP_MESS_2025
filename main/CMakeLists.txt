@@ -20,6 +20,7 @@ idf_component_register(SRCS "main.c"
                         storage
                         app_mbedtls
                         app_ssd1306
+                        mod_nvs
                     REQUIRES
                         driver
                         app_gpio

@@ -20,6 +20,7 @@
 #include "esp_err.h"
 #include "cmd_nvs.h"
 #include "nvs.h"
+#include "mod_nvs.h"
 
 typedef struct {
     nvs_type_t type;
@@ -161,214 +162,42 @@ static void print_blob(const char *blob, size_t len)
 }
 
 
-static esp_err_t set_value_in_nvs(const char *key, const char *str_type, const char *str_value)
-{
-    esp_err_t err;
-    nvs_handle_t nvs;
-    bool range_error = false;
+// static esp_err_t erase(const char *key)
+// {
+//     nvs_handle_t nvs;
 
-    nvs_type_t type = str_to_type(str_type);
+//     esp_err_t err = nvs_open(current_namespace, NVS_READWRITE, &nvs);
+//     if (err == ESP_OK) {
+//         err = nvs_erase_key(nvs, key);
+//         if (err == ESP_OK) {
+//             err = nvs_commit(nvs);
+//             if (err == ESP_OK) {
+//                 ESP_LOGI(TAG, "Value with key '%s' erased", key);
+//             }
+//         }
+//         nvs_close(nvs);
+//     }
 
-    if (type == NVS_TYPE_ANY) {
-        ESP_LOGE(TAG, "Type '%s' is undefined", str_type);
-        return ESP_ERR_NVS_TYPE_MISMATCH;
-    }
+//     return err;
+// }
 
-    err = nvs_open(current_namespace, NVS_READWRITE, &nvs);
-    if (err != ESP_OK) {
-        return err;
-    }
+// static esp_err_t erase_all(const char *name)
+// {
+//     nvs_handle_t nvs;
 
-    if (type == NVS_TYPE_I8) {
-        int32_t value = strtol(str_value, NULL, 0);
-        if (value < INT8_MIN || value > INT8_MAX || errno == ERANGE) {
-            range_error = true;
-        } else {
-            err = nvs_set_i8(nvs, key, (int8_t)value);
-        }
-    } else if (type == NVS_TYPE_U8) {
-        uint32_t value = strtoul(str_value, NULL, 0);
-        if (value > UINT8_MAX || errno == ERANGE) {
-            range_error = true;
-        } else {
-            err = nvs_set_u8(nvs, key, (uint8_t)value);
-        }
-    } else if (type == NVS_TYPE_I16) {
-        int32_t value = strtol(str_value, NULL, 0);
-        if (value < INT16_MIN || value > INT16_MAX || errno == ERANGE) {
-            range_error = true;
-        } else {
-            err = nvs_set_i16(nvs, key, (int16_t)value);
-        }
-    } else if (type == NVS_TYPE_U16) {
-        uint32_t value = strtoul(str_value, NULL, 0);
-        if (value > UINT16_MAX || errno == ERANGE) {
-            range_error = true;
-        } else {
-            err = nvs_set_u16(nvs, key, (uint16_t)value);
-        }
-    } else if (type == NVS_TYPE_I32) {
-        int32_t value = strtol(str_value, NULL, 0);
-        if (errno != ERANGE) {
-            err = nvs_set_i32(nvs, key, value);
-        }
-    } else if (type == NVS_TYPE_U32) {
-        uint32_t value = strtoul(str_value, NULL, 0);
-        if (errno != ERANGE) {
-            err = nvs_set_u32(nvs, key, value);
-        }
-    } else if (type == NVS_TYPE_I64) {
-        int64_t value = strtoll(str_value, NULL, 0);
-        if (errno != ERANGE) {
-            err = nvs_set_i64(nvs, key, value);
-        }
-    } else if (type == NVS_TYPE_U64) {
-        uint64_t value = strtoull(str_value, NULL, 0);
-        if (errno != ERANGE) {
-            err = nvs_set_u64(nvs, key, value);
-        }
-    } else if (type == NVS_TYPE_STR) {
-        err = nvs_set_str(nvs, key, str_value);
-    } else if (type == NVS_TYPE_BLOB) {
-        err = store_blob(nvs, key, str_value);
-    }
+//     esp_err_t err = nvs_open(name, NVS_READWRITE, &nvs);
+//     if (err == ESP_OK) {
+//         err = nvs_erase_all(nvs);
+//         if (err == ESP_OK) {
+//             err = nvs_commit(nvs);
+//         }
+//     }
 
-    if (range_error || errno == ERANGE) {
-        nvs_close(nvs);
-        return ESP_ERR_NVS_VALUE_TOO_LONG;
-    }
+//     ESP_LOGI(TAG, "Namespace '%s' was %s erased", name, (err == ESP_OK) ? "" : "not");
 
-    if (err == ESP_OK) {
-        err = nvs_commit(nvs);
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG, "Value stored under key '%s'", key);
-        }
-    }
-
-    nvs_close(nvs);
-    return err;
-}
-
-static esp_err_t get_value_from_nvs(const char *key, const char *str_type)
-{
-    nvs_handle_t nvs;
-    esp_err_t err;
-
-    nvs_type_t type = str_to_type(str_type);
-
-    if (type == NVS_TYPE_ANY) {
-        ESP_LOGE(TAG, "Type '%s' is undefined", str_type);
-        return ESP_ERR_NVS_TYPE_MISMATCH;
-    }
-
-    err = nvs_open(current_namespace, NVS_READONLY, &nvs);
-    if (err != ESP_OK) {
-        return err;
-    }
-
-    if (type == NVS_TYPE_I8) {
-        int8_t value;
-        err = nvs_get_i8(nvs, key, &value);
-        if (err == ESP_OK) {
-            printf("%d\n", value);
-        }
-    } else if (type == NVS_TYPE_U8) {
-        uint8_t value;
-        err = nvs_get_u8(nvs, key, &value);
-        if (err == ESP_OK) {
-            printf("%u\n", value);
-        }
-    } else if (type == NVS_TYPE_I16) {
-        int16_t value;
-        err = nvs_get_i16(nvs, key, &value);
-        if (err == ESP_OK) {
-            printf("%u\n", value);
-        }
-    } else if (type == NVS_TYPE_U16) {
-        uint16_t value;
-        if ((err = nvs_get_u16(nvs, key, &value)) == ESP_OK) {
-            printf("%u\n", value);
-        }
-    } else if (type == NVS_TYPE_I32) {
-        int32_t value;
-        if ((err = nvs_get_i32(nvs, key, &value)) == ESP_OK) {
-            printf("%"PRIi32"\n", value);
-        }
-    } else if (type == NVS_TYPE_U32) {
-        uint32_t value;
-        if ((err = nvs_get_u32(nvs, key, &value)) == ESP_OK) {
-            printf("%"PRIu32"\n", value);
-        }
-    } else if (type == NVS_TYPE_I64) {
-        int64_t value;
-        if ((err = nvs_get_i64(nvs, key, &value)) == ESP_OK) {
-            printf("%lld\n", value);
-        }
-    } else if (type == NVS_TYPE_U64) {
-        uint64_t value;
-        if ( (err = nvs_get_u64(nvs, key, &value)) == ESP_OK) {
-            printf("%llu\n", value);
-        }
-    } else if (type == NVS_TYPE_STR) {
-        size_t len;
-        if ( (err = nvs_get_str(nvs, key, NULL, &len)) == ESP_OK) {
-            char *str = (char *)malloc(len);
-            if ( (err = nvs_get_str(nvs, key, str, &len)) == ESP_OK) {
-                printf("%s\n", str);
-            }
-            free(str);
-        }
-    } else if (type == NVS_TYPE_BLOB) {
-        size_t len;
-        if ( (err = nvs_get_blob(nvs, key, NULL, &len)) == ESP_OK) {
-            char *blob = (char *)malloc(len);
-            if ( (err = nvs_get_blob(nvs, key, blob, &len)) == ESP_OK) {
-                print_blob(blob, len);
-            }
-            free(blob);
-        }
-    }
-
-    nvs_close(nvs);
-    return err;
-}
-
-static esp_err_t erase(const char *key)
-{
-    nvs_handle_t nvs;
-
-    esp_err_t err = nvs_open(current_namespace, NVS_READWRITE, &nvs);
-    if (err == ESP_OK) {
-        err = nvs_erase_key(nvs, key);
-        if (err == ESP_OK) {
-            err = nvs_commit(nvs);
-            if (err == ESP_OK) {
-                ESP_LOGI(TAG, "Value with key '%s' erased", key);
-            }
-        }
-        nvs_close(nvs);
-    }
-
-    return err;
-}
-
-static esp_err_t erase_all(const char *name)
-{
-    nvs_handle_t nvs;
-
-    esp_err_t err = nvs_open(name, NVS_READWRITE, &nvs);
-    if (err == ESP_OK) {
-        err = nvs_erase_all(nvs);
-        if (err == ESP_OK) {
-            err = nvs_commit(nvs);
-        }
-    }
-
-    ESP_LOGI(TAG, "Namespace '%s' was %s erased", name, (err == ESP_OK) ? "" : "not");
-
-    nvs_close(nvs);
-    return ESP_OK;
-}
+//     nvs_close(nvs);
+//     return ESP_OK;
+// }
 
 static int list(const char *part, const char *name, const char *str_type)
 {
@@ -392,7 +221,7 @@ static int list(const char *part, const char *name, const char *str_type)
         result = nvs_entry_next(&it);
 
         printf("namespace '%s', key '%s', type '%s' \n",
-               info.namespace_name, info.key, type_to_str(info.type));
+            info.namespace_name, info.key, type_to_str(info.type));
     } while (result == ESP_OK);
 
     if (result != ESP_ERR_NVS_NOT_FOUND) { // the last iteration ran into an internal error
@@ -403,8 +232,17 @@ static int list(const char *part, const char *name, const char *str_type)
     return 0;
 }
 
-static int set_value(int argc, char **argv)
-{
+
+static int check_esp_ok(esp_err_t err) {
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
+        return 1;
+    }
+
+    return 0;
+}
+
+static int set_value(int argc, char **argv) {
     int nerrors = arg_parse(argc, argv, (void **) &set_args);
     if (nerrors != 0) {
         arg_print_errors(stderr, set_args.end, argv[0]);
@@ -412,17 +250,18 @@ static int set_value(int argc, char **argv)
     }
 
     const char *key = set_args.key->sval[0];
-    const char *type = set_args.type->sval[0];
-    const char *values = set_args.value->sval[0];
+    const char *str_type = set_args.type->sval[0];
+    const char *str_value = set_args.value->sval[0];
+    int32_t value = strtol(str_value, NULL, 0);
 
-    esp_err_t err = set_value_in_nvs(key, type, values);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
-        return 1;
+    nvs_type_t type = str_to_type(str_type);
+    if (type == NVS_TYPE_ANY) {
+        ESP_LOGE(TAG, "Type '%s' is undefined", str_type);
+        return ESP_ERR_NVS_TYPE_MISMATCH;
     }
 
-    return 0;
+    esp_err_t err = mod_nvs_set_value(key, &value, type);
+    return check_esp_ok(err);
 }
 
 static int get_value(int argc, char **argv)
@@ -434,16 +273,18 @@ static int get_value(int argc, char **argv)
     }
 
     const char *key = get_args.key->sval[0];
-    const char *type = get_args.type->sval[0];
+    const char *str_type = get_args.type->sval[0];
 
-    esp_err_t err = get_value_from_nvs(key, type);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
-        return 1;
+    nvs_type_t type = str_to_type(str_type);
+    if (type == NVS_TYPE_ANY) {
+        ESP_LOGE(TAG, "Type '%s' is undefined", str_type);
+        return ESP_ERR_NVS_TYPE_MISMATCH;
     }
 
-    return 0;
+    int8_t value;
+    esp_err_t err = mod_nvs_get_value(key, &value, type);
+    ESP_LOGI(TAG, "value = %u", value);
+    return check_esp_ok(err);
 }
 
 static int erase_value(int argc, char **argv)
@@ -455,15 +296,10 @@ static int erase_value(int argc, char **argv)
     }
 
     const char *key = erase_args.key->sval[0];
+    esp_err_t err = mod_nvs_erase(key);
+    // esp_err_t err = erase(key);
 
-    esp_err_t err = erase(key);
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
-        return 1;
-    }
-
-    return 0;
+    return check_esp_ok(err);
 }
 
 static int erase_namespace(int argc, char **argv)
@@ -475,14 +311,16 @@ static int erase_namespace(int argc, char **argv)
     }
 
     const char *name = erase_all_args.namespace->sval[0];
+    esp_err_t err = mod_nvs_erase_all();
+    return check_esp_ok(err);
 
-    esp_err_t err = erase_all(name);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "%s", esp_err_to_name(err));
-        return 1;
-    }
+    // esp_err_t err = erase_all(name);
+    // if (err != ESP_OK) {
+    //     ESP_LOGE(TAG, "%s", esp_err_to_name(err));
+    //     return 1;
+    // }
 
-    return 0;
+    // return 0;
 }
 
 static int set_namespace(int argc, char **argv)
@@ -494,6 +332,8 @@ static int set_namespace(int argc, char **argv)
     }
 
     const char *namespace = namespace_args.namespace->sval[0];
+    mod_nvs_set_namespace(namespace);
+
     strlcpy(current_namespace, namespace, sizeof(current_namespace));
     ESP_LOGI(TAG, "Namespace set to '%s'", current_namespace);
     return 0;
@@ -520,6 +360,8 @@ static int list_entries(int argc, char **argv)
 
 void register_nvs(void)
 {
+    // mod_nvs_setup();
+
     set_args.key = arg_str1(NULL, NULL, "<key>", "key of the value to be set");
     set_args.type = arg_str1(NULL, NULL, "<type>", ARG_TYPE_STR);
 

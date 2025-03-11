@@ -7,6 +7,6 @@
 
 void app_console_setup(void);
 void app_console_deinit(void);
-void app_console_run(void);
+void app_console_task(void);
 
 #endif

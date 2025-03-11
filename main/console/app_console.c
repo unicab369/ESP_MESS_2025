@@ -65,7 +65,7 @@ void app_console_setup(void)
         register_wifi();
     #endif
     
-    // register_nvs();
+    register_nvs();
 
     printf("\nType 'help' to get the list of commands.\n"
         "Use UP/DOWN arrows to navigate through command history.\n"
@@ -103,7 +103,7 @@ static void handle_line() {
     }
 }
 
-void app_console_run(void) {
+void app_console_task(void) {
     // Check for console input
     char c;
     int len = uart_read_bytes(UART_NUM_0, (uint8_t*)&c, 1, 0);

@@ -113,7 +113,10 @@
         "typeinfo": "c",
         "display.h": "c",
         "sdmmc_cmd.h": "c",
-        "esp_http_server.h": "c"
+        "esp_http_server.h": "c",
+        "errno.h": "c",
+        "mod_nvs.h": "c",
+        "nvs.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

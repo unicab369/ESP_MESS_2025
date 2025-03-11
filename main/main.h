@@ -30,10 +30,11 @@
 #include "display/display.h"
 #include "sdkconfig.h"
 
-static const char *TAG = "MAIN";
-#define WIFI_ENABLED true
 
+#define WIFI_ENABLED false
 #define ESP32_BOARD_V3 true
+
+static const char *TAG = "MAIN";
 
 #ifndef WIFI_SSID
 #define WIFI_SSID "My_SSID"
