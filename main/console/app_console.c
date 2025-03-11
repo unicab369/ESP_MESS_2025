@@ -7,19 +7,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_console.h"
 #include "linenoise/linenoise.h"
 #include "argtable3/argtable3.h"
+
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "soc/soc_caps.h"
+#include "base_console.h"
+#include "driver/uart.h"
+
 #include "cmd_wifi/cmd_wifi.h"
 #include "cmd_nvs/cmd_nvs.h"
-#include "base_console.h"
 #include "cmd_system/cmd_system.h"
-#include "driver/uart.h"
 
 static const char *TAG = "APP_CONSOLE";
 

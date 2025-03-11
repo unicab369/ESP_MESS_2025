@@ -7,6 +7,8 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
+#include "cmd_nvs.h"
+
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
@@ -19,7 +21,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_err.h"
-#include "cmd_nvs.h"
 #include "nvs.h"
 #include "mod_nvs.h"
 
@@ -27,40 +28,6 @@ static const size_t TYPE_STR_PAIR_SIZE = sizeof(type_str_pair) / sizeof(type_str
 static const char *ARG_TYPE_STR = "type can be: i8, u8, i16, u16 i32, u32 i64, u64, str, blob";
 static const char *TAG = "cmd_nvs";
 
-static struct {
-    struct arg_str *key;
-    struct arg_str *type;
-    struct arg_str *value;
-    struct arg_end *end;
-} set_args;
-
-static struct {
-    struct arg_str *key;
-    struct arg_str *type;
-    struct arg_end *end;
-} get_args;
-
-static struct {
-    struct arg_str *key;
-    struct arg_end *end;
-} erase_args;
-
-static struct {
-    struct arg_str *namespace;
-    struct arg_end *end;
-} erase_all_args;
-
-static struct {
-    struct arg_str *namespace;
-    struct arg_end *end;
-} namespace_args;
-
-static struct {
-    struct arg_str *partition;
-    struct arg_str *namespace;
-    struct arg_str *type;
-    struct arg_end *end;
-} list_args;
 
 
 static nvs_type_t str_to_type(const char *type) {
@@ -124,12 +91,14 @@ static int check_esp_ok(esp_err_t err) {
     return 0;
 }
 
+static int check_arg(int argc, char **argv, void **argtable, struct arg_end *end) {
+    int nerrors = arg_parse(argc, argv, argtable);
+    if (nerrors != 0) arg_print_errors(stderr, end, argv[0]);
+    return nerrors;
+}
+
 static int set_value(int argc, char **argv) {
-    int nerrors = arg_parse(argc, argv, (void **) &set_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, set_args.end, argv[0]);
-        return 1;
-    }
+    if (check_arg(argc, argv, (void**) &set_args, set_args.end) != 0) return 1;
 
     const char *key = set_args.key->sval[0];
     const char *str_type = set_args.type->sval[0];
@@ -154,11 +123,7 @@ static int set_value(int argc, char **argv) {
 }
 
 static int get_value(int argc, char **argv) {
-    int nerrors = arg_parse(argc, argv, (void **) &get_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, get_args.end, argv[0]);
-        return 1;
-    }
+    if (check_arg(argc, argv, (void**) &get_args, get_args.end) != 0) return 1;
 
     const char *key = get_args.key->sval[0];
     const char *str_type = get_args.type->sval[0];
@@ -214,11 +179,7 @@ static int get_value(int argc, char **argv) {
 }
 
 static int erase_value(int argc, char **argv) {
-    int nerrors = arg_parse(argc, argv, (void **) &erase_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, erase_args.end, argv[0]);
-        return 1;
-    }
+    if (check_arg(argc, argv, (void**) &erase_args, erase_args.end) != 0) return 1;
 
     const char *key = erase_args.key->sval[0];
     esp_err_t err = mod_nvs_erase(key);
@@ -226,22 +187,14 @@ static int erase_value(int argc, char **argv) {
 }
 
 static int erase_selected_namespace(int argc, char **argv) {
-    int nerrors = arg_parse(argc, argv, (void **) &erase_all_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, erase_all_args.end, argv[0]);
-        return 1;
-    }
+    if (check_arg(argc, argv, (void**) &erase_all_args, erase_all_args.end) != 0) return 1;
 
     esp_err_t err = mod_nvs_erase_all();
     return check_esp_ok(err);
 }
 
 static int set_namespace(int argc, char **argv) {
-    int nerrors = arg_parse(argc, argv, (void **) &namespace_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, namespace_args.end, argv[0]);
-        return 1;
-    }
+    if (check_arg(argc, argv, (void**) &namespace_args, namespace_args.end) != 0) return 1;
 
     const char *namespace = namespace_args.namespace->sval[0];
     mod_nvs_set_namespace(namespace);
@@ -249,15 +202,11 @@ static int set_namespace(int argc, char **argv) {
 }
 
 static int list_entries(int argc, char **argv) {
+    if (check_arg(argc, argv, (void**) &list_args, list_args.end) != 0) return 1;
+    
     list_args.partition->sval[0] = "";
     list_args.namespace->sval[0] = "";
     list_args.type->sval[0] = "";
-
-    int nerrors = arg_parse(argc, argv, (void **) &list_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, list_args.end, argv[0]);
-        return 1;
-    }
 
     const char *partition = list_args.partition->sval[0];
     const char *name = list_args.namespace->sval[0];
@@ -273,7 +222,6 @@ void register_nvs(void)
 
     set_args.key = arg_str1(NULL, NULL, "<key>", "key of the value to be set");
     set_args.type = arg_str1(NULL, NULL, "<type>", ARG_TYPE_STR);
-
     set_args.value = arg_str1("v", "value", "<value>", "value to be stored");
     set_args.end = arg_end(2);
 

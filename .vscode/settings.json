@@ -119,7 +119,9 @@
         "nvs.h": "c",
         "cstdlib": "c",
         "mod_button.h": "c",
-        "mod_wifi_nan.h": "c"
+        "mod_wifi_nan.h": "c",
+        "cmd_system_sleep.h": "c",
+        "esp_now.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

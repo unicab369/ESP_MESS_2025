@@ -144,7 +144,6 @@ void app_main(void)
             .on_display_print = display_print_str
         });
         wifi_connect();
-
         espnow_setup(esp_mac, espnow_message_handler);
 
         char mac_str[32];
@@ -153,7 +152,6 @@ void app_main(void)
         display_print_str(mac_str, 0);
 
         // wifi_scan();
-
         // wifi_nan_subscribe();
         // wifi_nan_publish();
     #endif

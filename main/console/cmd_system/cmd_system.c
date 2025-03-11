@@ -12,10 +12,8 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include <inttypes.h>
+#include "cmd_system.h"
+
 #include "esp_log.h"
 #include "esp_console.h"
 #include "esp_chip_info.h"
@@ -23,9 +21,10 @@
 #include "argtable3/argtable3.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "sdkconfig.h"
-#include "cmd_system.h"
-#include "cmd_system_sleep.h"
+
+
 
 static const char *TAG = "cmd_system_common";
 
@@ -99,11 +98,7 @@ static int tasks_info(int argc, char **argv) {
 #endif
 
 
-static struct {
-    struct arg_str *tag;
-    struct arg_str *level;
-    struct arg_end *end;
-} log_level_args;
+
 
 static const char* s_log_level_names[] = {
     "none", "error", "warn", "info", "debug", "verbose"
@@ -141,18 +136,6 @@ static int log_level(int argc, char **argv)
     return 0;
 }
 
-#include "sys/queue.h"
-
-typedef struct cmd_item_ {
-    const char *command;
-    const char *help;
-    char *hint;
-    esp_console_cmd_func_t func;                        //!< pointer to the command handler (without user context)
-    esp_console_cmd_func_with_context_t func_w_context; //!< pointer to the command handler (with user context)
-    void *argtable;                                     //!< optional pointer to arg table
-    void *context;                                      //!< optional pointer to user context
-    SLIST_ENTRY(cmd_item_) next;                        //!< next command in the list
-} cmd_item_t;
 
 typedef void (*const fn_print_arg_t)(cmd_item_t*);
 

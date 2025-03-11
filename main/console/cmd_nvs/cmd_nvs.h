@@ -8,6 +8,43 @@
 */
 #pragma once
 
+
+static struct {
+   struct arg_str *key;
+   struct arg_str *type;
+   struct arg_str *value;
+   struct arg_end *end;
+} set_args;
+
+static struct {
+   struct arg_str *key;
+   struct arg_str *type;
+   struct arg_end *end;
+} get_args;
+
+static struct {
+   struct arg_str *key;
+   struct arg_end *end;
+} erase_args;
+
+static struct {
+   struct arg_str *namespace;
+   struct arg_end *end;
+} erase_all_args;
+
+static struct {
+   struct arg_str *namespace;
+   struct arg_end *end;
+} namespace_args;
+
+static struct {
+   struct arg_str *partition;
+   struct arg_str *namespace;
+   struct arg_str *type;
+   struct arg_end *end;
+} list_args;
+
+
 // Register NVS functions
 void register_nvs(void);
 
