@@ -31,7 +31,7 @@ static const type_str_pair_t type_str_pair[] = {
 void mod_nvs_setup(void);
 int mod_nvs_set_namespace(const char* target);
 
-esp_err_t mod_nvs_set_value(const char *key, void* value, nvs_type_t type);
+esp_err_t mod_nvs_set_value(const char *key, const void* value, nvs_type_t type);
 esp_err_t mod_nvs_get_value(const char *key, void* value, nvs_type_t type);
 esp_err_t mod_nvs_set_blob(const char *key, void* value, size_t len);
 uint8_t* mod_nvs_get_blob(const char *key, size_t* len);

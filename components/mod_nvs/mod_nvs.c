@@ -46,7 +46,7 @@ static esp_err_t open_nvs() {
     return ret;
 }
 
-esp_err_t mod_nvs_set_value(const char *key, void* value, nvs_type_t type) {
+esp_err_t mod_nvs_set_value(const char *key, const void* value, nvs_type_t type) {
     esp_err_t ret = open_nvs();
     if (ret != ESP_OK) return ret;
 
@@ -94,7 +94,6 @@ esp_err_t mod_nvs_set_value(const char *key, void* value, nvs_type_t type) {
     nvs_close(sel_handle);
     return ret;
 }
-
 
 esp_err_t mod_nvs_get_value(const char *key, void* value, nvs_type_t type) {
     esp_err_t ret = open_nvs();
@@ -187,25 +186,6 @@ uint8_t* mod_nvs_get_blob(const char *key, size_t* len) {
     return blob; // Return the allocated blob
 }
 
-// esp_err_t mod_nvs_get_blob(const char *key, void* value, size_t* len) {
-//     if (open_nvs() != ESP_OK) return ESP_FAIL;
-
-//     // Read the blob into the provided buffer
-//     esp_err_t err = nvs_get_blob(sel_handle, key, NULL, len);
-//     if (err != ESP_OK) return err;
-    
-//     char *malloc_blob = (char *)malloc(len);
-//     err = nvs_get_blob(sel_handle, key, malloc_blob, len);
-
-//     if (err != ESP_OK) {
-//         ESP_LOGE(TAG, "Failed to read blob for key %s: %s", key, esp_err_to_name(err));
-//     }
-
-//     // Close the NVS handle
-//     nvs_close(sel_handle);
-//     return err;
-// }
-
 esp_err_t mod_nvs_erase(const char *key) {
     if (open_nvs() != ESP_OK) return ESP_FAIL;
 
@@ -234,17 +214,6 @@ esp_err_t mod_nvs_erase_all(void) {
 
     nvs_close(sel_handle);
     return ESP_OK;
-}
-
-static nvs_type_t str_to_type2(const char *type) {
-    for (int i = 0; i < TYPE_STR_PAIR_SIZE; i++) {
-        const type_str_pair_t *p = &type_str_pair[i];
-        if (strcmp(type, p->str) == 0) {
-            return  p->type;
-        }
-    }
-
-    return NVS_TYPE_ANY;
 }
 
 static const char *type_to_str2(nvs_type_t type) {

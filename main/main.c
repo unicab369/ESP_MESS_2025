@@ -274,7 +274,7 @@ void app_main(void)
             cdc_read_task();
         #endif
             
-        // gpio_digital_loop(current    _time);
+        // gpio_digital_loop(current_time);
         led_fade_loop(current_time);
 
         button_click_loop(current_time);

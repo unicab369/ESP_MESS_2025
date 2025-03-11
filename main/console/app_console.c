@@ -12,7 +12,6 @@
 #include "esp_console.h"
 #include "linenoise/linenoise.h"
 #include "argtable3/argtable3.h"
-// #include "esp_vfs_fat.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "soc/soc_caps.h"
@@ -23,7 +22,6 @@
 #include "driver/uart.h"
 
 static const char *TAG = "APP_CONSOLE";
-static char *prompt;
 
 #if CONFIG_CONSOLE_STORE_HISTORY
     #define MOUNT_PATH "/data"
@@ -47,8 +45,7 @@ static char *prompt;
 #endif // CONFIG_CONSOLE_STORE_HISTORY
 
 
-void app_console_setup(void)
-{
+void app_console_setup(void) {
     #if CONFIG_CONSOLE_STORE_HISTORY
         initialize_filesystem();
         ESP_LOGI(TAG, "Command history enabled");

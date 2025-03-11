@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <inttypes.h>
+
 #include "esp_log.h"
 #include "esp_console.h"
 #include "argtable3/argtable3.h"
@@ -185,9 +186,28 @@ static int get_value(int argc, char **argv) {
         ESP_LOGI(TAG, "str = %s", str);
 
     } else {
-        int64_t value;
-        err = mod_nvs_get_value(key, &value, type);
-        ESP_LOGI(TAG, "value = %" PRId64, value);
+        // cheating
+        if (type == NVS_TYPE_I64 || type == NVS_TYPE_U64) {
+            int64_t value;
+            err = mod_nvs_get_value(key, &value, type);    
+            ESP_LOGI(TAG, "value = %" PRId64, value);
+
+        } else if (type == NVS_TYPE_I32 || type == NVS_TYPE_U32) {
+            int32_t value;
+            err = mod_nvs_get_value(key, &value, type);
+            ESP_LOGI(TAG, "value = %" PRId32, value);
+
+        } else if (type == NVS_TYPE_I16 || type == NVS_TYPE_U16) {
+            int16_t value;
+            err = mod_nvs_get_value(key, &value, type);    
+            ESP_LOGI(TAG, "value = %" PRId16, value);
+
+        } else {
+            uint8_t value;
+            err = mod_nvs_get_value(key, &value, type);    
+            ESP_LOGI(TAG, "value = %u", value);
+        }
+        
     }
 
     return check_esp_ok(err);

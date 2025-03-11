@@ -116,7 +116,8 @@
         "esp_http_server.h": "c",
         "errno.h": "c",
         "mod_nvs.h": "c",
-        "nvs.h": "c"
+        "nvs.h": "c",
+        "cstdlib": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
