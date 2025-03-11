@@ -1,4 +1,4 @@
-#include "rotary_driver.h"
+#include "mod_rotary.h"
 
 #include <stdio.h>
 #include "driver/gpio.h"

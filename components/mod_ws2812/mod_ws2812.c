@@ -1,4 +1,4 @@
-#include "ws2812.h"
+#include "mod_ws2812.h"
 #include <math.h>
 #include <string.h>
 
@@ -12,14 +12,13 @@
 #define LEDS_COUNT         9
 
 
-static const char *TAG = "example";
-
+static const char *TAG = "MOD_WS2812";
 static uint8_t led_pixels[LEDS_COUNT * 3];
 
 
 static size_t encoder_callback(const void *data, size_t data_size,
-                               size_t symbols_written, size_t symbols_free,
-                               rmt_symbol_word_t *symbols, bool *done, void *arg)
+                            size_t symbols_written, size_t symbols_free,
+                            rmt_symbol_word_t *symbols, bool *done, void *arg)
 {
     // We need a minimum of 8 symbol spaces to encode a byte. We only
     // need one to encode a reset
@@ -148,6 +147,7 @@ step_sequence_config_t fill_sequence = {
     .last_refresh_time = 0
 };
 
+static void fill_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) __attribute__((unused));
 static void fill_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
     RGB_t rgb_on = { .red = 150, .green = 0, .blue = 0 };
     RGB_t value = conf->is_toggled ? rgb_on : rgb_off;
@@ -168,6 +168,7 @@ step_sequence_config_t step_sequence = {
     .last_refresh_time = 0
 };
 
+static void step_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) __attribute__((unused));
 static void step_sequence_callback(uint8_t obj_index, step_sequence_config_t* conf) {
     RGB_t value = { .red = 0, .green = 0, .blue = 150 };
 
@@ -180,7 +181,6 @@ static void step_sequence_callback(uint8_t obj_index, step_sequence_config_t* co
 }
 
 //! hue animation
-
 hue_animation_t hue_ani2 = {
     .hue = 0,
     .direction = true,
@@ -189,7 +189,7 @@ hue_animation_t hue_ani2 = {
     .end_index = LEDS_COUNT - 1,
     .value = 30,
     .speed = 1,
-    .refresh_time_uS = 20,
+    .refresh_time_uS = 100,
     .last_refresh_time = 0
 };
 
@@ -201,7 +201,7 @@ void hue_animation(uint64_t current_time) {
         RGB_t rgb_value;
         uint8_t offset = hue_ani2.direction ?  hue_ani2.end_index - i : i;
 
-        hsv_to_rgb_ints((hue_ani2.hue + offset * 10) % 256, 255, 40, &rgb_value);
+        hsv_to_rgb_ints((hue_ani2.hue + offset * 10) % 256, 255, 10, &rgb_value);
         request_update_leds(i, rgb_value);
     }
 
@@ -215,7 +215,6 @@ void hue_animation(uint64_t current_time) {
         }
     }
 }
-
 
 // update this code to make the wave move by adjusting the phase instead of is_moving
 
@@ -433,10 +432,10 @@ void moving_wave5(uint64_t current_time) {
 }
 
 void ws2812_loop(uint64_t current_time) {
-    moving_wave5(current_time);
+    // moving_wave1(current_time);
 
     //! handle hue animation
-    // hue_animation(current_time);
+    hue_animation(current_time);
 
     //! handle filling leds
     // cycle_values(current_time, 0, &fill_sequence, fill_sequence_callback);

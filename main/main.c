@@ -3,9 +3,9 @@
 #define WIFI_ENABLED true
 
 #if WIFI_ENABLED
-    #include "wifi.h"
-    #include "wifi_nan.h"
-    #include "espnow_driver.h"
+    #include "mod_wifi.h"
+    #include "mod_wifi_nan.h"
+    #include "mod_espnow.h"
     #include "udp_socket/udp_socket.h"
     #include "ntp/ntp.h"
     #include "tcp_socket/tcp_socket.h"
@@ -48,7 +48,7 @@ uint8_t esp_mac[6];
 // Button event callback
 void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
     //! NOTE: button_event_t with input_gpio_t values need to match
-    behavior_process_gpio(event, pin, pressed_time);
+    // behavior_process_gpio(event, pin, pressed_time);
 
     switch (event) {
         case BUTTON_SINGLE_CLICK:
@@ -262,7 +262,7 @@ void app_main(void)
     };
     ws2812_load_fadeColor(obj4, 1);
 
-    mod_mbedtls_setup();
+    // mod_mbedtls_setup();
 
 
     uint64_t second_interval_check = 0;

@@ -1,10 +1,11 @@
 idf_component_register(SRCS
-                              "wifi_nan.c"
+                              "mod_ws2812.c"
+                              "color_helper.c"
                          INCLUDE_DIRS "."
                          PRIV_REQUIRES
-                              esp_wifi
-                              nvs_flash
+                              esp_driver_rmt
                          REQUIRES
                               driver
                               esp_timer
+                              ztimer_helper
                          )

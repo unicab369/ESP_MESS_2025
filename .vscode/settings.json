@@ -117,7 +117,9 @@
         "errno.h": "c",
         "mod_nvs.h": "c",
         "nvs.h": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "mod_button.h": "c",
+        "mod_wifi_nan.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

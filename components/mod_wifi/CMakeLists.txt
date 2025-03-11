@@ -1,5 +1,5 @@
 idf_component_register(SRCS
-                              "wifi.c"
+                              "mod_wifi.c"
                               "ntp/ntp.c"
                               "udp_socket/udp_socket.c"
                               "tcp_socket/tcp_socket.c"

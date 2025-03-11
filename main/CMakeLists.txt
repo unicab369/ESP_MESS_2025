@@ -12,8 +12,7 @@ idf_component_register(SRCS "main.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES
                         esp_driver_rmt
-                        wifi
-                        wifi_nan
+                        mod_wifi
                         nvs_flash
                         console
                         spi_flash
@@ -21,15 +20,15 @@ idf_component_register(SRCS "main.c"
                         mod_mbedtls
                         mod_ssd1306
                         mod_nvs
+                        mod_espnow
+                        mod_button
+                        mod_rotary
+                        mod_ws2812
+                        mod_gpio
                     REQUIRES
                         driver
-                        app_gpio
-                        button_driver
-                        rotary_driver
                         uart_driver
                         cdc_driver
-                        espnow
-                        ws2812
                         ztimer_helper
                     )
 
