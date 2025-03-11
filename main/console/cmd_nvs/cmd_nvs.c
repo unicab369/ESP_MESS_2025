@@ -26,7 +26,7 @@
 
 static const size_t TYPE_STR_PAIR_SIZE = sizeof(type_str_pair) / sizeof(type_str_pair[0]);
 static const char *ARG_TYPE_STR = "type can be: i8, u8, i16, u16 i32, u32 i64, u64, str, blob";
-static const char *TAG = "cmd_nvs";
+static const char *TAG = "CMD_NVS";
 
 
 
@@ -87,7 +87,6 @@ static int check_esp_ok(esp_err_t err) {
         ESP_LOGE(TAG, "%s", esp_err_to_name(err));
         return 1;
     }
-
     return 0;
 }
 

@@ -284,7 +284,7 @@ void app_main(void)
         #if WIFI_ENABLED
             if (current_time - second_interval_check > 1000000) {
                 second_interval_check = current_time;
-
+            // espnow_controller_send();
             }
 
             // wifi_nan_checkPeers(current_time);
@@ -310,7 +310,6 @@ void app_main(void)
                 // }
             }
 
-            // espnow_controller_send();
         #endif
 
         // Small delay to avoid busy-waiting

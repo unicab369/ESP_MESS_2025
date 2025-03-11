@@ -23,30 +23,16 @@
 #include "cmd_wifi/cmd_wifi.h"
 #include "cmd_nvs/cmd_nvs.h"
 #include "cmd_system/cmd_system.h"
+#include "cmd_espnow/cmd_espnow.h"
+
+#define HISTORY_PATH NULL
+#define MAX_HISTORY_PAGE 10
+#define MAX_CMD_LEN 48
 
 static const char *TAG = "APP_CONSOLE";
 
-#if CONFIG_CONSOLE_STORE_HISTORY
-    #define MOUNT_PATH "/data"
-    #define HISTORY_PATH MOUNT_PATH "/history.txt"
-
-    static void initialize_filesystem(void)
-    {
-        static wl_handle_t wl_handle;
-        const esp_vfs_fat_mount_config_t mount_config = {
-                .max_files = 4,
-                .format_if_mount_failed = true
-        };
-        esp_err_t err = esp_vfs_fat_spiflash_mount_rw_wl(MOUNT_PATH, "storage", &mount_config, &wl_handle);
-        if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to mount FATFS (%s)", esp_err_to_name(err));
-            return;
-        }
-    }
-    #else
-    #define HISTORY_PATH NULL
-#endif // CONFIG_CONSOLE_STORE_HISTORY
-
+static uint8_t history_index = 0;
+static char cmd_history[MAX_HISTORY_PAGE][MAX_CMD_LEN];
 
 void app_console_setup(void) {
     #if CONFIG_CONSOLE_STORE_HISTORY
@@ -63,6 +49,7 @@ void app_console_setup(void) {
 
     #if (CONFIG_ESP_WIFI_ENABLED || CONFIG_ESP_HOST_WIFI_ENABLED)
         register_wifi();
+        cmd_espnow_setup();
     #endif
     
     register_nvs();
@@ -89,7 +76,6 @@ static char input_buffer[BUF_SIZE];
 static int input_index = 0;
 
 static void handle_line() {
-    /* Try to run the command */
     int ret;
     esp_err_t err = esp_console_run(input_buffer, &ret);
     if (err == ESP_ERR_NOT_FOUND) {
@@ -100,6 +86,37 @@ static void handle_line() {
         printf("Command returned non-zero error code: 0x%x (%s)\n", ret, esp_err_to_name(ret));
     } else if (err != ESP_OK) {
         printf("Internal error: %s\n", esp_err_to_name(err));
+    }
+
+    // copy input buffer into cmd_history
+    strncpy(cmd_history[history_index], input_buffer, MAX_CMD_LEN - 1);
+    cmd_history[history_index][MAX_CMD_LEN - 1] = '\0'; // Ensure null-termination
+    history_index++;
+    if (history_index >= MAX_HISTORY_PAGE) {
+        history_index = 0;
+    }
+
+    // Step 2: Clear the input_buffer
+    memset(input_buffer, 0, BUF_SIZE); // Fill the buffer with zeros
+}
+
+
+//! NOTE: NOT WORKING ... YET
+static void handle_history_paging(bool isKeyUp) {
+    ESP_LOGI(TAG, "IM HERE");
+
+    if (isKeyUp) {
+        strncpy(input_buffer, cmd_history[history_index--], MAX_CMD_LEN - 1);
+        if (history_index < 0) {
+            history_index = MAX_HISTORY_PAGE - 1;
+        }
+        uart_write_bytes(UART_NUM_0, input_buffer, strlen(input_buffer));
+    } else {
+        strncpy(input_buffer, cmd_history[history_index++], MAX_CMD_LEN - 1);
+        if (history_index >= MAX_HISTORY_PAGE) {
+            history_index = 0;
+        }
+        uart_write_bytes(UART_NUM_0, input_buffer, strlen(input_buffer));
     }
 }
 
@@ -115,9 +132,11 @@ void app_console_task(void) {
         char seq[2];
         int seq_len = uart_read_bytes(UART_NUM_0, (uint8_t*)seq, 2, 0);
 
-        // Check for arrow keys. seq[1] == 'C' for left arrow - permitable
-        bool check_keys = seq[1] == 'A' || seq[1] == 'B' || seq[1] == 'D';
-        if (seq_len == 2 && seq[0] == '[' && check_keys) {
+        uint8_t isKeyUp = seq[1] == 'A';
+        uint8_t isKeyDown = seq[1] == 'B';
+
+        if (seq_len == 2 && seq[0] == '[' && (isKeyUp || isKeyDown)) {
+            handle_history_paging(isKeyUp);
             // Ignore arrow keys (up, down, left, right)
             return;
         }

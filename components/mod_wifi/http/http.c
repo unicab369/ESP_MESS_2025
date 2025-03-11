@@ -250,7 +250,10 @@ static esp_err_t captive_portal_get_handler(httpd_req_t *req) {
 
 // HTTP GET handler for serving the file
 static esp_err_t file_get_handler(httpd_req_t *req) {
-    char chunk_buffer[1000];
+    char chunk_buffer2[800];
+    memset(chunk_buffer2, 0x41, 800);
+
+    char chunk_buffer[255];
     char chunk_len = sizeof(chunk_buffer);
 
     uint64_t time_ref = esp_timer_get_time();
@@ -261,18 +264,24 @@ static esp_err_t file_get_handler(httpd_req_t *req) {
     uint64_t bytes = 0;
 
     if (err == ESP_OK) {
-        // Read and send the file in chunks
-        while ((bytes_read = interface->on_file_fread_cb(chunk_buffer, chunk_len)) > 0) {
-            bytes += bytes_read;
-            // printf(">>> bytes: %u\n", bytes_read);
-
-            // Send the chunk
-            err = httpd_resp_send_chunk(req, chunk_buffer, bytes_read);
-            if (err != ESP_OK) {
-                httpd_resp_send_500(req);
-                break;
-            }
+        for (int i = 0; i<70; i++) {
+            bytes += sizeof(chunk_buffer2);
+            err = httpd_resp_send_chunk(req, chunk_buffer2, sizeof(chunk_buffer2));
         }
+        
+
+        // // Read and send the file in chunks
+        // while ((bytes_read = interface->on_file_fread_cb(chunk_buffer, chunk_len)) > 0) {
+        //     bytes += bytes_read;
+        //     // printf(">>> bytes: %u\n", bytes_read);
+
+        //     // Send the chunk
+        //     err = httpd_resp_send_chunk(req, chunk_buffer2, sizeof(chunk_buffer2));
+        //     if (err != ESP_OK) {
+        //         httpd_resp_send_500(req);
+        //         break;
+        //     }
+        // }
     }
 
     printf("total bytes: %llu\n", bytes);
