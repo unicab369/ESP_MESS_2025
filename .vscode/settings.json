@@ -122,7 +122,9 @@
         "mod_wifi_nan.h": "c",
         "cmd_system_sleep.h": "c",
         "esp_now.h": "c",
-        "mod_espnow.h": "c"
+        "mod_espnow.h": "c",
+        "base64.h": "c",
+        "ntp.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

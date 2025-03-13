@@ -6,10 +6,13 @@
     #include "mod_wifi.h"
     #include "mod_wifi_nan.h"
     #include "mod_espnow.h"
-    #include "udp_socket/udp_socket.h"
     #include "ntp/ntp.h"
-    #include "tcp_socket/tcp_socket.h"
     #include "http/http.h"
+    #include "esp_wifi.h"
+
+    #include "udp_socket/udp_socket.h"
+    #include "tcp_socket/tcp_socket.h"
+    #include "web_socket/web_socket.h"
 
     // #include "modbus/modbus.h"
 
@@ -64,6 +67,8 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
             led_fade_stop();
             gpio_digital_config(obj_a);
             // led_toggle_switch();
+
+            espnow_controller_send();
             break;
         case BUTTON_DOUBLE_CLICK:
             gpio_digital_stop(0);
@@ -136,7 +141,6 @@ void app_main(void)
         wifi_configure_softAp(AP_WIFI_SSID, AP_WIFI_PASSWORD, 1);
         wifi_configure_sta(WIFI_SSID, WIFI_PASSWORD);
 
-    
         http_setup(&(http_interface_t){
             .on_file_fopen_cb = mod_sd_fopen,
             .on_file_fread_cb = mod_sd_fread,
@@ -284,15 +288,18 @@ void app_main(void)
         #if WIFI_ENABLED
             if (current_time - second_interval_check > 1000000) {
                 second_interval_check = current_time;
-            // espnow_controller_send();
             }
 
             // wifi_nan_checkPeers(current_time);
             // wifi_nan_sendData(current_time);
 
-            wifi_status_t status = wifi_check_status(current_time);
+            wifi_event_t status = wifi_check_status(current_time);
             
-            if (status == WIFI_STATUS_CONNECTED) {
+            if (status == WIFI_EVENT_WIFI_READY) {
+                web_socket_setup();
+                web_socket_handshake(current_time);
+                web_socket_task(current_time);
+
                 // ntp_status_t ntp_status = ntp_task(current_time);
 
                 //! tcp sockets block, need to find a solution
@@ -303,11 +310,13 @@ void app_main(void)
                 // tcp_client_socket_task(current_time);
 
                 //! udp sockets block, need to find a solution
-                // udp_status_t udp_status = udp_server_socket_setup(current_time);
-                // if (udp_status == UDP_STATUS_SETUP) {
-                //     udp_server_socket_task();
-                //     // udp_client_socket_send(current_time);
-                // }
+            //     udp_status_t udp_status = udp_server_socket_setup(current_time);
+            //     if (udp_status == UDP_STATUS_SETUP) {
+            //         printf("IM HERE 4444");
+                    
+            //         udp_server_socket_task();
+            //         // udp_client_socket_send(current_time);
+            //     }
             }
 
         #endif

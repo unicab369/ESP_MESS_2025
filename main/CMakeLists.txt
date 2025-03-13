@@ -13,10 +13,10 @@ idf_component_register(SRCS "main.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES
                         esp_driver_rmt
-                        mod_wifi
                         nvs_flash
                         console
                         spi_flash
+                        mod_wifi
                         mod_sd
                         mod_mbedtls
                         mod_ssd1306

@@ -227,23 +227,25 @@ void wifi_stop() {
 
 
 wifi_status_t wifi_check_status(uint64_t current_time) {
-    if (current_status == WIFI_STATUS_CONNECTED) return current_status;
-    if (current_time - last_update_time < 1000000) return current_status;
+    if (current_status2 == WIFI_EVENT_WIFI_READY) return current_status2;
+    if (current_time - last_update_time < 1000000) return current_status2;
     last_update_time = current_time;
 
-    wifi_ap_record_t ap_info;
-    esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_info);
-    if (ret == ESP_OK) {
-        ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
-        current_status = WIFI_STATUS_CONNECTED;
-    } else if (remaining_retries < interface->max_retries) {
-        ESP_LOGI(TAG_STA, "Retrying connection to AP: %s", esp_err_to_name(ret));
-        remaining_retries = 0;
-        current_status = WIFI_STATUS_RETRY;
-    } else {
-        ESP_LOGE(TAG_STA, "Failed to connect to AP: %s", esp_err_to_name(ret));
-        current_status = WIFI_STATUS_FAILED;
-    }
+    printf("IM HERE 2222");
+
+    // wifi_ap_record_t ap_info;
+    // esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_info);
+    // if (ret == ESP_OK) {
+    //     ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
+    //     current_status = WIFI_STATUS_CONNECTED;
+    // } else if (remaining_retries < interface->max_retries) {
+    //     ESP_LOGI(TAG_STA, "Retrying connection to AP: %s", esp_err_to_name(ret));
+    //     remaining_retries = 0;
+    //     current_status = WIFI_STATUS_RETRY;
+    // } else {
+    //     ESP_LOGE(TAG_STA, "Failed to connect to AP: %s", esp_err_to_name(ret));
+    //     current_status = WIFI_STATUS_FAILED;
+    // }
 
     return current_status;
 }

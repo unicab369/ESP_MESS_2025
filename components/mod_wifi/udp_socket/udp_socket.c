@@ -44,6 +44,8 @@ udp_status_t udp_server_socket_setup(uint64_t current_time) {
     if (current_time - last_update_time < 1000000) return current_status;
     last_update_time = current_time;
 
+    printf("IM HERE 333");
+
     int addr_family = AF_INET;
     int ip_protocol = 0;
     
@@ -89,12 +91,12 @@ udp_status_t udp_server_socket_setup(uint64_t current_time) {
     timeout.tv_usec = 0;
     setsockopt (listening_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
 
-    // int err = bind(listening_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    // if (err < 0) {
-    //     ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-    //     current_status = UDP_STATUS_BINDING_FAILED;
-    // }
-    // ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+    int err = bind(listening_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    if (err < 0) {
+        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+        current_status = UDP_STATUS_BINDING_FAILED;
+    }
+    ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
     // #if defined(CONFIG_LWIP_NETBUF_RECVINFO) && !defined(CONFIG_EXAMPLE_IPV6)
     //         struct iovec iov;
@@ -124,12 +126,12 @@ void udp_server_socket_task()
 {
     if (current_status != UDP_STATUS_SETUP) return;
 
-    int err = bind(listening_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    if (err < 0) {
-        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-        // current_status = UDP_STATUS_BINDING_FAILED;
-    }
-    ESP_LOGI(TAG, "Socket bound, port %d", PORT);
+    // int err = bind(listening_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    // if (err < 0) {
+    //     ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+    //     // current_status = UDP_STATUS_BINDING_FAILED;
+    // }
+    // ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
     #if defined(CONFIG_LWIP_NETBUF_RECVINFO) && !defined(CONFIG_EXAMPLE_IPV6)
             struct iovec iov;
