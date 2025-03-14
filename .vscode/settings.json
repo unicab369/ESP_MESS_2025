@@ -124,7 +124,10 @@
         "esp_now.h": "c",
         "mod_espnow.h": "c",
         "base64.h": "c",
-        "ntp.h": "c"
+        "ntp.h": "c",
+        "adc_oneshot.h": "c",
+        "adc_continuous.h": "c",
+        "executor": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

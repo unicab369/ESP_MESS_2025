@@ -26,6 +26,7 @@ idf_component_register(SRCS "main.c"
                         mod_rotary
                         mod_ws2812
                         mod_gpio
+                        mod_adc
                     REQUIRES
                         driver
                         uart_driver

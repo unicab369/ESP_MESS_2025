@@ -106,8 +106,7 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
-void app_main(void)
-{   
+void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -266,9 +265,20 @@ void app_main(void)
 
     // mod_mbedtls_setup();
 
+    // adc_single_read_t single_adc = {
+    //     .gpio = 34,
+    //     .unit = ADC_UNIT_INTF_1
+    // };
+    // mod_adc_1read_setup(&single_adc);
 
     uint64_t second_interval_check = 0;
 
+    adc_continous_read_t continous_read = (adc_continous_read_t){
+        .unit = ADC_UNIT_1
+    };
+
+    mod_adc_continous_setup(&continous_read);
+    
     while (1) {
         uint64_t current_time = esp_timer_get_time();
         
@@ -288,6 +298,8 @@ void app_main(void)
         #if WIFI_ENABLED
             if (current_time - second_interval_check > 1000000) {
                 second_interval_check = current_time;
+                // mod_adc_1read(current_time, &single_adc);
+                mod_adc_continous_read(&continous_read);
             }
 
             // wifi_nan_checkPeers(current_time);
@@ -296,9 +308,9 @@ void app_main(void)
             wifi_event_t status = wifi_check_status(current_time);
             
             if (status == WIFI_EVENT_WIFI_READY) {
-                web_socket_setup();
-                web_socket_handshake(current_time);
-                web_socket_task(current_time);
+                // web_socket_setup();
+                // web_socket_handshake(current_time);
+                // web_socket_task(current_time);
 
                 // ntp_status_t ntp_status = ntp_task(current_time);
 

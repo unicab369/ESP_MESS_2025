@@ -72,7 +72,7 @@ idf.py set-target esp32x
 
 `idf.py --version`: Displays the version of ESP-IDF being used in the current environment.<br>
 `idf.py partition-table`: Prints the partition table information for the project.<br>
-`idf.py show_targets`: Lists all supported target chips.<br>
+`idf.py show_targets`: Lists all supported target chips.<br> 
 `app-flash`: Flash only the app part of the project.<br>
 `erase_flash`: Erase the ESP32's entire flash chip.<br>
 `reconfigure`: Re-run CMake even if it doesn't seem to need re-running.<br>
@@ -87,3 +87,43 @@ idf.py set-target esp32x
 `esptool.py flash_id`: queries the connected ESP device to retrieve its flash memory ID.<br>
 `idf.py check`: check for common coding issues in your project.<br>
 `idf.py sdkconfig`: Opens the project's sdkconfig file in a text editor for manual editing. This is an alternative to idf.py menuconfig.<br>
+
+## ESP32 ADC Channels
+
+**ADC1 Channels**
+| ADC1 Channel	G |   PIO Pin
+|----------------|------------|
+| ADC1_CHANNEL_0 |   GPIO 36  |  
+| ADC1_CHANNEL_1 |   GPIO 37  |
+| ADC1_CHANNEL_2 |	GPIO 38  |
+| ADC1_CHANNEL_3 |	GPIO 39  |
+| ADC1_CHANNEL_4 |	GPIO 32  |
+| ADC1_CHANNEL_5 |	GPIO 33  |
+| ADC1_CHANNEL_6 |	GPIO 34  |
+| ADC1_CHANNEL_7 |	GPIO 35  |
+<br>
+
+**ADC2 Channels**
+| ADC2 Channel	G |   PIO Pin
+|----------------|------------|
+| ADC2_CHANNEL_0 |	GPIO 4   |
+| ADC2_CHANNEL_1 |	GPIO 0   |
+| ADC2_CHANNEL_2 |	GPIO 2   |
+| ADC2_CHANNEL_3 |	GPIO 15  |
+| ADC2_CHANNEL_4 |	GPIO 13  |
+| ADC2_CHANNEL_5 |	GPIO 12  |
+| ADC2_CHANNEL_6 |	GPIO 14  |
+| ADC2_CHANNEL_7 |	GPIO 27  |
+| ADC2_CHANNEL_8 |	GPIO 25  |
+| ADC2_CHANNEL_9 |	GPIO 26  |
+
+
+Important Notes
+ADC2 and Wi-Fi:
+   ADC2 cannot be used when Wi-Fi is enabled because it is shared with the Wi-Fi module.
+
+ADC Calibration:
+   The ESP32 ADC is not perfectly linear. For accurate measurements, consider using the ADC calibration feature provided by ESP-IDF.
+
+Noise Reduction:
+   To reduce noise, you can average multiple ADC readings or use a capacitor on the ADC pin.

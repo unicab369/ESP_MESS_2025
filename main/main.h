@@ -25,6 +25,7 @@
 #include "timer_pulse.h"
 #include "console/app_console.h"
 
+#include "mod_adc.h"
 #include "mod_sd.h"
 #include "mod_mbedtls.h"
 #include "display/display.h"
