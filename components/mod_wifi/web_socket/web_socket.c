@@ -36,7 +36,7 @@ static void generate_websocket_accept(const char *client_key, char *accept_key) 
 }
 
 // Send a WebSocket text frame to the client
-static void send_websocket_message(int client_sock, const char *message) {
+void send_websocket_message(int client_sock, const char *message) {
     size_t len = strlen(message);
     uint8_t frame[len + 2]; // Frame buffer (header + payload)
 
@@ -49,44 +49,20 @@ static void send_websocket_message(int client_sock, const char *message) {
     send(client_sock, frame, len + 2, 0);
 }
 
-// Handle WebSocket frame and send a response
-static void handle_websocket_frame(int client_sock, uint8_t *frame, size_t len) {
-    // Extract the payload length
-    uint8_t payload_len = frame[1] & 0x7F; // Mask out the MASK bit
-    uint8_t mask_offset = 2; // Start of masking key (if present)
-
-    // Check if the payload is masked
-    if (frame[1] & 0x80) { // MASK bit is set
-        // Extract the masking key
-        uint8_t masking_key[4];
-        memcpy(masking_key, frame + 2, 4);
-        mask_offset += 4; // Move past the masking key
-
-        // Unmask the payload
-        uint8_t payload[payload_len];
-        for (size_t i = 0; i < payload_len; i++) {
-            payload[i] = frame[mask_offset + i] ^ masking_key[i % 4];
-        }
-
-        // Log the unmasked payload
-        ESP_LOGI(TAG, "Received: %.*s", payload_len, payload);
-    } else {
-        // Payload is not masked
-        ESP_LOGI(TAG, "Received: %.*s", payload_len, frame + mask_offset);
-    }
-
-    // Send a response to the client
-    const char *response = "Hello from ESP32!";
-    send_websocket_message(client_sock, response);
-}
-
-int server_sock;
+int server_sock = -1;
 struct sockaddr_in server_addr;
 char rx_buffer[512];
 web_socket_status_t status = WEBSOCKET_DISCONNECTED;
 
+void web_socket_server_cleanup(void) {
+    if (server_sock < 0) return;
+    close(server_sock);
+    server_sock = -1; // Reset to invalid descriptor
+}
+
 void web_socket_setup(void) {
     if (status != WEBSOCKET_DISCONNECTED) return;
+    web_socket_server_cleanup();
 
     // Create TCP socket
     server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -102,14 +78,14 @@ void web_socket_setup(void) {
 
     if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         ESP_LOGE(TAG, "Failed to bind socket");
-        close(server_sock);
+        web_socket_server_cleanup();
         return;
     }
 
     // Listen for incoming connections
     if (listen(server_sock, 5) < 0) {
         ESP_LOGE(TAG, "Failed to listen on socket");
-        close(server_sock);
+        web_socket_server_cleanup();
         return;
     }
 
@@ -184,8 +160,36 @@ void web_socket_task(uint64_t current_time) {
 
     uint8_t frame[128];
     int len = recv(client_sock, frame, sizeof(frame), 0);
+
     if (len > 0) {
-        handle_websocket_frame(client_sock, frame, len);
+        // Extract the payload length
+        uint8_t payload_len = frame[1] & 0x7F; // Mask out the MASK bit
+        uint8_t mask_offset = 2; // Start of masking key (if present)
+
+        // Check if the payload is masked
+        if (frame[1] & 0x80) { // MASK bit is set
+            // Extract the masking key
+            uint8_t masking_key[4];
+            memcpy(masking_key, frame + 2, 4);
+            mask_offset += 4; // Move past the masking key
+
+            // Unmask the payload
+            uint8_t payload[payload_len];
+            for (size_t i = 0; i < payload_len; i++) {
+                payload[i] = frame[mask_offset + i] ^ masking_key[i % 4];
+            }
+
+            // Log the unmasked payload
+            ESP_LOGI(TAG, "Received: %.*s", payload_len, payload);
+        } else {
+            // Payload is not masked
+            ESP_LOGI(TAG, "Received: %.*s", payload_len, frame + mask_offset);
+        }
+
+        // Send a response to the client
+        const char *response = "Hello from ESP32!";
+        send_websocket_message(client_sock, response);
+        
     } else if (len == 0) {
         ESP_LOGI(TAG, "Client disconnected");
     }

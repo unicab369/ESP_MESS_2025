@@ -221,6 +221,12 @@ void app_main(void) {
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
+
+        if (current_time - second_interval_check > 1000000) {
+            second_interval_check = current_time;
+            // mod_adc_1read(current_time, &single_adc);
+            // mod_adc_continous_read(&continous_read);
+        }    
         
         #if CONFIG_IDF_TARGET_ESP32C3
             cdc_read_task();

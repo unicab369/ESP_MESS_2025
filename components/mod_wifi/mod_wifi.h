@@ -24,7 +24,7 @@ void wifi_sta_begin(const char* sta_ssid, const char* sta_passwd);
 
 void wifi_connect(void);
 void wifi_scan(void);
-wifi_event_t wifi_check_status(uint64_t current_time);
+wifi_event_t wifi_get_status(void);
 
 void wifi_wps_begin(void);
 

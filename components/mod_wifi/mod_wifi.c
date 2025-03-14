@@ -57,7 +57,7 @@ void wifi_get_status_info(wifi_event_t event, char *output, size_t len) {
         default:                                status_str = "UNKNOWN"; break;
     }
 
-    strlcpy(output, "wifi: ", len);
+    strlcpy(output, "WIFI_EVENT_", len);
     strlcat(output, status_str, len);
 } 
 
@@ -261,28 +261,7 @@ void wifi_stop() {
     // esp_wifi_deinit();
 }
 
-
-wifi_event_t wifi_check_status(uint64_t current_time) {
-    if (current_time - last_update_time > 1000000) {
-        last_update_time = current_time;
-    } else {
-        return curr_status;
-    }
-
-    wifi_mode_t mode;
-    esp_wifi_get_mode(&mode);
-
-    if (mode == WIFI_MODE_STA) {
-        wifi_ap_record_t ap_info;
-        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
-            ESP_LOGI(TAG, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
-        } else {
-            ESP_LOGI(TAG, "Not connected to any AP");
-        }
-    } else {
-        ESP_LOGI(TAG, "Wi-Fi is not in STA mode");
-    }
-    
+wifi_event_t wifi_get_status() {    
     return curr_status;
 }
 

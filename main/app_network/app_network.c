@@ -89,21 +89,30 @@ void app_network_setup() {
     // wifi_nan_publish();
 }
 
-uint64_t second_interval_check = 0;
+static uint64_t second_interval_check = 0;
 
 void app_network_task(uint8_t current_time) {
     if (current_time - second_interval_check > 1000000) {
         second_interval_check = current_time;
-        // mod_adc_1read(current_time, &single_adc);
-        // mod_adc_continous_read(&continous_read);
+
+    } else {
+
     }
 
     // wifi_nan_checkPeers(current_time);
     // wifi_nan_sendData(current_time);
 
-    wifi_event_t status = wifi_check_status(current_time);
+    wifi_event_t status = wifi_get_status();
     
-    if (status == WIFI_EVENT_WIFI_READY) {
+    if (status == WIFI_EVENT_STA_CONNECTED) {
+        web_socket_setup();
+        
+    } else if (status == WIFI_EVENT_WIFI_READY) {
+        web_socket_handshake(current_time);
+        web_socket_task(current_time);
+    }
+
+    // if (status == WIFI_REa) {
         // web_socket_setup();
         // web_socket_handshake(current_time);
         // web_socket_task(current_time);
@@ -125,5 +134,5 @@ void app_network_task(uint8_t current_time) {
     //         udp_server_socket_task();
     //         // udp_client_socket_send(current_time);
     //     }
-    }
+    // }
 }
