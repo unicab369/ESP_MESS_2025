@@ -164,7 +164,6 @@ void mod_adc_1read_teardown(adc_single_read_t *model) {
 #define EXAMPLE_READ_LEN        256
 
 
-
 void mod_adc_continous_setup(adc_continous_read_t *model) {
     adc_continuous_handle_cfg_t adc_config = {
         .max_store_buf_size = 1024,

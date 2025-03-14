@@ -1,0 +1,110 @@
+menu "ESP-MESS Configuration"
+    menu "Wi-Fi STA Settings"
+        config WIFI_SSID
+            string "Wi-Fi SSID"
+            default "ESP_SSID"
+            range 1 32
+            help
+                The SSID of the Wi-Fi network to connect to (1-32 characters).
+
+        config WIFI_PASSWORD
+            string "Wi-Fi Password"
+            default "password"
+            depends on WIFI_SSID != ""
+            help
+                The password of the Wi-Fi network (minimum 8 characters).
+    endmenu
+
+    menu "Wi-Fi AP Settings"
+        config AP_WIFI_SSID
+            string "Wi-Fi SSID"
+            default "ESP_AP_SSID"
+            range 1 32
+            help
+                The SSID of the Wi-Fi network to broadcast (1-32 characters).
+
+        config AP_WIFI_PASSWORD
+            string "Wi-Fi Password"
+            default "password"
+            depends on AP_WIFI_SSID != ""
+            help
+                The password of the Wi-Fi network (minimum 8 characters).
+    endmenu
+
+    menu "Storage"
+        config SD_SPI_ENABLED
+            bool "SD_SPI_ENABLED"
+            default true
+            help
+                Enable SD_SPI.
+
+        config SD_MMC_ENABLED
+            bool "SD_MMC_ENABLED"
+            default true
+            help
+                Enable SD_MMC.
+
+        config LITTLEFS_ENABLED
+            bool "LITTLEFS_ENABLED"
+            default true
+            help
+                Enable LittleFS.
+    endmenu
+
+    menu "Networking"
+        config ESPNOW_ENABLED
+            bool "ESPNOW_ENABLED"
+            default true
+            help
+                Enable ESP-NOW.
+
+        config ESPNOW_MLK
+            string "ESP-NOW Master Key"
+            default "ESPNOW_MLK"
+            range 1 32
+            help
+                The master key for ESP-NOW (1-32 characters).
+
+        config TCP_SOCKET_ENABLED
+            bool "TCP_SOCKET_ENABLED"
+            default true
+            help
+                Enable TCP SOCKET.
+
+        config UDP_SOCKET_ENABLED
+            bool "UDP_SOCKET_ENABLED"
+            default true
+            help
+                Enable UDP SOCKET.
+
+        config WEB_SOCKET_ENABLED
+            bool "WEB_SOCKET_ENABLED"
+            default true
+            help
+                Enable WEB SOCKET.
+
+        config HTTP_ENABLED
+            bool "HTTP_ENABLED"
+            default true
+            help
+                Enable HTTP.
+
+        config HTTPS_ENABLED
+            bool "HTTPS_ENABLED"
+            default true
+            help
+                Enable HTTPS.
+
+        config MQTT_ENABLED
+            bool "MQTT_ENABLED"
+            default true
+            help
+                Enable MQTT.
+
+        config DNS_ENABLED
+            bool "DNS_ENABLED"
+            default true
+            help
+                Enable DNS.
+    endmenu
+endmenu

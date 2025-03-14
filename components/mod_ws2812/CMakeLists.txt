@@ -4,8 +4,8 @@ idf_component_register(SRCS
                          INCLUDE_DIRS "."
                          PRIV_REQUIRES
                               esp_driver_rmt
+                              mod_utility
                          REQUIRES
                               driver
                               esp_timer
-                              ztimer_helper
                          )

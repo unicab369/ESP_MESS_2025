@@ -8,6 +8,7 @@ idf_component_register(SRCS "main.c"
                             "console/cmd_system/cmd_system.c"
                             "console/cmd_system/cmd_system_sleep.c"
                             "console/cmd_espnow/cmd_espnow.c"
+                            "app_network/app_network.c"
                             "modbus/modbus.c"
                             "display/display.c"
                     INCLUDE_DIRS "."
@@ -27,11 +28,11 @@ idf_component_register(SRCS "main.c"
                         mod_ws2812
                         mod_gpio
                         mod_adc
+                        mod_utility
                     REQUIRES
                         driver
                         uart_driver
                         cdc_driver
-                        ztimer_helper
                     )
 
 # Note: you must have a partition named the first argument (here it's "littlefs")

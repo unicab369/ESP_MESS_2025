@@ -1,19 +1,13 @@
 #include "mod_wifi.h"
-#include <string.h>
 
-#include "esp_mac.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "esp_log.h"
+
 #include "esp_netif_net_stack.h"
 #include "esp_netif.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
+
 #include "regex.h"
 #include "esp_nan.h"
-#include "esp_log.h"
-#include "esp_err.h"
-
+#include "esp_wps.h"
+#include "util_shared.h"
 
 /* STA Configuration */
 #define EXAMPLE_ESP_MAXIMUM_RETRY           20
@@ -30,7 +24,6 @@ static const char *TAG = "WIFI";
 static app_wifi_interface_t* interface;
 static uint64_t last_update_time = 0;
 static uint8_t remaining_retries = 0;
-static wifi_status_t current_status = WIFI_STATUS_DISCONNECTED;
 
 void wifi_get_status_info(wifi_event_t event, char *output, size_t len) {
     const char *status_str = NULL;
@@ -68,11 +61,10 @@ void wifi_get_status_info(wifi_event_t event, char *output, size_t len) {
     strlcat(output, status_str, len);
 } 
 
-static int32_t current_status2;
+static wifi_event_t curr_status;
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
-                               int32_t event_id, void *event_data)
-{
+                               int32_t event_id, void *event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *) event_data;
         ESP_LOGI(TAG_AP, "Station "MACSTR" joined, AID=%d",
@@ -84,8 +76,10 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
                 MAC2STR(event->mac), event->aid, event->reason);
 
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        // esp_wifi_connect();
-        // ESP_LOGI(TAG_STA, "Station started");
+        ESP_LOGI(TAG_STA, "Station started");
+
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        ESP_LOGI(TAG_STA, "Station disconnected");
 
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
@@ -93,7 +87,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
     }
 
-    current_status2 = event_id;
+    curr_status = event_id;
+
     char output[32];
     wifi_get_status_info(event_id, output, sizeof(output));
     printf(">>> WIFI STATUS: %s\n", output);
@@ -111,8 +106,7 @@ void softap_set_dns_addr(esp_netif_t *esp_netif_ap,esp_netif_t *esp_netif_sta)
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_netif_dhcps_start(esp_netif_ap));
 }
 
-void wifi_setup(app_wifi_interface_t *intf)
-{
+void wifi_setup(app_wifi_interface_t *intf) {
     interface = intf;
     remaining_retries = intf->max_retries;
 
@@ -148,7 +142,7 @@ void wifi_setup(app_wifi_interface_t *intf)
 
 }
 
-void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t channel) {
+void wifi_softAp_begin(const char* ap_ssid, const char* ap_passwd, uint8_t channel) {
     /* Initialize AP */
     ESP_LOGI(TAG_AP, "ESP_WIFI_MODE_AP");
 
@@ -157,8 +151,8 @@ void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t c
     wifi_config_t wifi_ap_config = {
         .ap = {
             .max_connection = 1,
-            .authmode = WIFI_AUTH_WPA2_PSK,
             .channel = channel,
+            .authmode = WIFI_AUTH_WPA2_PSK,
             .pmf_cfg = {
                 .required = false,
             },
@@ -166,8 +160,13 @@ void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t c
     };
 
     // Copy the SSID and password into the configuration structure
-    strncpy((char*)wifi_ap_config.ap.ssid, ap_ssid, sizeof(wifi_ap_config.ap.ssid));
-    strncpy((char*)wifi_ap_config.ap.password, ap_passwd, sizeof(wifi_ap_config.ap.password));
+    size_t ssid_len = sizeof(wifi_ap_config.ap.ssid);
+    size_t passw_len = sizeof(wifi_ap_config.ap.password);
+    wifi_ap_config.ap.ssid_len = ssid_len;
+
+    strncpy((char*)wifi_ap_config.ap.ssid, ap_ssid, ssid_len);
+    strncpy((char*)wifi_ap_config.ap.password, ap_passwd, passw_len);
+    
 
     if (strlen(ap_passwd) == 0) {
         wifi_ap_config.ap.authmode = WIFI_AUTH_OPEN;
@@ -183,7 +182,44 @@ void wifi_configure_softAp(const char* ap_ssid, const char* ap_passwd, uint8_t c
     // }
 }
 
-void wifi_configure_sta(const char* sta_ssid, const char* sta_passwd) {
+
+#if CONFIG_EXAMPLE_WPS_TYPE_PBC
+    #define WPS_MODE WPS_TYPE_PBC
+#elif CONFIG_EXAMPLE_WPS_TYPE_PIN
+    #if CONFIG_EXAMPLE_WPS_PIN_VALUE
+    #define EXAMPLE_WPS_PIN_VALUE CONFIG_EXAMPLE_WPS_PIN_VALUE
+    #endif
+    #define WPS_MODE WPS_TYPE_PIN
+#else
+    #define WPS_MODE WPS_TYPE_DISABLE
+#endif /*CONFIG_EXAMPLE_WPS_TYPE_PBC*/
+
+static esp_wps_config_t wps_config = WPS_CONFIG_INIT_DEFAULT(WPS_MODE);
+
+//! Running in AP Mode
+void wifi_wps_begin(void) {
+	ESP_LOGI(TAG, "start wps...");
+
+    //! WHY? undefined reference to `esp_wifi_ap_wps_enable'
+
+	// ESP_ERROR_CHECK(esp_wifi_ap_wps_enable(&wps_config));
+
+    // #if EXAMPLE_WPS_PIN_VALUE
+    //     ESP_LOGI(TAG, "Staring WPS registrar with user specified pin %s", pin);
+    //     snprintf((char *)pin, 9, "%08d", EXAMPLE_WPS_PIN_VALUE);
+    //     ESP_ERROR_CHECK(esp_wifi_ap_wps_start(pin));
+    // #else
+    //     if (wps_config.wps_type == WPS_TYPE_PBC) {
+    //         ESP_LOGI(TAG, "Staring WPS registrar in PBC mode");
+    //     } else {
+    //         ESP_LOGI(TAG, "Staring WPS registrar with random generated pin");
+    //     }
+
+    //     ESP_ERROR_CHECK(esp_wifi_ap_wps_start(NULL));
+    // #endif
+}
+
+void wifi_sta_begin(const char* sta_ssid, const char* sta_passwd) {
     printf("connecting to %s\n", sta_ssid);
 
     /* Initialize STA */
@@ -191,7 +227,9 @@ void wifi_configure_sta(const char* sta_ssid, const char* sta_passwd) {
 
     wifi_config_t wifi_sta_config = {
         .sta = {
-            .scan_method = WIFI_ALL_CHANNEL_SCAN,
+            .scan_method = WIFI_FAST_SCAN,
+            .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
+            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             .failure_retry_cnt = EXAMPLE_ESP_MAXIMUM_RETRY,
             .threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK,
             .sae_pwe_h2e = WPA3_SAE_PWE_BOTH,
@@ -209,12 +247,10 @@ void wifi_configure_sta(const char* sta_ssid, const char* sta_passwd) {
 void wifi_connect() {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_connect());
-    current_status = WIFI_STATUS_INITIATED;
 }
 
 void wifi_disconnect() {
     esp_wifi_disconnect();
-    current_status = WIFI_STATUS_DISCONNECTED;
 
     // esp_wifi_stop();     // stop driver
     // esp_wifi_deinit();
@@ -226,28 +262,28 @@ void wifi_stop() {
 }
 
 
-wifi_status_t wifi_check_status(uint64_t current_time) {
-    if (current_status2 == WIFI_EVENT_WIFI_READY) return current_status2;
-    if (current_time - last_update_time < 1000000) return current_status2;
-    last_update_time = current_time;
+wifi_event_t wifi_check_status(uint64_t current_time) {
+    if (current_time - last_update_time > 1000000) {
+        last_update_time = current_time;
+    } else {
+        return curr_status;
+    }
 
-    printf("IM HERE 2222");
+    wifi_mode_t mode;
+    esp_wifi_get_mode(&mode);
 
-    // wifi_ap_record_t ap_info;
-    // esp_err_t ret = esp_wifi_sta_get_ap_info(&ap_info);
-    // if (ret == ESP_OK) {
-    //     ESP_LOGI(TAG_STA, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
-    //     current_status = WIFI_STATUS_CONNECTED;
-    // } else if (remaining_retries < interface->max_retries) {
-    //     ESP_LOGI(TAG_STA, "Retrying connection to AP: %s", esp_err_to_name(ret));
-    //     remaining_retries = 0;
-    //     current_status = WIFI_STATUS_RETRY;
-    // } else {
-    //     ESP_LOGE(TAG_STA, "Failed to connect to AP: %s", esp_err_to_name(ret));
-    //     current_status = WIFI_STATUS_FAILED;
-    // }
-
-    return current_status;
+    if (mode == WIFI_MODE_STA) {
+        wifi_ap_record_t ap_info;
+        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+            ESP_LOGI(TAG, "Connected to AP: %s, RSSI: %d", ap_info.ssid, ap_info.rssi);
+        } else {
+            ESP_LOGI(TAG, "Not connected to any AP");
+        }
+    } else {
+        ESP_LOGI(TAG, "Wi-Fi is not in STA mode");
+    }
+    
+    return curr_status;
 }
 
 #define DEFAULT_SCAN_LIST_SIZE 10
@@ -271,8 +307,7 @@ static void print_auth_mode(int authmode)
     }
 }
 
-void wifi_scan(void)
-{
+void wifi_scan(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();

@@ -127,7 +127,11 @@
         "ntp.h": "c",
         "adc_oneshot.h": "c",
         "adc_continuous.h": "c",
-        "executor": "c"
+        "executor": "c",
+        "esp_wps.h": "c",
+        "esp_wifi_crypto_types.h": "c",
+        "mod_wifi.h": "c",
+        "web_socket.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

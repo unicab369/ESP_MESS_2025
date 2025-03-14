@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -36,21 +37,6 @@
 
 static const char *TAG = "MAIN";
 
-#ifndef WIFI_SSID
-#define WIFI_SSID "My_SSID"
-#endif
-
-#ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "MY_PASSWORD"
-#endif
-
-#ifndef AP_WIFI_SSID
-#define AP_WIFI_SSID "ESP_MESS_AP"
-#endif
-
-#ifndef AP_WIFI_PASSWORD
-#define AP_WIFI_PASSWORD "password"
-#endif
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
@@ -89,5 +75,3 @@ static const char *TAG = "MAIN";
         #define WS2812_PIN 12
     #endif
 #endif
-
-#define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]

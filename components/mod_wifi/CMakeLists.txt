@@ -12,6 +12,8 @@ idf_component_register(SRCS
                               esp_eth
                               esp_http_server
                               esp_http_client
+                              wpa_supplicant
+                              mod_utility
                          REQUIRES
                               driver
                               esp_timer

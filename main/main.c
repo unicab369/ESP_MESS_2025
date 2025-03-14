@@ -1,52 +1,15 @@
 #include "main.h"
 
+#include "util_shared.h"
+
 #define WIFI_ENABLED true
 
 #if WIFI_ENABLED
-    #include "mod_wifi.h"
-    #include "mod_wifi_nan.h"
-    #include "mod_espnow.h"
-    #include "ntp/ntp.h"
-    #include "http/http.h"
-    #include "esp_wifi.h"
-
-    #include "udp_socket/udp_socket.h"
-    #include "tcp_socket/tcp_socket.h"
-    #include "web_socket/web_socket.h"
-
-    // #include "modbus/modbus.h"
-
-    void espnow_message_handler(espnow_received_message_t received_message) {
-        ESP_LOGW(TAG,"received data:");
-        ESP_LOGI(TAG, "Source Address: %02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(received_message.src_addr));
-    
-        ESP_LOGI(TAG, "rssi: %d", received_message.rssi);
-        ESP_LOGI(TAG, "channel: %d", received_message.channel);
-        ESP_LOGI(TAG, "group_id: %d", received_message.message->group_id);
-        ESP_LOGI(TAG, "msg_id: %d", received_message.message->msg_id);
-        ESP_LOGI(TAG, "access_code: %u", received_message.message->access_code);
-        ESP_LOGI(TAG, "Data: %.*s", sizeof(received_message.message->data), received_message.message->data);
-    } 
-    
-    void espnow_controller_send() {
-        uint8_t dest_mac[6] = { 0xAA };
-        uint8_t data[32] = { 0xBB };
-    
-        espnow_message_t message = {
-            .access_code = 33,
-            .group_id = 11,
-            .msg_id = 12,
-            .time_to_live = 15,
-        };
-    
-        memcpy(message.target_addr, dest_mac, sizeof(message.target_addr));
-        memcpy(message.data, data, sizeof(message.data));
-        espnow_send((uint8_t*)&message, sizeof(message));
-    }
+    #include "app_network/app_network.h"
 #endif
 
 
-uint8_t esp_mac[6];
+static uint8_t esp_mac[6];
 
 // Button event callback
 void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
@@ -68,7 +31,7 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
             gpio_digital_config(obj_a);
             // led_toggle_switch();
 
-            espnow_controller_send();
+            // espnow_controller_send();
             break;
         case BUTTON_DOUBLE_CLICK:
             gpio_digital_stop(0);
@@ -132,31 +95,7 @@ void app_main(void) {
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     #if WIFI_ENABLED
-        wifi_setup(&(app_wifi_interface_t) {
-            .on_display_print = display_print_str,
-            .max_retries = 10,
-        });
-
-        wifi_configure_softAp(AP_WIFI_SSID, AP_WIFI_PASSWORD, 1);
-        wifi_configure_sta(WIFI_SSID, WIFI_PASSWORD);
-
-        http_setup(&(http_interface_t){
-            .on_file_fopen_cb = mod_sd_fopen,
-            .on_file_fread_cb = mod_sd_fread,
-            .on_file_fclose_cb = mod_sd_fclose,
-            .on_display_print = display_print_str
-        });
-        wifi_connect();
-        espnow_setup(esp_mac, espnow_message_handler);
-
-        char mac_str[32];
-        snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(esp_mac));
-        ESP_LOGW(TAG, "ESP mac: %s\n", mac_str);
-        display_print_str(mac_str, 0);
-
-        // wifi_scan();
-        // wifi_nan_subscribe();
-        // wifi_nan_publish();
+        app_network_setup();
     #endif
 
     mod_sd_spi_config(&(storage_sd_config_t) {
@@ -205,7 +144,7 @@ void app_main(void) {
     behavior_output_interface output_interface;
     // output_interface.on_gpio_set = 
 
-    behavior_setup(esp_mac, output_interface);
+    // behavior_setup(esp_mac, output_interface);
 
     ws2812_cyclePulse_t ojb1 = {
         .obj_index = 0,
@@ -269,16 +208,17 @@ void app_main(void) {
     //     .gpio = 34,
     //     .unit = ADC_UNIT_INTF_1
     // };
-    // mod_adc_1read_setup(&single_adc);
+    // mod_adc_1read_setup(&single_adc);    
+
+    // adc_continous_read_t continous_read = (adc_continous_read_t){
+    //     .unit = ADC_UNIT_1
+    // };
+
+    // mod_adc_continous_setup(&continous_read);
+    
 
     uint64_t second_interval_check = 0;
 
-    adc_continous_read_t continous_read = (adc_continous_read_t){
-        .unit = ADC_UNIT_1
-    };
-
-    mod_adc_continous_setup(&continous_read);
-    
     while (1) {
         uint64_t current_time = esp_timer_get_time();
         
@@ -296,41 +236,7 @@ void app_main(void) {
         app_console_task();
 
         #if WIFI_ENABLED
-            if (current_time - second_interval_check > 1000000) {
-                second_interval_check = current_time;
-                // mod_adc_1read(current_time, &single_adc);
-                mod_adc_continous_read(&continous_read);
-            }
-
-            // wifi_nan_checkPeers(current_time);
-            // wifi_nan_sendData(current_time);
-
-            wifi_event_t status = wifi_check_status(current_time);
-            
-            if (status == WIFI_EVENT_WIFI_READY) {
-                // web_socket_setup();
-                // web_socket_handshake(current_time);
-                // web_socket_task(current_time);
-
-                // ntp_status_t ntp_status = ntp_task(current_time);
-
-                //! tcp sockets block, need to find a solution
-                // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
-                // if (tcp_status == TCP_STATUS_SETUP) {
-                //     tcp_server_socket_task(current_time);
-                // }
-                // tcp_client_socket_task(current_time);
-
-                //! udp sockets block, need to find a solution
-            //     udp_status_t udp_status = udp_server_socket_setup(current_time);
-            //     if (udp_status == UDP_STATUS_SETUP) {
-            //         printf("IM HERE 4444");
-                    
-            //         udp_server_socket_task();
-            //         // udp_client_socket_send(current_time);
-            //     }
-            }
-
+            app_network_task(current_time);
         #endif
 
         // Small delay to avoid busy-waiting
