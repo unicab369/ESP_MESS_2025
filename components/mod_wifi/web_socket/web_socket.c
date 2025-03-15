@@ -15,35 +15,24 @@
 #define HANDSHAKE_MAGIC_NUMBER "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 #define MAX_CLIENTS 10
-static struct pollfd poll_arr[MAX_CLIENTS + 1];            // +1 for the server socket
-
-
 typedef struct {
     int socket;
     int8_t handshaked;
 } socket_client_info_t;
 
 static socket_client_info_t client_infos[MAX_CLIENTS] = {0};
+static struct pollfd poll_arr[MAX_CLIENTS + 1];            // +1 for the server socket
 
 static int fds_count;
-static uint64_t last_log_time;
 static int server_sock = -1;
+static uint64_t last_log_time;
 
-// Send a WebSocket text frame to the client
-void send_websocket_message(int client_sock, const char *message) {
-    size_t len = strlen(message);
-    uint8_t frame[len + 2]; // Frame buffer (header + payload)
-
-    // Construct the frame
-    frame[0] = 0x81; // FIN bit set, opcode for text frame
-    frame[1] = len;  // Payload length
-    memcpy(frame + 2, message, len); // Copy the payload
-
-    // Send the frame
-    send(client_sock, frame, len + 2, 0);
-}
 
 void web_socket_server_cleanup(void) {
+    memset(client_infos, 0, sizeof(client_infos));
+    memset(poll_arr, 0, sizeof(poll_arr));
+    fds_count = 1;                      // Start with only the server socket
+
     if (server_sock < 0) return;
     close(server_sock);
     server_sock = -1; // Reset to invalid descriptor
@@ -63,7 +52,6 @@ void web_socket_setup(void) {
     // Initialize the server socket in the pollfd array
     poll_arr[0].fd = server_sock;
     poll_arr[0].events = POLLIN;        // Monitor for incoming connections
-    fds_count = 1;                      // Start with only the server socket
 
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -94,37 +82,49 @@ static void remove_client_socket(int client_sock, int client_index) {
     close(client_sock);
     client_infos[client_index].socket = -1;
     client_infos[client_index].handshaked = 0;
-
-    // client_sock_arr[client_index] = -1;
-    // handshake_complete[client_index] = -1;
     printf("Client socket %d removed\n", client_sock);
+}
+
+static int handle_recv(int client_sock, int client_index, char *rx_buff, size_t buffer_len) {
+    int len = recv(client_sock, rx_buff, buffer_len, 0);
+    if (len == 0) {
+        // Client disconnected
+        ESP_LOGW(TAG, "Client %d disconnected", client_sock);
+        remove_client_socket(client_sock, client_index);
+        return 0;
+
+    } else if (len < 0) {
+        ESP_LOGE(TAG, "recv() failed for client %d. err: %s", client_sock, strerror(errno));
+        remove_client_socket(client_sock, client_index);
+        return 0;
+    }
+
+    ESP_LOGI(TAG, "Received data from socket %d. err: %s", client_sock, rx_buff);
+    rx_buff[len] = '\0'; // Null-terminate the received data
+    return len;
+}
+
+static int handle_send(int client_sock, int client_index, char *tx_buffer, size_t buffer_len) {
+    int result = send(client_sock, tx_buffer, buffer_len, 0);
+    if (result < 0) {
+        ESP_LOGE(TAG, "Client failed: %d. err: %s\n", client_sock, strerror(errno));
+        remove_client_socket(client_sock, client_index);
+    } else if (result == 0) {
+        ESP_LOGI(TAG, "Client closed: %d", client_sock);
+    }
+
+    return result;
 }
 
 static void perform_handshake(int client_sock, int client_index) {
     //! recv: Receive data from the client. Make sure the buffer is big enough
-    char rx_buffer[500];
-
-    int len = recv(client_sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-    if (len == 0) {
-        // Client disconnected
-        ESP_LOGI(TAG, "Client %d disconnected\n", client_sock);
-        remove_client_socket(client_sock, client_index);
-        return;
-
-    } else if (len < 0) {
-        // recv() failed
-        ESP_LOGE(TAG, "recv() failed for client %d: %s\n", client_sock, strerror(errno));
-        remove_client_socket(client_sock, client_index);
-        return;
-    }
-
-    // if len > 0
-    rx_buffer[len] = '\0'; // Null-terminate the received data
-    ESP_LOGI(TAG, "Received data from socket %d: %s\n", client_sock, rx_buffer);
+    char rx_buff[500];
+    int len = handle_recv(client_sock, client_index, rx_buff, sizeof(rx_buff) - 1);
+    if (len < 1) return;
 
     if (!client_infos[client_index].handshaked) {
         //! Check for handshaking request
-        char *key_start = strstr(rx_buffer, "Sec-WebSocket-Key: ");
+        char *key_start = strstr(rx_buff, "Sec-WebSocket-Key: ");
         if (!key_start) return;
 
         ESP_LOGI(TAG, "Found key_start");
@@ -164,29 +164,22 @@ static void perform_handshake(int client_sock, int client_index) {
             "Connection: Upgrade\r\n"
             "Sec-WebSocket-Accept: %s\r\n\r\n";
 
-        char response[256]; // Ensure buffer is large enough
-        snprintf(response, sizeof(response), ws_handshake_response, accept_key);
-        ESP_LOGI(TAG, "Handshake response:\n%s\n", response);
+        char tx_buff[256]; // Ensure buffer is large enough
+        snprintf(tx_buff, sizeof(tx_buff), ws_handshake_response, accept_key);
+        ESP_LOGI(TAG, "Handshake response:\n%s\n", tx_buff);
         ESP_LOGI(TAG,"client_sock %d\n", client_sock);
 
-        //! send: the WebSocket handshake response
-        int send_result = send(client_sock, response, strlen(response), 0);
-        if (send_result < 0) {
-            ESP_LOGE(TAG, "Failed to send handshake to client %d: %s\n", client_sock, strerror(errno));
-            remove_client_socket(client_sock, client_index);
-        } else {
-            ESP_LOGI(TAG, "Handshake response sent successfully");
+        //! send: handshake response
+        int result = handle_send(client_sock, client_index, tx_buff, strlen(tx_buff));
+        if (result > 0) {
+            ESP_LOGI(TAG, "Handshake sent successfully");
             client_infos[client_index].handshaked = 1;
-            // handshake_complete[client_index] = 1; // Mark handshake as complete
         }
 
     } else {
-        // Handshake is complete, handle normal data exchange
-        printf("Data from client %d: %s\n", client_sock, rx_buffer);
-
         // Example: Echo the data back to the client
-        if (send(client_sock, rx_buffer, len, 0) < 0) {
-            ESP_LOGE(TAG, "Failed to send data to client %d: %s\n", client_sock, strerror(errno));
+        if (send(client_sock, rx_buff, len, 0) < 0) {
+            ESP_LOGE(TAG, "Failed to send to client %d: %s\n", client_sock, strerror(errno));
             remove_client_socket(client_sock, client_index);
         }
     }
@@ -238,6 +231,21 @@ static uint8_t web_socket_server_poll(uint64_t current_time) {
     return 1;
 }
 
+
+// Send a WebSocket text frame to the client
+void send_websocket_message(int client_sock, const char *message) {
+    size_t len = strlen(message);
+    uint8_t frame[len + 2]; // Frame buffer (header + payload)
+
+    // Construct the frame
+    frame[0] = 0x81; // FIN bit set, opcode for text frame
+    frame[1] = len;  // Payload length
+    memcpy(frame + 2, message, len); // Copy the payload
+
+    // Send the frame
+    send(client_sock, frame, len + 2, 0);
+}
+
 void web_socket_poll(uint64_t current_time) {
     uint8_t check = web_socket_server_poll(current_time);
     if (!check) return;
@@ -245,19 +253,20 @@ void web_socket_poll(uint64_t current_time) {
     //! Check for activity on client sockets
     for (int i = 1; i < fds_count; i++) {
         struct pollfd target = poll_arr[i];
-        int target_fd = target.fd;
+        int target_client = target.fd;
 
         if (target.revents & POLLERR) {
             //! Remove the client socket with an error
-            printf("Error on client socket %d\n", target_fd);
-            remove_client_socket(target_fd, i);
+            printf("Error on client socket %d\n", target_client);
+            remove_client_socket(target_client, i-1);
             poll_arr[i].fd = -1; // Mark as invalid in the pollfd array
         }
 
         if (target.revents & POLLIN) {
             //! Handle client data
             uint8_t frame[128];
-            int len = recv(target_fd, frame, sizeof(frame), 0);
+            // uint8_t check 
+            int len = recv(target_client, frame, sizeof(frame), 0);
 
             if (len > 0) {
                 // Extract the payload length
@@ -286,7 +295,7 @@ void web_socket_poll(uint64_t current_time) {
         
                 // Send a response to the client
                 const char *response = "Hello from ESP32!";
-                send_websocket_message(target_fd, response);
+                send_websocket_message(target_client, response);
                 
             } else if (len == 0) {
                 ESP_LOGI(TAG, "Client disconnected");
