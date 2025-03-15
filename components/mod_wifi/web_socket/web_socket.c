@@ -100,11 +100,10 @@ void remove_client_socket(int sock) {
     }
 }
 
-static void handle_client_data(int client_sock) {
-    // Check if the client has completed the handshake
-    static int handshake_complete[MAX_CLIENTS] = {0}; // Tracks handshake status for each client
+static int handshake_complete[MAX_CLIENTS] = {0}; // Tracks handshake status for each client
 
-    // Find the index of the client socket
+static void perform_handshake(int client_sock) {
+    //! Find the index of the client socket
     int client_index = -1;
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (client_sock_arr[i] == client_sock) {
@@ -123,85 +122,80 @@ static void handle_client_data(int client_sock) {
 
     //! recv: Receive data from the client
     int len = recv(client_sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-    if (len > 0) {
-        rx_buffer[len] = '\0'; // Null-terminate the received data
-        ESP_LOGI(TAG, "Received data from socket %d: %s\n", client_sock, rx_buffer);
+    if (len <= 0) return;
 
-        if (!handshake_complete[client_index]) {
-            //! Check for handshaking request
-            char *key_start = strstr(rx_buffer, "Sec-WebSocket-Key: ");
-            if (!key_start) return;
+    rx_buffer[len] = '\0'; // Null-terminate the received data
+    ESP_LOGI(TAG, "Received data from socket %d: %s\n", client_sock, rx_buffer);
 
-            ESP_LOGI(TAG, "Found key_start");
-            key_start += 19; // Move past "Sec-WebSocket-Key: "
+    if (!handshake_complete[client_index]) {
+        //! Check for handshaking request
+        char *key_start = strstr(rx_buffer, "Sec-WebSocket-Key: ");
+        if (!key_start) return;
 
-            char *key_end = strstr(key_start, "\r\n");
-            if (!key_end) return;
-            
-            ESP_LOGI(TAG, "Found key_end");
-            *key_end = 0; // Null-terminate the key
+        ESP_LOGI(TAG, "Found key_start");
+        key_start += 19; // Move past "Sec-WebSocket-Key: "
 
-            //! Concatenate client key with WebSocket GUID
-            char combined[256];
-            snprintf(combined, sizeof(combined), "%s%s", key_start, HANDSHAKE_MAGIC_NUMBER);
+        char *key_end = strstr(key_start, "\r\n");
+        if (!key_end) return;
+        
+        ESP_LOGI(TAG, "Found key_end");
+        *key_end = 0; // Null-terminate the key
 
-            //! Compute SHA-1 hash
-            unsigned char sha1[20];
-            if (mbedtls_sha1((unsigned char *)combined, strlen(combined), sha1) != 0) {
-                ESP_LOGE(TAG, "SHA-1 computation failed");
-                return;
-            }
+        //! Concatenate client key with WebSocket GUID
+        char combined[256];
+        snprintf(combined, sizeof(combined), "%s%s", key_start, HANDSHAKE_MAGIC_NUMBER);
 
-            //! Base64 encode the hash
-            size_t base64_len;
-            char accept_key[64];
-            if (mbedtls_base64_encode((unsigned char *)accept_key, sizeof(accept_key), &base64_len, sha1, 20) != 0) {
-                ESP_LOGE(TAG, "Base64 encoding failed");
-                return;
-            }
-
-            //! build websocket handshake response
-            const char *ws_handshake_response2 =
-                "HTTP/1.1 101 Switching Protocols\r\n"
-                "Upgrade: websocket\r\n"
-                "Connection: Upgrade\r\n"
-                "Sec-WebSocket-Accept: %s\r\n\r\n";
-
-            char response[256]; // Ensure buffer is large enough
-            snprintf(response, sizeof(response), ws_handshake_response2, accept_key);
-            ESP_LOGI(TAG, "Handshake response:\n%s\n", response);
-            ESP_LOGI(TAG,"client_sock %d\n", client_sock);
-
-            //! send: the WebSocket handshake response
-            int send_result = send(client_sock, response, strlen(response), 0);
-            if (send_result < 0) {
-                ESP_LOGE(TAG, "Failed to send handshake to client %d: %s\n", client_sock, strerror(errno));
-                remove_client_socket(client_sock);
-            } else {
-                ESP_LOGI(TAG, "Handshake response sent successfully");
-                handshake_complete[client_index] = 1; // Mark handshake as complete
-            }
-        } else {
-            // Handshake is complete, handle normal data exchange
-            printf("Data from client %d: %s\n", client_sock, rx_buffer);
-
-            // Example: Echo the data back to the client
-            if (send(client_sock, rx_buffer, len, 0) < 0) {
-                ESP_LOGE(TAG, "Failed to send data to client %d: %s\n", client_sock, strerror(errno));
-                remove_client_socket(client_sock);
-            }
+        //! Compute SHA-1 hash
+        unsigned char sha1[20];
+        if (mbedtls_sha1((unsigned char *)combined, strlen(combined), sha1) != 0) {
+            ESP_LOGE(TAG, "SHA-1 computation failed");
+            return;
         }
-    } else if (len == 0) {
-        //! Client disconnected
-        printf("Client socket %d disconnected\n", client_sock);
-        remove_client_socket(client_sock);
-        handshake_complete[client_index] = 0; // Reset handshake status
+
+        //! Base64 encode the hash
+        size_t base64_len;
+        char accept_key[64];
+        if (mbedtls_base64_encode((unsigned char *)accept_key, sizeof(accept_key), &base64_len, sha1, 20) != 0) {
+            ESP_LOGE(TAG, "Base64 encoding failed");
+            return;
+        }
+
+        //! build websocket handshake response
+        const char *ws_handshake_response2 =
+            "HTTP/1.1 101 Switching Protocols\r\n"
+            "Upgrade: websocket\r\n"
+            "Connection: Upgrade\r\n"
+            "Sec-WebSocket-Accept: %s\r\n\r\n";
+
+        char response[256]; // Ensure buffer is large enough
+        snprintf(response, sizeof(response), ws_handshake_response2, accept_key);
+        ESP_LOGI(TAG, "Handshake response:\n%s\n", response);
+        ESP_LOGI(TAG,"client_sock %d\n", client_sock);
+
+        //! send: the WebSocket handshake response
+        int send_result = send(client_sock, response, strlen(response), 0);
+        if (send_result < 0) {
+            ESP_LOGE(TAG, "Failed to send handshake to client %d: %s\n", client_sock, strerror(errno));
+            remove_client_socket(client_sock);
+        } else {
+            ESP_LOGI(TAG, "Handshake response sent successfully");
+            handshake_complete[client_index] = 1; // Mark handshake as complete
+        }
+
     } else {
-        //! Error receiving data
-        ESP_LOGE(TAG, "Error receiving data from socket %d: %s\n", client_sock, strerror(errno));
-        remove_client_socket(client_sock);
-        handshake_complete[client_index] = 0; // Reset handshake status
+        // Handshake is complete, handle normal data exchange
+        printf("Data from client %d: %s\n", client_sock, rx_buffer);
+
+        // Example: Echo the data back to the client
+        if (send(client_sock, rx_buffer, len, 0) < 0) {
+            ESP_LOGE(TAG, "Failed to send data to client %d: %s\n", client_sock, strerror(errno));
+            remove_client_socket(client_sock);
+        }
     }
+}
+
+static void handle_client_data(int client_sock) {
+
 }
 
 
@@ -235,6 +229,9 @@ void web_socket_poll(uint64_t current_time) {
                     if (client_sock_arr[i] == -1) {
                         client_sock_arr[i] = client_sock;
                         printf("Client socket %d added\n", client_sock);
+
+                        //! Perform handshake
+                        perform_handshake(client_sock);
                         break;
                     }
                 }
@@ -252,7 +249,41 @@ void web_socket_poll(uint64_t current_time) {
 
         if (target.revents & POLLIN) {
             //! Handle client data
-            handle_client_data(target_fd);
+            uint8_t frame[128];
+            int len = recv(target_fd, frame, sizeof(frame), 0);
+
+            if (len > 0) {
+                // Extract the payload length
+                uint8_t payload_len = frame[1] & 0x7F; // Mask out the MASK bit
+                uint8_t mask_offset = 2; // Start of masking key (if present)
+        
+                // Check if the payload is masked
+                if (frame[1] & 0x80) { // MASK bit is set
+                    // Extract the masking key
+                    uint8_t masking_key[4];
+                    memcpy(masking_key, frame + 2, 4);
+                    mask_offset += 4; // Move past the masking key
+        
+                    // Unmask the payload
+                    uint8_t payload[payload_len];
+                    for (size_t i = 0; i < payload_len; i++) {
+                        payload[i] = frame[mask_offset + i] ^ masking_key[i % 4];
+                    }
+        
+                    // Log the unmasked payload
+                    ESP_LOGI(TAG, "Received: %.*s", payload_len, payload);
+                } else {
+                    // Payload is not masked
+                    ESP_LOGI(TAG, "Received: %.*s", payload_len, frame + mask_offset);
+                }
+        
+                // Send a response to the client
+                const char *response = "Hello from ESP32!";
+                send_websocket_message(target_fd, response);
+                
+            } else if (len == 0) {
+                ESP_LOGI(TAG, "Client disconnected");
+            }
         }
 
         if (target.revents & POLLERR) {
@@ -330,21 +361,24 @@ void web_socket_accept(uint64_t current_time) {
     char accept_key[64];
     mbedtls_base64_encode((unsigned char *)accept_key, sizeof(accept_key), &base64_len, sha1, 20);
 
-    // WebSocket handshake response
+    //! build websocket handshake response
     const char *ws_handshake_response =
         "HTTP/1.1 101 Switching Protocols\r\n"
         "Upgrade: websocket\r\n"
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Accept: %s\r\n\r\n";
 
-    //! Send the WebSocket handshake response
-    char response[256];
+    char response[256]; // Ensure buffer is large enough
     snprintf(response, sizeof(response), ws_handshake_response, accept_key);
     ESP_LOGI(TAG, "Handshake response:\n%s\n", response);
-    ESP_LOGI(TAG, "client_sock %d\n", client_sock);
+    ESP_LOGI(TAG,"client_sock %d\n", client_sock);
 
-    if (send(client_sock, response, strlen(response), 0) < 0) {
+    //! send: the WebSocket handshake response
+    int send_result = send(client_sock, response, strlen(response), 0);
+    if (send_result < 0) {
         ESP_LOGE(TAG, "Failed to send handshake to client %d: %s\n", client_sock, strerror(errno));
+    } else {
+        ESP_LOGI(TAG, "Handshake response sent successfully");
     }
 
     status = WEBSOCKET_HANDSHAKED;
