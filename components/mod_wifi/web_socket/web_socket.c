@@ -160,73 +160,42 @@ static uint8_t make_handshake_packet(char *rx_buff, char *tx_buff, size_t tx_len
     return 1;
 }
 
-static uint8_t web_socket_server_poll(uint64_t current_time) {
-    //! Wait for activity on any socket
-    int activity = poll(poll_arr, fds_count, 0); // -1 means no timeout
-    if (activity < 0) return 0;
+static void web_socket_server_poll(int client_sock) {
+    //! Add the new client socket to the pollfd array
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (client_infos[i].socket > 0) continue;
+        client_infos[i].socket = client_sock;
+        
+        //! recv: Receive data from the client. Make sure the buffer is big enough
+        char rx_buff[500];
+        int len = handle_recv(client_sock, i, rx_buff, sizeof(rx_buff) - 1);
+        if (len < 1) continue;
 
-    //! Check for activity on the server socket
-    if (!poll_arr[0].revents & POLLIN) return 1;    // return 1 to continue checking the clients
-
-    // Accept a new connection
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-    int client_sock = accept(poll_arr[0].fd, (struct sockaddr *)&client_addr, &client_len);
-
-    if (client_sock < 0) {
-        ESP_LOGE(TAG, "Failed connection: %s\n", strerror(errno));
-        return 0;
-
-    } else {
-        printf("New connection accepted\n");
-        if (fds_count >= MAX_CLIENTS + 1) {
-            printf("Max clients reached, closing connection\n");
-            close(client_sock);
-            return 0;
-        }
-
-        poll_arr[fds_count].fd = client_sock;
-        poll_arr[fds_count].events = POLLIN; // Monitor for incoming data
-        fds_count++;
-
-        //! Add the new client socket to the pollfd array
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (client_infos[i].socket > 0) continue;
-            client_infos[i].socket = client_sock;
-            
-            //! recv: Receive data from the client. Make sure the buffer is big enough
-            char rx_buff[500];
-            int len = handle_recv(client_sock, i, rx_buff, sizeof(rx_buff) - 1);
-            if (len < 1) continue;
-
-            // Echo the data back to the client if already handshaked
-            if (client_infos[i].handshaked) {
-                handle_send(client_sock, i, rx_buff, len);
-                break;
-            }
-
-            //! Perform handshake
-            printf("Start Handshake: %d\n", client_sock);
-            char tx_buff[256]; // Ensure buffer is large enough
-            uint8_t check = make_handshake_packet(rx_buff, tx_buff, sizeof(tx_buff));
-            
-            if (check) {
-                ESP_LOGI(TAG, "Handshake to client: %d. tx_buff:\n%s", client_sock, tx_buff);
-
-                //! send: handshake response
-                int result = handle_send(client_sock, i, tx_buff, strlen(tx_buff));
-                if (result > 0) {
-                    ESP_LOGI(TAG, "Handshake sent successfully");
-                    client_infos[i].handshaked = 1;
-                }
-            } else {
-                remove_client_socket(client_sock, i);
-            }
+        // Echo the data back to the client if already handshaked
+        if (client_infos[i].handshaked) {
+            handle_send(client_sock, i, rx_buff, len);
             break;
         }
-    }
 
-    return 1;
+        //! Perform handshake
+        printf("Start Handshake: %d\n", client_sock);
+        char tx_buff[256]; // Ensure buffer is large enough
+        uint8_t check = make_handshake_packet(rx_buff, tx_buff, sizeof(tx_buff));
+        
+        if (check) {
+            ESP_LOGI(TAG, "Handshake to client: %d. tx_buff:\n%s", client_sock, tx_buff);
+
+            //! send: handshake response
+            int result = handle_send(client_sock, i, tx_buff, strlen(tx_buff));
+            if (result > 0) {
+                ESP_LOGI(TAG, "Handshake sent successfully");
+                client_infos[i].handshaked = 1;
+            }
+        } else {
+            remove_client_socket(client_sock, i);
+        }
+        break;      //! REQUIRED: stop the loop
+    }
 }
 
 // Send a WebSocket text frame to the client
@@ -244,8 +213,47 @@ void send_websocket_message(int client_sock, const char *message) {
 }
 
 void web_socket_poll(uint64_t current_time) {
-    uint8_t check = web_socket_server_poll(current_time);
-    if (!check) return;
+    //! Wait for activity on any socket
+    int activity = poll(poll_arr, fds_count, 0); // -1 means no timeout
+    if (activity < 0) return;
+
+    if (poll_arr[0].revents & POLLIN) {
+        struct sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
+        int client_sock = accept(poll_arr[0].fd, (struct sockaddr *)&client_addr, &client_len);
+
+        if (client_sock < 0) {
+            ESP_LOGE(TAG, "Failed connection: %s\n", strerror(errno));
+            return;
+
+        } else {
+            if (fds_count >= MAX_CLIENTS + 1) {
+                printf("Max clients reached, closing connection\n");
+                close(client_sock);
+                return;
+            }
+
+            bool found_match = false;
+            for (int i = 1; i <= fds_count; i++) {
+                ESP_LOGW(TAG, "compare fd: %d, client: %d, index: %d", poll_arr[i].fd, client_sock, i);
+                if (poll_arr[i].fd != client_sock) continue;
+                ESP_LOGW(TAG, "found match");
+                found_match = true;
+                break;
+            }
+        
+            if (!found_match) {
+                struct pollfd *poll_ref = &poll_arr[fds_count];
+                poll_arr[fds_count].fd = client_sock;
+                poll_arr[fds_count].events = POLLIN; // Monitor for incoming data
+                ESP_LOGW(TAG, "newly added: %d. at: %d", poll_arr[fds_count].fd, fds_count);
+                fds_count++;
+            }
+
+            ESP_LOGW(TAG, "fds_counts: %d", fds_count);
+            web_socket_server_poll(client_sock);
+        }
+    }
 
     //! Check for activity on client sockets
     for (int i = 1; i < fds_count; i++) {
