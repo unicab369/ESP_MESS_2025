@@ -12,23 +12,21 @@
 
 #define PORT 3333
 #define TAG "WEBSOCKET_SERVER"
+#define HANDSHAKE_MAGIC_NUMBER "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
-// WebSocket handshake response
-const char *websocket_handshake_response =
-    "HTTP/1.1 101 Switching Protocols\r\n"
-    "Upgrade: websocket\r\n"
-    "Connection: Upgrade\r\n"
-    "Sec-WebSocket-Accept: %s\r\n\r\n";
 
-// Generate Sec-WebSocket-Accept key
+//! Generate Sec-WebSocket-Accept key
 static void generate_websocket_accept(const char *client_key, char *accept_key) {
     // Concatenate client key with WebSocket GUID
     char combined[256];
-    snprintf(combined, sizeof(combined), "%s%s", client_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    snprintf(combined, sizeof(combined), "%s%s", client_key, HANDSHAKE_MAGIC_NUMBER);
 
-    // Compute SHA-1 hash
+    //! Compute SHA-1 hash
     unsigned char sha1[20];
-    mbedtls_sha1((unsigned char *)combined, strlen(combined), sha1);
+    if (mbedtls_sha1((unsigned char *)combined, strlen(combined), sha1) != 0) {
+        printf("SHA-1 computation failed\n");
+        return;
+    }
 
     // Base64 encode the hash
     size_t len;
@@ -49,10 +47,18 @@ void send_websocket_message(int client_sock, const char *message) {
     send(client_sock, frame, len + 2, 0);
 }
 
+#define MAX_CLIENTS 10
+int num_fds = 1; // Start with only the server socket
+struct pollfd fds[MAX_CLIENTS + 1]; // +1 for the server socket
+int client_sock_arr[MAX_CLIENTS] = { -1 }; // Array to store client sockets
+
 int server_sock = -1;
-struct sockaddr_in server_addr;
 char rx_buffer[512];
 web_socket_status_t status = WEBSOCKET_DISCONNECTED;
+
+int client_sock;
+uint64_t last_log_time;
+
 
 void web_socket_server_cleanup(void) {
     if (server_sock < 0) return;
@@ -64,25 +70,26 @@ void web_socket_setup(void) {
     if (status != WEBSOCKET_DISCONNECTED) return;
     web_socket_server_cleanup();
 
-    // Create TCP socket
+    //! Create TCP socket
     server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (server_sock < 0) {
         ESP_LOGE(TAG, "Failed to create socket");
         return;
     }
 
-    // Bind the socket to the port
+    struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
+    //! Bind the socket to the port
     if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         ESP_LOGE(TAG, "Failed to bind socket");
         web_socket_server_cleanup();
         return;
     }
 
-    // Listen for incoming connections
+    //! Listen for incoming connections, max pending connection = 5
     if (listen(server_sock, 5) < 0) {
         ESP_LOGE(TAG, "Failed to listen on socket");
         web_socket_server_cleanup();
@@ -95,12 +102,170 @@ void web_socket_setup(void) {
 
     ESP_LOGI(TAG, "WebSocket server started on port %d", PORT);
     status = WEBSOCKET_SETUP;
+
+    // Initialize the server socket in the pollfd array
+    fds[0].fd = server_sock;
+    fds[0].events = POLLIN; // Monitor for incoming connections
+    num_fds = 1;
 }
 
-int client_sock;
-uint64_t last_log_time;
 
-void web_socket_handshake(uint64_t current_time) {
+
+void remove_client_socket(int sock) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (client_sock_arr[i] == sock) {
+            client_sock_arr[i] = -1;
+            printf("Client socket %d removed\n", sock);
+            break;
+        }
+    }
+}
+
+
+void handle_client_data(int sock) {
+    char buffer[255];
+    int len;
+
+    // Check if the client has completed the handshake
+    static int handshake_complete[MAX_CLIENTS] = {0}; // Tracks handshake status for each client
+
+    // Find the index of the client socket
+    int client_index = -1;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (client_sock_arr[i] == sock) {
+            client_index = i;
+            break;
+        }
+    }
+
+    if (client_index == -1) {
+        printf("Invalid client socket\n");
+        return;
+    }
+
+    //! Receive data from the client
+    len = recv(sock, buffer, sizeof(buffer), 0);
+    if (len > 0) {
+        buffer[len] = '\0'; // Null-terminate the received data
+        printf("Received data from socket %d: %s\n", sock, buffer);
+
+        if (!handshake_complete[client_index]) {
+            // Handle handshaking
+            if (strcmp(buffer, "HELLO") == 0) {
+                // Client sent the correct handshake message
+                printf("Handshake received from client %d\n", sock);
+
+                // Send the "WELCOME" response
+                const char *welcome_msg = "WELCOME";
+                if (send(sock, welcome_msg, strlen(welcome_msg), 0) < 0) {
+                    printf("Failed to send WELCOME message to client %d: %s\n", sock, strerror(errno));
+                    close(sock);
+                    remove_client_socket(sock);
+                } else {
+                    printf("Handshake completed with client %d\n", sock);
+                    handshake_complete[client_index] = 1; // Mark handshake as complete
+                }
+            } else {
+                // Invalid handshake message
+                printf("Invalid handshake message from client %d: %s\n", sock, buffer);
+                close(sock);
+                remove_client_socket(sock);
+            }
+        } else {
+            // Handshake is complete, handle normal data exchange
+            printf("Data from client %d: %s\n", sock, buffer);
+
+            // Example: Echo the data back to the client
+            if (send(sock, buffer, len, 0) < 0) {
+                printf("Failed to send data to client %d: %s\n", sock, strerror(errno));
+                close(sock);
+                remove_client_socket(sock);
+            }
+        }
+    } else if (len == 0) {
+        //! Client disconnected
+        printf("Client socket %d disconnected\n", sock);
+        close(sock);
+        remove_client_socket(sock);
+        handshake_complete[client_index] = 0; // Reset handshake status
+    } else {
+        //! Error receiving data
+        printf("Error receiving data from socket %d: %s\n", sock, strerror(errno));
+        close(sock);
+        remove_client_socket(sock);
+        handshake_complete[client_index] = 0; // Reset handshake status
+    }
+}
+
+
+void web_socket_poll(uint64_t current_time) {
+    //! Wait for activity on any socket
+    int activity = poll(fds, num_fds, -1); // -1 means no timeout
+    if (activity < 0) {
+        printf("poll() failed: %s\n", strerror(errno));
+        return;
+    }
+
+    //! Check for activity on the server socket
+    if (fds[0].revents & POLLIN) {
+        // Accept a new connection
+        struct sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
+        int client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
+
+        if (client_sock < 0) {
+            if (current_time - last_log_time > 1000000) {
+                last_log_time = current_time;
+                ESP_LOGE(TAG, "Failed to accept connection: %s\n", strerror(errno));
+            }
+
+        } else {
+            printf("New connection accepted\n");
+            if (num_fds < MAX_CLIENTS + 1) {
+                fds[num_fds].fd = client_sock;
+                fds[num_fds].events = POLLIN; // Monitor for incoming data
+                num_fds++;
+
+                //! Add the new client socket to the pollfd array
+                for (int i = 0; i < MAX_CLIENTS; i++) {
+                    if (client_sock_arr[i] == -1) {
+                        client_sock_arr[i] = client_sock;
+                        printf("Client socket %d added\n", client_sock);
+                        break;
+                    }
+                }
+            } else {
+                printf("Max clients reached, closing connection\n");
+                close(client_sock);
+            }
+        }
+    }
+
+    //! Check for activity on client sockets
+    for (int i = 1; i < num_fds; i++) {
+        struct pollfd target = fds[i];
+        int target_fd = target.fd;
+
+        if (target.revents & POLLIN) {
+            //! Handle client data
+            handle_client_data(target_fd);
+        }
+
+        if (target.revents & POLLERR) {
+            printf("Error on client socket %d\n", target_fd);
+            close(target_fd);
+            
+            //! Remove the client socket with an error
+            remove_client_socket(target_fd);
+
+            //! Remove the socket from the pollfd array
+            fds[i].fd = -1; // Mark as invalid
+        }
+    }
+}
+
+
+void web_socket_accept(uint64_t current_time) {
     if (status != WEBSOCKET_SETUP) return;
 
     // Accept incoming connection
@@ -126,7 +291,7 @@ void web_socket_handshake(uint64_t current_time) {
     timeout.tv_usec = 1; // microseconds
     setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    // Read the WebSocket handshake request
+    //! Read the WebSocket handshake request
     int len = recv(client_sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
     if (len <= 0) return;
 
@@ -144,12 +309,34 @@ void web_socket_handshake(uint64_t current_time) {
 
     ESP_LOGI(TAG, "Found key_end");
     *key_end = 0; // Null-terminate the key
-    char accept_key[64];
-    generate_websocket_accept(key_start, accept_key);
 
-    // Send the WebSocket handshake response
+
+    //! Concatenate client key with WebSocket GUID
+    char combined[256];
+    snprintf(combined, sizeof(combined), "%s%s", key_start, HANDSHAKE_MAGIC_NUMBER);
+
+    //! Compute SHA-1 hash
+    unsigned char sha1[20];
+    if (mbedtls_sha1((unsigned char *)combined, strlen(combined), sha1) != 0) {
+        printf("SHA-1 computation failed\n");
+        return;
+    }
+
+    //! Base64 encode the hash
+    size_t base64_len;
+    char accept_key[64];
+    mbedtls_base64_encode((unsigned char *)accept_key, sizeof(accept_key), &base64_len, sha1, 20);
+
+    // WebSocket handshake response
+    const char *ws_handshake_response =
+        "HTTP/1.1 101 Switching Protocols\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        "Sec-WebSocket-Accept: %s\r\n\r\n";
+
+    //! Send the WebSocket handshake response
     char response[256];
-    snprintf(response, sizeof(response), websocket_handshake_response, accept_key);
+    snprintf(response, sizeof(response), ws_handshake_response, accept_key);
     send(client_sock, response, strlen(response), 0);
     
     status = WEBSOCKET_HANDSHAKED;
