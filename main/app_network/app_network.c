@@ -108,8 +108,9 @@ void app_network_task(uint8_t current_time) {
         web_socket_setup();
         
     } else if (status == WIFI_EVENT_WIFI_READY) {
-        web_socket_accept(current_time);
-        web_socket_task(current_time);
+        web_socket_poll(current_time);
+        // web_socket_accept(current_time);
+        // web_socket_task(current_time);
     }
 
     // if (status == WIFI_REa) {
