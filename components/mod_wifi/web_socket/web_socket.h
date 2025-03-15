@@ -14,6 +14,4 @@ typedef enum __attribute__((packed)) {
 } web_socket_status_t;
 
 void web_socket_setup(void);
-void web_socket_accept(uint64_t current_time);
 void web_socket_poll(uint64_t current_time);
-void web_socket_task(uint64_t current_time);

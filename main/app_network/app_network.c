@@ -109,15 +109,9 @@ void app_network_task(uint8_t current_time) {
         
     } else if (status == WIFI_EVENT_WIFI_READY) {
         web_socket_poll(current_time);
-        // web_socket_accept(current_time);
-        // web_socket_task(current_time);
     }
 
     // if (status == WIFI_REa) {
-        // web_socket_setup();
-        // web_socket_handshake(current_time);
-        // web_socket_task(current_time);
-
         // ntp_status_t ntp_status = ntp_task(current_time);
 
         //! tcp sockets block, need to find a solution
