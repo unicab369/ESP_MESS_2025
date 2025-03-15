@@ -85,9 +85,6 @@ void app_main(void) {
     #endif
 
     display_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
-
-    // ssd1306_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
-
     // ssd1306_print_str("Hello World aaaabbbbccccddddeeeffff!", 0);
     // ssd1306_print_str("Hello World 222222!", 1);
     // ssd1306_print_str("Hello World 333333!", 2);
