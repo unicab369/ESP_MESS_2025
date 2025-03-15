@@ -90,41 +90,33 @@ void web_socket_setup(void) {
 
 static int handshake_complete[MAX_CLIENTS] = {0}; // Tracks handshake status for each client
 
-static void remove_client_socket(int client_sock) {
+static void remove_client_socket(int client_sock, int client_index) {
     close(client_sock);
-
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (client_sock_arr[i] == client_sock) {
-            client_sock_arr[i] = -1;
-            handshake_complete[i] = -1;
-            printf("Client socket %d removed\n", client_sock);
-            break;
-        }
-    }
+    client_sock_arr[client_index] = -1;
+    handshake_complete[client_index] = -1;
+    printf("Client socket %d removed\n", client_sock);
 }
 
-static void perform_handshake(int client_sock) {
-    //! Find the index of the client socket
-    int client_index = -1;
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (client_sock_arr[i] == client_sock) {
-            client_index = i;
-            break;
-        }
-    }
-
-    if (client_index == -1) {
-        ESP_LOGE(TAG, "Invalid client socket\n");
-        return;
-    }
-
+static void perform_handshake(int client_sock, int client_index) {
     //! Make sure the buffer is long enough to get all of the data
     char rx_buffer[500];
 
     //! recv: Receive data from the client
     int len = recv(client_sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-    if (len <= 0) return;
+    if (len == 0) {
+        // Client disconnected
+        ESP_LOGI(TAG, "Client %d disconnected\n", client_sock);
+        remove_client_socket(client_sock, client_index);
+        return;
 
+    } else if (len < 0) {
+        // recv() failed
+        ESP_LOGE(TAG, "recv() failed for client %d: %s\n", client_sock, strerror(errno));
+        remove_client_socket(client_sock, client_index);
+        return;
+    }
+
+    // if len > 0
     rx_buffer[len] = '\0'; // Null-terminate the received data
     ESP_LOGI(TAG, "Received data from socket %d: %s\n", client_sock, rx_buffer);
 
@@ -150,6 +142,7 @@ static void perform_handshake(int client_sock) {
         unsigned char sha1[20];
         if (mbedtls_sha1((unsigned char *)combined, strlen(combined), sha1) != 0) {
             ESP_LOGE(TAG, "SHA-1 computation failed");
+            remove_client_socket(client_sock, client_index);
             return;
         }
 
@@ -158,6 +151,7 @@ static void perform_handshake(int client_sock) {
         char accept_key[64];
         if (mbedtls_base64_encode((unsigned char *)accept_key, sizeof(accept_key), &base64_len, sha1, 20) != 0) {
             ESP_LOGE(TAG, "Base64 encoding failed");
+            remove_client_socket(client_sock, client_index);
             return;
         }
 
@@ -177,7 +171,7 @@ static void perform_handshake(int client_sock) {
         int send_result = send(client_sock, response, strlen(response), 0);
         if (send_result < 0) {
             ESP_LOGE(TAG, "Failed to send handshake to client %d: %s\n", client_sock, strerror(errno));
-            remove_client_socket(client_sock);
+            remove_client_socket(client_sock, client_index);
         } else {
             ESP_LOGI(TAG, "Handshake response sent successfully");
             handshake_complete[client_index] = 1; // Mark handshake as complete
@@ -190,7 +184,7 @@ static void perform_handshake(int client_sock) {
         // Example: Echo the data back to the client
         if (send(client_sock, rx_buffer, len, 0) < 0) {
             ESP_LOGE(TAG, "Failed to send data to client %d: %s\n", client_sock, strerror(errno));
-            remove_client_socket(client_sock);
+            remove_client_socket(client_sock, client_index);
         }
     }
 }
@@ -227,7 +221,7 @@ void web_socket_poll(uint64_t current_time) {
                         printf("Client socket %d added\n", client_sock);
 
                         //! Perform handshake
-                        perform_handshake(client_sock);
+                        perform_handshake(client_sock, i);
                         break;
                     }
                 }
@@ -246,7 +240,7 @@ void web_socket_poll(uint64_t current_time) {
         if (target.revents & POLLERR) {
             //! Remove the client socket with an error
             printf("Error on client socket %d\n", target_fd);
-            remove_client_socket(target_fd);
+            remove_client_socket(target_fd, i);
             fds[i].fd = -1; // Mark as invalid in the pollfd array
         }
 
