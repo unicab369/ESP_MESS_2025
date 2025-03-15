@@ -14,6 +14,21 @@
 #define TAG "WEBSOCKET_SERVER"
 #define HANDSHAKE_MAGIC_NUMBER "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
+#define MAX_CLIENTS 10
+static struct pollfd poll_arr[MAX_CLIENTS + 1];            // +1 for the server socket
+
+
+typedef struct {
+    int socket;
+    int8_t handshaked;
+} socket_client_info_t;
+
+static socket_client_info_t client_infos[MAX_CLIENTS] = {0};
+
+static int fds_count;
+static uint64_t last_log_time;
+static int server_sock = -1;
+
 // Send a WebSocket text frame to the client
 void send_websocket_message(int client_sock, const char *message) {
     size_t len = strlen(message);
@@ -27,18 +42,6 @@ void send_websocket_message(int client_sock, const char *message) {
     // Send the frame
     send(client_sock, frame, len + 2, 0);
 }
-
-#define MAX_CLIENTS 10
-int num_fds = 1; // Start with only the server socket
-struct pollfd fds[MAX_CLIENTS + 1]; // +1 for the server socket
-int client_sock_arr[MAX_CLIENTS] = { -1 }; // Array to store client sockets
-
-int client_sock;
-uint64_t last_log_time;
-
-
-
-static int server_sock = -1;
 
 void web_socket_server_cleanup(void) {
     if (server_sock < 0) return;
@@ -56,6 +59,11 @@ void web_socket_setup(void) {
         ESP_LOGE(TAG, "Failed to create socket");
         return;
     }
+
+    // Initialize the server socket in the pollfd array
+    poll_arr[0].fd = server_sock;
+    poll_arr[0].events = POLLIN;        // Monitor for incoming connections
+    fds_count = 1;                      // Start with only the server socket
 
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
@@ -79,29 +87,23 @@ void web_socket_setup(void) {
     //! Set the socket to non-blocking mode
     int flags = fcntl(server_sock, F_GETFL, 0);
     fcntl(server_sock, F_SETFL, flags | O_NONBLOCK);
-
     ESP_LOGI(TAG, "WebSocket server started on port %d", PORT);
-
-    // Initialize the server socket in the pollfd array
-    fds[0].fd = server_sock;
-    fds[0].events = POLLIN; // Monitor for incoming connections
-    num_fds = 1;
 }
-
-static int handshake_complete[MAX_CLIENTS] = {0}; // Tracks handshake status for each client
 
 static void remove_client_socket(int client_sock, int client_index) {
     close(client_sock);
-    client_sock_arr[client_index] = -1;
-    handshake_complete[client_index] = -1;
+    client_infos[client_index].socket = -1;
+    client_infos[client_index].handshaked = 0;
+
+    // client_sock_arr[client_index] = -1;
+    // handshake_complete[client_index] = -1;
     printf("Client socket %d removed\n", client_sock);
 }
 
 static void perform_handshake(int client_sock, int client_index) {
-    //! Make sure the buffer is long enough to get all of the data
+    //! recv: Receive data from the client. Make sure the buffer is big enough
     char rx_buffer[500];
 
-    //! recv: Receive data from the client
     int len = recv(client_sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
     if (len == 0) {
         // Client disconnected
@@ -120,7 +122,7 @@ static void perform_handshake(int client_sock, int client_index) {
     rx_buffer[len] = '\0'; // Null-terminate the received data
     ESP_LOGI(TAG, "Received data from socket %d: %s\n", client_sock, rx_buffer);
 
-    if (!handshake_complete[client_index]) {
+    if (!client_infos[client_index].handshaked) {
         //! Check for handshaking request
         char *key_start = strstr(rx_buffer, "Sec-WebSocket-Key: ");
         if (!key_start) return;
@@ -174,7 +176,8 @@ static void perform_handshake(int client_sock, int client_index) {
             remove_client_socket(client_sock, client_index);
         } else {
             ESP_LOGI(TAG, "Handshake response sent successfully");
-            handshake_complete[client_index] = 1; // Mark handshake as complete
+            client_infos[client_index].handshaked = 1;
+            // handshake_complete[client_index] = 1; // Mark handshake as complete
         }
 
     } else {
@@ -189,17 +192,17 @@ static void perform_handshake(int client_sock, int client_index) {
     }
 }
 
-void web_socket_poll(uint64_t current_time) {
+static uint8_t web_socket_server_poll(uint64_t current_time) {
     //! Wait for activity on any socket
-    int activity = poll(fds, num_fds, -1); // -1 means no timeout
-    if (activity < 0) return;
+    int activity = poll(poll_arr, fds_count, 0); // -1 means no timeout
+    if (activity < 0) return 0;
 
     //! Check for activity on the server socket
-    if (fds[0].revents & POLLIN) {
+    if (poll_arr[0].revents & POLLIN) {
         // Accept a new connection
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
-        int client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
+        int client_sock = accept(poll_arr[0].fd, (struct sockaddr *)&client_addr, &client_len);
 
         if (client_sock < 0) {
             if (current_time - last_log_time > 1000000) {
@@ -209,16 +212,16 @@ void web_socket_poll(uint64_t current_time) {
 
         } else {
             printf("New connection accepted\n");
-            if (num_fds < MAX_CLIENTS + 1) {
-                fds[num_fds].fd = client_sock;
-                fds[num_fds].events = POLLIN; // Monitor for incoming data
-                num_fds++;
+            if (fds_count < MAX_CLIENTS + 1) {
+                poll_arr[fds_count].fd = client_sock;
+                poll_arr[fds_count].events = POLLIN; // Monitor for incoming data
+                fds_count++;
 
                 //! Add the new client socket to the pollfd array
                 for (int i = 0; i < MAX_CLIENTS; i++) {
-                    if (client_sock_arr[i] == -1) {
-                        client_sock_arr[i] = client_sock;
-                        printf("Client socket %d added\n", client_sock);
+                    if (client_infos[i].socket <= 0) {
+                        client_infos[i].socket = client_sock;
+                        printf("Client added: %d\n", client_sock);
 
                         //! Perform handshake
                         perform_handshake(client_sock, i);
@@ -231,17 +234,24 @@ void web_socket_poll(uint64_t current_time) {
             }
         }
     }
+    
+    return 1;
+}
+
+void web_socket_poll(uint64_t current_time) {
+    uint8_t check = web_socket_server_poll(current_time);
+    if (!check) return;
 
     //! Check for activity on client sockets
-    for (int i = 1; i < num_fds; i++) {
-        struct pollfd target = fds[i];
+    for (int i = 1; i < fds_count; i++) {
+        struct pollfd target = poll_arr[i];
         int target_fd = target.fd;
 
         if (target.revents & POLLERR) {
             //! Remove the client socket with an error
             printf("Error on client socket %d\n", target_fd);
             remove_client_socket(target_fd, i);
-            fds[i].fd = -1; // Mark as invalid in the pollfd array
+            poll_arr[i].fd = -1; // Mark as invalid in the pollfd array
         }
 
         if (target.revents & POLLIN) {
