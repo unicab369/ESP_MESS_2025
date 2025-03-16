@@ -15,8 +15,10 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 
-#define CONFIG_EXAMPLE_IPV4 true
-#define PORT                        3333
+
+#define SERVER_PORT 1234  // Device A's server port
+#define CLIENT_PORT 5678  // Device B's s
+
 #define MAX_CLIENTS 10
 static int client_sockets[MAX_CLIENTS];
 
@@ -30,75 +32,111 @@ static int client_socket;
 static int current_status = TCP_STATUS_INITIATED;
 static uint64_t last_socket_check;
 
-void tcp_server_socket_setup(uint64_t current_time) {
-    int addr_family = AF_INET;
-    int ip_protocol = 0;
-    struct sockaddr_storage dest_addr;
 
-    #ifdef CONFIG_EXAMPLE_IPV4
-        if (addr_family == AF_INET) {
-            struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
-            dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
-            dest_addr_ip4->sin_family = AF_INET;
-            dest_addr_ip4->sin_port = htons(PORT);
-            ip_protocol = IPPROTO_IP;
-        }
-    #elif CONFIG_EXAMPLE_IPV6
-        if (addr_family == AF_INET6) {
-            struct sockaddr_in6 *dest_addr_ip6 = (struct sockaddr_in6 *)&dest_addr;
-            bzero(&dest_addr_ip6->sin6_addr.un, sizeof(dest_addr_ip6->sin6_addr.un));
-            dest_addr_ip6->sin6_family = AF_INET6;
-            dest_addr_ip6->sin6_port = htons(PORT);
-            ip_protocol = IPPROTO_IPV6;
-        }
-    #endif
-
-    server_socket = socket(addr_family, SOCK_STREAM, ip_protocol);
+void setup_server() {
+    //! Create server socket
+    server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (server_socket < 0) {
-        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-        current_status = TCP_STATUS_SOCKET_FAILED;
-        return;
+        perror("Failed to create server socket");
+        exit(EXIT_FAILURE);
     }
-    int opt = 1;
-    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
-    #if defined(CONFIG_EXAMPLE_IPV4) && defined(CONFIG_EXAMPLE_IPV6)
-        // Note that by default IPV6 binds to both protocols, it is must be disabled
-        // if both protocols used at the same time (used in CI)
-        setsockopt(server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &opt, sizeof(opt));
-    #endif
+    // Bind server socket
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_port = htons(SERVER_PORT);
 
-    ESP_LOGI(TAG, "Socket created");
-
-    int err = bind(server_socket, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-    if (err != 0) {
-        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
-        ESP_LOGE(TAG, "IPPROTO: %d", addr_family);
+    //! Bind server socket
+    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Failed to bind server socket");
         close(server_socket);
-        current_status = TCP_STATUS_BINDING_FAILED;
-        return;
+        exit(EXIT_FAILURE);
     }
-    ESP_LOGI(TAG, "Socket bound, port %d", PORT);
 
-    err = listen(server_socket, MAX_CLIENTS);
-    if (err != 0) {
-        ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
+    //! Listen for incoming connections
+    if (listen(server_socket, MAX_CLIENTS) < 0) {
+        perror("Failed to listen on server socket");
         close(server_socket);
-        current_status = TCP_STATUS_LISENNING_FAILED;
-        return;
+        exit(EXIT_FAILURE);
     }
 
-    // Set the server socket to non-blocking mode
-    int flags = fcntl(server_socket, F_GETFL, 0);
-    fcntl(server_socket, F_SETFL, flags | O_NONBLOCK);
-
-    // Initialize client sockets
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        client_sockets[i] = -1;
-    }
-
-    current_status = TCP_STATUS_SETUP;
+    printf("Server listening on port %d\n", SERVER_PORT);
 }
+
+void setup_client() {
+    // Create client socket
+    client_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if (client_socket < 0) {
+        perror("Failed to create client socket");
+        return;
+    }
+
+    // Connect to server
+    struct sockaddr_in server_addr;
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(CLIENT_PORT);
+    inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr);
+
+    if (connect(client_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Failed to connect to server");
+        close(client_socket);
+        client_socket = -1;
+        return;
+    }
+
+    printf("Connected to server at %s:%d\n", SERVER_IP, CLIENT_PORT);
+}
+
+void handle_server_activity(fd_set *read_fds) {
+    if (FD_ISSET(server_socket, read_fds)) {
+        // Accept new client connection
+        struct sockaddr_in client_addr;
+        socklen_t addr_len = sizeof(client_addr);
+
+        int new_socket = accept(server_socket, (struct sockaddr *)&client_addr, &addr_len);
+        if (new_socket < 0) {
+            perror("Failed to accept connection");
+            return;
+        }
+
+        printf("New client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+        // Handle client communication (e.g., echo data back)
+        char buffer[1024];
+        int len = recv(new_socket, buffer, sizeof(buffer) - 1, 0);
+        if (len > 0) {
+            buffer[len] = '\0';
+            printf("Received from client: %s\n", buffer);
+            send(new_socket, buffer, len, 0);
+        }
+
+        close(new_socket);
+    }
+}
+
+void handle_client_activity(fd_set *read_fds) {
+    if (client_socket != -1 && FD_ISSET(client_socket, read_fds)) {
+        // Receive data from server
+        char buffer[1024];
+        int len = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+        if (len > 0) {
+            buffer[len] = '\0';
+            printf("Received from server: %s\n", buffer);
+        } else if (len == 0) {
+            // Server closed the connection
+            printf("Server closed the connection\n");
+            close(client_socket);
+            client_socket = -1;
+        } else {
+            perror("Failed to receive data from server");
+            close(client_socket);
+            client_socket = -1;
+        }
+    }
+}
+
+
 
 void tcp_server_socket_task(uint64_t current_time) {
     if (current_status != TCP_STATUS_SETUP) return;
