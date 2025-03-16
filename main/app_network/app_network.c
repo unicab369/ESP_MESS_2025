@@ -107,13 +107,17 @@ void app_network_task(uint64_t current_time) {
     if (status == WIFI_EVENT_STA_CONNECTED) {
         // ntp_status_t ntp_status = ntp_task(current_time);
         // web_socket_setup();
-        udp_server_socket_setup(current_time);
+        // udp_server_socket_setup(current_time);
+        tcp_server_socket_setup(current_time);
         
     } else if (status == WIFI_EVENT_WIFI_READY) {
         // web_socket_poll(current_time);
 
-        udp_server_socket_task();
+        // udp_server_socket_task();
         // udp_client_socket_send(current_time);
+
+        // tcp_server_socket_task(current_time);
+        tcp_client_socket_task(current_time);
     }
 
     //! tcp sockets block, need to find a solution

@@ -163,14 +163,11 @@ uint64_t last_sent_time = 0;
 
 void udp_client_socket_send(uint64_t current_time) {
     if (current_status != UDP_STATUS_SETUP) return;
-
+    
     // printf("last_sent_time: %"PRIu64", curr_time: %"PRIu64"\n", last_sent_time, current_time);
-
     if (current_time - last_sent_time < 1000000) return;
     last_sent_time = current_time;
 
-    printf("IM HER 3333/n");
-    
     // Create UDP socket
     int client_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (client_sock < 0) {

@@ -11,6 +11,6 @@ typedef enum {
     TCP_STATUS_FAILED = 0x08,
 } tcp_status_t;
 
-tcp_status_t tcp_server_socket_setup(uint64_t current_time);
+void tcp_server_socket_setup(uint64_t current_time);
 void tcp_server_socket_task(uint64_t current_time);
 void tcp_client_socket_task(uint64_t current_time);
