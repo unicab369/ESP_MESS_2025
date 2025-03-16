@@ -119,11 +119,4 @@ void app_network_task(uint64_t current_time) {
         // tcp_server_socket_task(current_time);
         tcp_client_socket_task(current_time);
     }
-
-    //! tcp sockets block, need to find a solution
-    // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
-    // if (tcp_status == TCP_STATUS_SETUP) {
-    //     tcp_server_socket_task(current_time);
-    // }
-    // tcp_client_socket_task(current_time);
 }
