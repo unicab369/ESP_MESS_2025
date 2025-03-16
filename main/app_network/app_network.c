@@ -62,6 +62,13 @@ app_wifi_interface_t interface = {
     .max_retries = 10,
 };
 
+typedef struct {
+    void(*on_dial_change)(int16_t value, uint8_t direction);
+    void(*on_button_change)(uint8_t type, uint64_t duration);
+    void(*on_gpio_read)(uint8_t pin, uint64_t value);
+    
+} control_interface_t;
+
 void app_network_setup() {
     wifi_setup(&interface);
 
@@ -106,17 +113,34 @@ void app_network_task(uint64_t current_time) {
     
     if (status == WIFI_EVENT_STA_CONNECTED) {
         // ntp_status_t ntp_status = ntp_task(current_time);
-        // web_socket_setup();
+        web_socket_setup();
         // udp_server_socket_setup(current_time);
-        tcp_server_socket_setup(current_time);
+        // tcp_server_socket_setup(current_time);
         
     } else if (status == WIFI_EVENT_WIFI_READY) {
-        // web_socket_poll(current_time);
+        web_socket_poll(current_time);
 
         // udp_server_socket_task();
         // udp_client_socket_send(current_time);
 
         // tcp_server_socket_task(current_time);
-        tcp_client_socket_task(current_time);
+        // tcp_client_socket_task(current_time);
     }
+}
+
+
+void app_network_push_data(data_output_t data_output) {
+    if (data_output.data == NULL) return;
+
+    // Since buff is uint16_t, we need to allocate space for the type (1 byte) and the data
+    uint16_t buff[1 + data_output.len]; // 1 for type (stored in the first 2 bytes), plus data
+
+    // Store the type in the first 2 bytes (as uint16_t)
+    buff[0] = (uint16_t)data_output.type;
+
+    // Copy the data into the buffer starting from the second uint16_t element
+    memcpy(buff + 1, data_output.data, data_output.len * sizeof(uint16_t));
+
+    // send the message
+    send_cur_websocket_message(buff, sizeof(buff));
 }

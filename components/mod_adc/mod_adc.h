@@ -29,7 +29,8 @@ typedef struct {
     int raw;
     int voltage;
     adc_unit_inteface_t unit;    // ADC1 or ADC2
-    bool is_valid;
+    uint8_t is_valid;
+    uint8_t log_enabled;
 } adc_single_read_t;
 
 typedef struct {

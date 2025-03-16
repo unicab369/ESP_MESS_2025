@@ -130,7 +130,7 @@ void app_main(void) {
     gpio_digital_config(obj0);
 
     led_fade_setup(LED_FADE_PIN);
-    led_fade_restart(1023, 500);        // Brightness, fade_duration
+    led_fade_restart(1023, 400);        // Brightness, fade_duration
 
     ws2812_setup(WS2812_PIN);                   
 
@@ -201,11 +201,23 @@ void app_main(void) {
 
     // mod_mbedtls_setup();
 
-    // adc_single_read_t single_adc = {
-    //     .gpio = 34,
-    //     .unit = ADC_UNIT_INTF_1
-    // };
-    // mod_adc_1read_setup(&single_adc);    
+
+    
+    data_output_t data_output = {
+        .type = DATA_OUTPUT_ANALOG,
+        .len = 100
+    };
+
+    uint16_t adc_read_index = 0;
+    uint16_t adc_read_arr[data_output.len];
+    memset(adc_read_arr, 0, sizeof(adc_read_arr));
+
+    adc_single_read_t single_adc = {
+        .gpio = 34,
+        .unit = ADC_UNIT_INTF_1,
+        .log_enabled = false
+    };
+    mod_adc_1read_setup(&single_adc);    
 
     // adc_continous_read_t continous_read = (adc_continous_read_t){
     //     .unit = ADC_UNIT_1
@@ -214,16 +226,28 @@ void app_main(void) {
     // mod_adc_continous_setup(&continous_read);
     
 
-    uint64_t second_interval_check = 0;
+    uint64_t interval_ref = 0;
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
 
-        if (current_time - second_interval_check > 1000000) {
-            second_interval_check = current_time;
+        if (current_time - interval_ref > 1000000) {
+            interval_ref = current_time;
             // mod_adc_1read(current_time, &single_adc);
             // mod_adc_continous_read(&continous_read);
-        }    
+        }
+
+        if (current_time - interval_ref > 20000) {
+            interval_ref = current_time;
+            mod_adc_1read(current_time, &single_adc);
+            adc_read_arr[adc_read_index++] = single_adc.raw;
+
+            if (adc_read_index >= data_output.len) {
+                adc_read_index = 0;
+                data_output.data = (uint16_t*)adc_read_arr;
+                app_network_push_data(data_output);
+            }
+        }
         
         #if CONFIG_IDF_TARGET_ESP32C3
             cdc_read_task();

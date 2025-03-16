@@ -111,7 +111,7 @@ void mod_adc_1read_setup(adc_single_read_t *model) {
     }
 
     if (channel == 255) {
-        model->is_valid = false;
+        model->is_valid = 0;
         return;
     }
     model->channel = channel;
@@ -132,7 +132,7 @@ void mod_adc_1read_setup(adc_single_read_t *model) {
 
     // ADC Calibration
     adc_calib_init(ADC_UNIT_1, model->channel, ADC_ATTEN, &model->calibration_handler);
-    model->is_valid = true;
+    model->is_valid = 1;
 }
 
 void mod_adc_1read(uint64_t current_time, adc_single_read_t *model) {
@@ -143,7 +143,8 @@ void mod_adc_1read(uint64_t current_time, adc_single_read_t *model) {
 
     if (model->calibration_handler) {
         ESP_ERROR_CHECK(adc_cali_raw_to_voltage(model->calibration_handler, model->raw, &model->voltage));
-        ESP_LOGI(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ADC_UNIT_1 + 1, model->channel, model->voltage);
+        if (model->log_enabled)
+            ESP_LOGI(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ADC_UNIT_1 + 1, model->channel, model->voltage);
     }
 }
 

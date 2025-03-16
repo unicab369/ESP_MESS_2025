@@ -198,18 +198,26 @@ static void web_socket_server_poll(int client_sock) {
     }
 }
 
+static int cur_client_sock = -1;
+
 // Send a WebSocket text frame to the client
-void send_websocket_message(int client_sock, const char *message) {
-    size_t len = strlen(message);
+void send_websocket_message(int client_sock, const void *message, size_t len) {
     uint8_t frame[len + 2]; // Frame buffer (header + payload)
+    cur_client_sock = client_sock;
 
     // Construct the frame
-    frame[0] = 0x81; // FIN bit set, opcode for text frame
-    frame[1] = len;  // Payload length
-    memcpy(frame + 2, message, len); // Copy the payload
+    frame[0] = 0x81;                        // FIN bit set, opcode for text frame
+    frame[1] = len;                         // Payload length
+    memcpy(frame + 2, message, len);        // Copy the payload
 
     // Send the frame
     send(client_sock, frame, len + 2, 0);
+}
+
+void send_cur_websocket_message(const void *message, size_t len) {
+    if (cur_client_sock < 0) return;
+    printf("IM HERE 3333");
+    send_websocket_message(cur_client_sock, message, len);
 }
 
 void web_socket_poll(uint64_t current_time) {
@@ -299,8 +307,9 @@ void web_socket_poll(uint64_t current_time) {
                 }
         
                 // Send a response to the client
-                const char *response = "Hello from ESP32!";
-                send_websocket_message(target_client, response);
+                const char *message = "Hello from ESP32!";
+                size_t len = strlen(message);
+                send_websocket_message(target_client, message, len);
                 
             } else if (len == 0) {
                 ESP_LOGI(TAG, "Client disconnected");

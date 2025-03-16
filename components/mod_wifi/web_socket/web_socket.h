@@ -15,3 +15,4 @@ typedef enum __attribute__((packed)) {
 
 void web_socket_setup(void);
 void web_socket_poll(uint64_t current_time);
+void send_cur_websocket_message(const void *message, size_t len);

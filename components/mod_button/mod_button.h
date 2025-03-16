@@ -7,9 +7,9 @@
 
 // Button event types
 typedef enum __attribute__((packed)) {
-    BUTTON_SINGLE_CLICK = 0x11,
-    BUTTON_DOUBLE_CLICK = 0x12,
-    BUTTON_LONG_PRESS = 0x13,
+    BUTTON_SINGLE_CLICK = 0x01,
+    BUTTON_DOUBLE_CLICK = 0x02,
+    BUTTON_LONG_PRESS = 0x00,
 } button_event_t;
 
 // Callback function type
