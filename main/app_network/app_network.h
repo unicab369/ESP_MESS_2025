@@ -7,4 +7,4 @@
 
 
 void app_network_setup(void);
-void app_network_task(uint8_t current_time);
+void app_network_task(uint64_t current_time);

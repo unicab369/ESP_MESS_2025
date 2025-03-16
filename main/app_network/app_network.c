@@ -91,7 +91,7 @@ void app_network_setup() {
 
 static uint64_t second_interval_check = 0;
 
-void app_network_task(uint8_t current_time) {
+void app_network_task(uint64_t current_time) {
     if (current_time - second_interval_check > 1000000) {
         second_interval_check = current_time;
 
@@ -105,26 +105,21 @@ void app_network_task(uint8_t current_time) {
     wifi_event_t status = wifi_get_status();
     
     if (status == WIFI_EVENT_STA_CONNECTED) {
-        ntp_status_t ntp_status = ntp_task(current_time);
-        web_socket_setup();
+        // ntp_status_t ntp_status = ntp_task(current_time);
+        // web_socket_setup();
+        udp_server_socket_setup(current_time);
         
     } else if (status == WIFI_EVENT_WIFI_READY) {
-        web_socket_poll(current_time);
+        // web_socket_poll(current_time);
+
+        udp_server_socket_task();
+        // udp_client_socket_send(current_time);
     }
 
-        //! tcp sockets block, need to find a solution
-        // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
-        // if (tcp_status == TCP_STATUS_SETUP) {
-        //     tcp_server_socket_task(current_time);
-        // }
-        // tcp_client_socket_task(current_time);
-
-        //! udp sockets block, need to find a solution
-    //     udp_status_t udp_status = udp_server_socket_setup(current_time);
-    //     if (udp_status == UDP_STATUS_SETUP) {
-    //         printf("IM HERE 4444");
-            
-    //         udp_server_socket_task();
-    //         // udp_client_socket_send(current_time);
-    //     }
+    //! tcp sockets block, need to find a solution
+    // tcp_status_t tcp_status = tcp_server_socket_setup(current_time);
+    // if (tcp_status == TCP_STATUS_SETUP) {
+    //     tcp_server_socket_task(current_time);
+    // }
+    // tcp_client_socket_task(current_time);
 }
