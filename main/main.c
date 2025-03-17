@@ -241,19 +241,14 @@ void app_main(void) {
 
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
-    bool is_reading = false;
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
 
-        is_reading = false;
+        i2c_sensor_readings(current_time);
 
-        if (current_time - interval_ref2 > 1000000) {
+        if (current_time - interval_ref2 > 400000) {
             interval_ref2 = current_time;
-            print_bh1750_readings();
-
-            is_reading = true;
-
             // mod_adc_1read(current_time, &single_adc);
             // mod_adc_continous_read(&continous_read);
         }
@@ -271,9 +266,7 @@ void app_main(void) {
         // }
 
         #if WIFI_ENABLED
-            if (!is_reading) {
-                app_network_task(current_time);
-            }
+            app_network_task(current_time);
         #endif
         
         #if CONFIG_IDF_TARGET_ESP32C3

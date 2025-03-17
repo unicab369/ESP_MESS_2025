@@ -45,7 +45,7 @@ esp_err_t i2c_read_bytes_slow(const i2c_device_t* device, uint8_t *output, size_
 
     ret = i2c_master_stop(cmd);
     if (ret != ESP_OK) return ret;
-    ret = i2c_master_cmd_begin(device->port, cmd, pdMS_TO_TICKS(10));
+    ret = i2c_master_cmd_begin(device->port, cmd, pdMS_TO_TICKS(50));
     i2c_cmd_link_delete(cmd);
 
     return ret;
@@ -63,26 +63,36 @@ esp_err_t i2c_write_byte_slow(const i2c_device_t* device, const uint8_t byte) {
 
     ret = i2c_master_stop(cmd);
     if (ret != ESP_OK) return ret;
-    ret = i2c_master_cmd_begin(device->port, cmd, pdMS_TO_TICKS(10));
+    ret = i2c_master_cmd_begin(device->port, cmd, pdMS_TO_TICKS(50));
     i2c_cmd_link_delete(cmd);
 
     return ret;
 }
 
-esp_err_t i2c_write_fast(const i2c_device_t* device, const uint8_t *buffer, size_t len) {
-    // printf("*****IM HERE 222 val1: %d, val2: %d, len: %d\n", buffer[0], buffer[1], len);
-    // printf("****PORT: %d, addr: %d\n", device->port, device->address);
+esp_err_t i2c_write_read(const i2c_device_t* device, 
+    const uint8_t *write_buff, size_t write_len,
+    const uint8_t *read_buff, size_t read_len
+) {
+    return i2c_master_write_read_device(device->port, device->address, write_buff, write_len,
+                    read_buff, read_len, pdMS_TO_TICKS(50));
+}
 
+esp_err_t i2c_write(const i2c_device_t* device, const uint8_t *buffer, size_t len) {
     return i2c_master_write_to_device(device->port, device->address, buffer, len, pdMS_TO_TICKS(50));
 }
 
-esp_err_t i2c_read_fast(const i2c_device_t* device, uint8_t *output, size_t len) {
+esp_err_t i2c_read(const i2c_device_t* device, uint8_t *output, size_t len) {
     return i2c_master_read_from_device(device->port, device->address, output, len, pdMS_TO_TICKS(50));
+}
+
+esp_err_t i2c_write_byte(const i2c_device_t *device, uint8_t byte) {
+    uint8_t data[1] = {byte};
+    return i2c_write(device, data, 1);
 }
 
 esp_err_t i2c_write_command(const i2c_device_t* device, uint8_t cmd, uint8_t value) {
     uint8_t buff[2] = {cmd, value};
-    return i2c_write_fast(device, buff, sizeof(buff));
+    return i2c_write(device, buff, sizeof(buff));
 }
 
 esp_err_t i2c_write_command_data(
@@ -92,7 +102,7 @@ esp_err_t i2c_write_command_data(
     uint8_t *buff = malloc(len + 1);
     buff[0] = cmd;
     memcpy(buff + 1, data, len);
-    esp_err_t ret = i2c_write_fast(device, buff, len + 1);
+    esp_err_t ret = i2c_write(device, buff, len + 1);
     free(buff);
     return ret;
 }
