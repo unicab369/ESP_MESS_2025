@@ -344,15 +344,16 @@ static esp_err_t device_request_handler(httpd_req_t *req) {
 
     //! Example array of values
     // Create a JSON string manually, including the array of values
-    char json_response[256]; // Adjust the size as needed
+    char json_response[400]; // Adjust the size as needed
 
-    // Start the JSON string
-    snprintf(json_response, sizeof(json_response),
-                "{\"status\":\"ok\",\"data\":[");
 
     size_t arr_size;
     uint16_t *arr_data;
     interface->on_request_data(&arr_data, &arr_size);
+
+    // Start the JSON string
+    snprintf(json_response, sizeof(json_response),
+    "{\"status\":\"ok\",\"len\":%hu,\"data\":[", arr_size);
 
     for (uint16_t i = 0; i < arr_size; i++) {
         char temp[10]; // Temporary buffer for each value

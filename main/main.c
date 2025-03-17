@@ -70,7 +70,7 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
-#define MAX_ADC_SAMPLE 10
+#define MAX_ADC_SAMPLE 100
 uint16_t adc_read_arr[MAX_ADC_SAMPLE];
 
 static void http_request_handler(uint16_t **data, size_t *size) {
@@ -251,7 +251,7 @@ void app_main(void) {
             // mod_adc_continous_read(&continous_read);
         }
 
-        if (current_time - interval_ref > 10000) {
+        if (current_time - interval_ref > pdMS_TO_TICKS(1)) {
             interval_ref = current_time;
             mod_adc_1read(current_time, &single_adc);
             adc_read_arr[adc_read_index++] = single_adc.raw;
