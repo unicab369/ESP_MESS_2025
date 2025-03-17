@@ -64,7 +64,6 @@
         
         #define SCL_PIN 32
         #define SDA_PIN 33
-        #define SSD_1306_ADDR 0x3C
     #else
         #define LED_FADE_PIN 22
         #define BLINK_PIN 5

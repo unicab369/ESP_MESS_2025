@@ -95,7 +95,7 @@ void app_main(void) {
         cdc_setup();
     #endif
 
-    display_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
+    display_setup(SCL_PIN, SDA_PIN);
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     #if WIFI_ENABLED

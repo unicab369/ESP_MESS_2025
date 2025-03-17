@@ -10,6 +10,8 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 
+#include "mod_i2c.h"
+
 // Display dimensions
 #define SSD1306_WIDTH 128
 #define SSD1306_HEIGHT 64
@@ -37,8 +39,7 @@ static uint8_t buffer[BUFFER_SIZE]; // Buffer to hold pixel data
 static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
 #define END_COLUMN (SSD1306_WIDTH-1)
 
-uint8_t ssd1306_address = 0x3C;
-
+static i2c_device_t *ssd1306 = NULL;
 
 uint8_t font7x5[95][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // Space
@@ -138,48 +139,16 @@ uint8_t font7x5[95][5] = {
     {0x08, 0x08, 0x2A, 0x1C, 0x08}  // ~
 };
 
+
 // Write command to SSD1306
-static void send_command(uint8_t cmd) {
-    uint8_t buf[2] = {SSD1306_CMD, cmd};
-    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, sizeof(buf), pdMS_TO_TICKS(10));
+static void send_command(uint8_t value) {
+    uint8_t buff[2] = {SSD1306_CMD, value};
+    i2c_write_command(ssd1306, SSD1306_CMD, value);
 }
 
 // Write data to SSD1306
 static void send_data(const uint8_t *data, size_t len) {
-    uint8_t *buf = malloc(len + 1);
-    buf[0] = SSD1306_DATA;
-    memcpy(buf + 1, data, len);
-    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, len + 1, pdMS_TO_TICKS(10));
-    free(buf);
-}
-
-// Initialize display
-static void ssd1306_init() {
-    send_command(0xAE); // Display off
-    send_command(0xD5); // Set display clock divide
-    send_command(0x80);
-    send_command(0xA8); // Set multiplex ratio
-    send_command(0x3F);
-    send_command(0xD3); // Set display offset
-    send_command(0x00);
-    send_command(0x40); // Set start line
-    send_command(0x8D); // Charge pump
-    send_command(0x14);
-    send_command(0x20); // Memory mode
-    send_command(0x00);
-    send_command(0xA1); // Segment remap
-    send_command(0xC8); // COM output scan direction
-    send_command(0xDA); // COM pins hardware
-    send_command(0x12);
-    send_command(0x81); // Contrast control
-    send_command(0xCF);
-    send_command(0xD9); // Pre-charge period
-    send_command(0xF1);
-    send_command(0xDB); // VCOMH deselect level
-    send_command(0x30);
-    send_command(0xA4); // Display resume
-    send_command(0xA6); // Normal display
-    send_command(0xAF); // Display on
+    i2c_write_command_data(ssd1306, SSD1306_DATA, data, len);
 }
 
 void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
@@ -200,15 +169,6 @@ static void set_page(uint8_t page) {
 static void set_column(uint8_t col) {
     send_command(0x00 | (col & 0x0F));       // Set lower column address
     send_command(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
-}
-
-static void set_addressing_mode(uint8_t mode) {
-    send_command(0x20);          // Set addressing mode
-    send_command(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
-
-    // 0x00 - Horizontal: Column pointer increments, wraps to next page after reaching end of line.
-    // 0x01 - Vertical: Page pointer increments, wraps to next column after reaching end of page.
-    // 0x02 - Page: Column pointer increments, stops after reaching end of page.
 }
 
 static void set_addressing_pages(uint8_t start_page, uint8_t end_page) {
@@ -236,11 +196,6 @@ void ssd1306_clear_line(uint8_t page) {
     ssd1306_clear_lines(page, page);
 }
 
-void ssd1306_clear_all(void) {
-    uint8_t clear_buffer[SSD1306_WIDTH * SSD1306_PAGES] = {0};
-    set_addressing_pages(0, MAX_PAGE_INDEX);
-    send_data(clear_buffer, sizeof(clear_buffer));
-}
 
 void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool clear) {
     set_page(page);
@@ -267,11 +222,48 @@ void ssd1306_print_str(const char *str, uint8_t page) {
     ssd1306_print_str_at(str, page, 0, true);
 }
 
+
+void ssd1306_clear_all(void) {
+    uint8_t clear_buffer[SSD1306_WIDTH * SSD1306_PAGES] = {0};
+    set_addressing_pages(0, MAX_PAGE_INDEX);
+    send_data(clear_buffer, sizeof(clear_buffer));
+}
+
+static void set_addressing_mode(uint8_t mode) {
+    send_command(0x20);          // Set addressing mode
+    send_command(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
+}
+
 void ssd1306_setup(uint8_t address) {
-    ssd1306_address = address;
+    ssd1306 = i2c_device_create(I2C_NUM_0, 0x3C);
 
     // Initialize display
-    ssd1306_init();
+    send_command(0xAE); // Display off
+    send_command(0xD5); // Set display clock divide
+    send_command(0x80);
+    send_command(0xA8); // Set multiplex ratio
+    send_command(0x3F);
+    send_command(0xD3); // Set display offset
+    send_command(0x00);
+    send_command(0x40); // Set start line
+    send_command(0x8D); // Charge pump
+    send_command(0x14);
+    send_command(0x20); // Memory mode
+    send_command(0x00);
+    send_command(0xA1); // Segment remap
+    send_command(0xC8); // COM output scan direction
+    send_command(0xDA); // COM pins hardware
+    send_command(0x12);
+    send_command(0x81); // Contrast control
+    send_command(0xCF);
+    send_command(0xD9); // Pre-charge period
+    send_command(0xF1);
+    send_command(0xDB); // VCOMH deselect level
+    send_command(0x30);
+    send_command(0xA4); // Display resume
+    send_command(0xA6); // Normal display
+    send_command(0xAF); // Display on
+
     ssd1306_clear_all();
 
     // Page addressing mode

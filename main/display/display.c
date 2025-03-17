@@ -23,16 +23,16 @@ typedef enum {
 
 static i2c_device_t *bh1750 = NULL;
 
-void display_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t address) {
+void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     i2c_setup(scl_pin, sda_pin);
 
-    ssd1306_setup(address);
+    ssd1306_setup(0x3C);
     ssd1306_print_str("Hello Bee", 0);
 
-    bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
+    // bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
 
-    // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
-    esp_err_t ret = i2c_write_byte_slow(bh1750, 0x01);
+    // // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
+    // esp_err_t ret = i2c_write_byte_slow(bh1750, 0x01);
 }
 
 void display_print_str(const char *str, uint8_t line) {
@@ -40,10 +40,10 @@ void display_print_str(const char *str, uint8_t line) {
 }
 
 void print_bh1750_readings() {
-    uint8_t readings[2];
-    esp_err_t ret = i2c_write_byte_slow(bh1750, BH1750_CONTINUOUS_4LX_RES);
-    ret = i2c_read_bytes_slow(bh1750, readings, sizeof(readings));
+    // uint8_t readings[2];
+    // esp_err_t ret = i2c_write_byte_slow(bh1750, BH1750_CONTINUOUS_4LX_RES);
+    // ret = i2c_read_bytes_slow(bh1750, readings, sizeof(readings));
 
-    float bh1750_data = (readings[0] << 8 | readings[1]) / BH1750_READING_ACCURACY;
-    ESP_LOGI(TAG, "bh1750 reading: %f\n", bh1750_data);
+    // float bh1750_data = (readings[0] << 8 | readings[1]) / BH1750_READING_ACCURACY;
+    // ESP_LOGI(TAG, "bh1750 reading: %f\n", bh1750_data);
 }

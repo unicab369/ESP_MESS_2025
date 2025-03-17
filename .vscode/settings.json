@@ -133,7 +133,9 @@
         "mod_wifi.h": "c",
         "web_socket.h": "c",
         "app_network.h": "c",
-        "i2c.h": "c"
+        "i2c.h": "c",
+        "cstddef": "c",
+        "mod_ssd1306.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
