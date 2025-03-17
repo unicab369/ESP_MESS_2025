@@ -216,7 +216,6 @@ void send_websocket_message(int client_sock, const void *message, size_t len) {
 
 void send_cur_websocket_message(const void *message, size_t len) {
     if (cur_client_sock < 0) return;
-    printf("IM HERE 3333");
     send_websocket_message(cur_client_sock, message, len);
 }
 

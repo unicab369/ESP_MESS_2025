@@ -8,7 +8,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "dev_config.h"
 #include "driver/ledc.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_timer.h"

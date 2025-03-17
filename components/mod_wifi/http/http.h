@@ -9,6 +9,8 @@ typedef struct {
     size_t(*on_file_fread_cb)(char *buffer, size_t len);
     int(*on_file_fclose_cb)(void);
     void(*on_display_print)(const char *str, uint8_t line);
+    void(*on_request_data)(uint16_t **data, size_t *size);
+
 } http_interface_t;
 
 void http_setup(http_interface_t* interface);

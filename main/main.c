@@ -6,6 +6,7 @@
 
 #if WIFI_ENABLED
     #include "app_network/app_network.h"
+    #include "http/http.h"
 #endif
 
 
@@ -69,6 +70,14 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
+#define MAX_ADC_SAMPLE 10
+uint16_t adc_read_arr[MAX_ADC_SAMPLE];
+
+static void http_request_handler(uint16_t **data, size_t *size) {
+    *data = adc_read_arr;
+    *size = MAX_ADC_SAMPLE;
+}
+
 void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
@@ -85,14 +94,19 @@ void app_main(void) {
     #endif
 
     display_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
-    // ssd1306_print_str("Hello World aaaabbbbccccddddeeeffff!", 0);
-    // ssd1306_print_str("Hello World 222222!", 1);
-    // ssd1306_print_str("Hello World 333333!", 2);
     // ssd1306_print_str("Hello World 333333!", 3, 5*5);
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     #if WIFI_ENABLED
         app_network_setup();
+
+        http_setup(&(http_interface_t){
+            .on_file_fopen_cb   = mod_sd_fopen,
+            .on_file_fread_cb   = mod_sd_fread,
+            .on_file_fclose_cb  = mod_sd_fclose,
+            .on_display_print   = display_print_str,
+            .on_request_data    = http_request_handler
+        });
     #endif
 
     mod_sd_spi_config(&(storage_sd_config_t) {
@@ -209,7 +223,7 @@ void app_main(void) {
     };
 
     uint16_t adc_read_index = 0;
-    uint16_t adc_read_arr[data_output.len];
+
     memset(adc_read_arr, 0, sizeof(adc_read_arr));
 
     adc_single_read_t single_adc = {
@@ -237,15 +251,15 @@ void app_main(void) {
             // mod_adc_continous_read(&continous_read);
         }
 
-        if (current_time - interval_ref > 20000) {
+        if (current_time - interval_ref > 10000) {
             interval_ref = current_time;
             mod_adc_1read(current_time, &single_adc);
             adc_read_arr[adc_read_index++] = single_adc.raw;
 
-            if (adc_read_index >= data_output.len) {
+            if (adc_read_index >= MAX_ADC_SAMPLE) {
                 adc_read_index = 0;
                 data_output.data = (uint16_t*)adc_read_arr;
-                app_network_push_data(data_output);
+                // app_network_push_data(data_output);
             }
         }
         

@@ -75,13 +75,6 @@ void app_network_setup() {
     wifi_softAp_begin(CONFIG_AP_WIFI_SSID, CONFIG_AP_WIFI_PASSWORD, 1);
     wifi_sta_begin(CONFIG_WIFI_SSID, CONFIG_WIFI_PASSWORD);
 
-    http_setup(&(http_interface_t){
-        .on_file_fopen_cb = mod_sd_fopen,
-        .on_file_fread_cb = mod_sd_fread,
-        .on_file_fclose_cb = mod_sd_fclose,
-        .on_display_print = display_print_str
-    });
-    
     wifi_connect();
     wifi_wps_begin();
     espnow_setup(esp_mac, espnow_message_handler);

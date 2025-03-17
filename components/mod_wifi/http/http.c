@@ -299,8 +299,83 @@ static esp_err_t file_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static httpd_handle_t start_webserver(void)
-{
+static esp_err_t device_request_handler(httpd_req_t *req) {
+    // Set CORS headers
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
+
+    // Handle OPTIONS request (preflight request)
+    if (req->method == HTTP_OPTIONS) {
+        httpd_resp_send(req, NULL, 0);
+        return ESP_OK;
+    }
+    
+    char buffer[100];
+    int ret, remaining = req->content_len;
+
+    // Read the request body
+    if ((ret = httpd_req_recv(req, buffer, MIN(remaining, sizeof(buffer)))) <= 0) {
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+
+
+    
+    buffer[ret] = '\0';                             // Null-terminate the buffer
+    // ESP_LOGI(TAG, "Received data: %s", buffer);     // Log the received data
+
+    // Parse the string (e.g., "name=John&value=42")
+    char *name = strstr(buffer, "name=");
+    char *value = strstr(buffer, "value=");
+
+    if (name && value) {
+        name += 5; // Move past "name="
+        value += 6; // Move past "value="
+
+        // Extract name and value
+        char *name_end = strchr(name, '&');
+        if (name_end) *name_end = '\0'; // Terminate name string
+
+        // ESP_LOGI(TAG, "Name: %s, Value: %s", name, value);
+    }
+
+    //! Example array of values
+    // Create a JSON string manually, including the array of values
+    char json_response[256]; // Adjust the size as needed
+
+    // Start the JSON string
+    snprintf(json_response, sizeof(json_response),
+                "{\"status\":\"ok\",\"data\":[");
+
+    size_t arr_size;
+    uint16_t *arr_data;
+    interface->on_request_data(&arr_data, &arr_size);
+
+    for (uint16_t i = 0; i < arr_size; i++) {
+        char temp[10]; // Temporary buffer for each value
+        snprintf(temp, sizeof(temp), "%hu", arr_data[i]); // Format the value
+        strcat(json_response, temp); // Append the value to the JSON string
+
+        // Add a comma after each value (except the last one)
+        if (i < arr_size - 1) {
+            strcat(json_response, ",");
+        }
+    }
+
+    // Close the JSON array and object
+    strcat(json_response, "]}");
+
+    // Send a response
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_response, HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+static httpd_handle_t start_webserver(void) {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.lru_purge_enable = true;
@@ -351,13 +426,18 @@ static httpd_handle_t start_webserver(void)
         .handler   = file_get_handler,
     });
 
+    httpd_register_uri_handler(server, &(const httpd_uri_t) {
+        .uri       = "/device",
+        .method    = HTTP_POST,
+        .handler   = device_request_handler,
+    });
+
     httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
 
     return server;
 }
 
-static esp_err_t stop_webserver(httpd_handle_t server)
-{
+static esp_err_t stop_webserver(httpd_handle_t server) {
     // Stop the httpd server
     return httpd_stop(server);
 }
@@ -410,8 +490,7 @@ static void dhcp_set_captiveportal_url(void) {
 }
 
 
-void http_setup(http_interface_t* intf)
-{
+void http_setup(http_interface_t* intf) {
     interface = intf;
     static httpd_handle_t server = NULL;
 
