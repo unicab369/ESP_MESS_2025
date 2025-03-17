@@ -29,6 +29,7 @@ idf_component_register(SRCS "main.c"
                         mod_gpio
                         mod_adc
                         mod_utility
+                        mod_i2c
                     REQUIRES
                         driver
                         uart_driver

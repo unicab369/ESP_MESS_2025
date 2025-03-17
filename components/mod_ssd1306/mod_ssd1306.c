@@ -23,7 +23,6 @@
 // Command constants
 #define SSD1306_CMD 0x00
 #define SSD1306_DATA 0x40
-#define SSD1306_DEFAULT_TIMEOUT 100     // ms
 
 
 // 0x00 - Horizontal: Column pointer increments, wraps to next page after reaching end of line.
@@ -142,7 +141,7 @@ uint8_t font7x5[95][5] = {
 // Write command to SSD1306
 static void send_command(uint8_t cmd) {
     uint8_t buf[2] = {SSD1306_CMD, cmd};
-    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, sizeof(buf), pdMS_TO_TICKS(SSD1306_DEFAULT_TIMEOUT));
+    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, sizeof(buf), pdMS_TO_TICKS(10));
 }
 
 // Write data to SSD1306
@@ -150,7 +149,7 @@ static void send_data(const uint8_t *data, size_t len) {
     uint8_t *buf = malloc(len + 1);
     buf[0] = SSD1306_DATA;
     memcpy(buf + 1, data, len);
-    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, len + 1, pdMS_TO_TICKS(SSD1306_DEFAULT_TIMEOUT));
+    i2c_master_write_to_device(I2C_PORT, ssd1306_address, buf, len + 1, pdMS_TO_TICKS(10));
     free(buf);
 }
 
@@ -181,36 +180,6 @@ static void ssd1306_init() {
     send_command(0xA4); // Display resume
     send_command(0xA6); // Normal display
     send_command(0xAF); // Display on
-
-    // uint8_t init_cmds[] = {
-    //     0xAE, // Display off
-    //     0xD5, // Set display clock divide
-    //     0x80,
-    //     0xA8, // Set multiplex ratio
-    //     0x3F,
-    //     0xD3, // Set display offset
-    //     0x00,
-    //     0x40, // Set start line
-    //     0x8D, // Charge pump
-    //     0x14,
-    //     0x20, // Memory mode
-    //     0x00,
-    //     0xA1, // Segment remap
-    //     0xC8, // COM output scan direction
-    //     0xDA, // COM pins hardware
-    //     0x12,
-    //     0x81, // Contrast control
-    //     0xCF,
-    //     0xD9, // Pre-charge period
-    //     0xF1,
-    //     0xDB, // VCOMH deselect level
-    //     0x30,
-    //     0xA4, // Display resume
-    //     0xA6, // Normal display
-    //     0xAF, // Display on
-    // };
-
-    // ssd1306_data(init_cmds, sizeof(init_cmds));
 }
 
 void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
@@ -298,20 +267,8 @@ void ssd1306_print_str(const char *str, uint8_t page) {
     ssd1306_print_str_at(str, page, 0, true);
 }
 
-void ssd1306_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t address) {
+void ssd1306_setup(uint8_t address) {
     ssd1306_address = address;
-
-    // Initialize I2C
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = sda_pin,
-        .scl_io_num = scl_pin,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 400000,
-    };
-    i2c_param_config(I2C_PORT, &conf);
-    i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
 
     // Initialize display
     ssd1306_init();

@@ -9,6 +9,7 @@
     #include "http/http.h"
 #endif
 
+static const char *TAG = "MAIN";
 
 static uint8_t esp_mac[6];
 
@@ -78,6 +79,7 @@ static void http_request_handler(uint16_t **data, size_t *size) {
     *size = MAX_ADC_SAMPLE;
 }
 
+
 void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
@@ -94,7 +96,6 @@ void app_main(void) {
     #endif
 
     display_setup(SCL_PIN, SDA_PIN, SSD_1306_ADDR);
-    // ssd1306_print_str("Hello World 333333!", 3, 5*5);
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     #if WIFI_ENABLED
@@ -214,8 +215,6 @@ void app_main(void) {
     ws2812_load_fadeColor(obj4, 1);
 
     // mod_mbedtls_setup();
-
-
     
     data_output_t data_output = {
         .type = DATA_OUTPUT_ANALOG,
@@ -241,27 +240,41 @@ void app_main(void) {
     
 
     uint64_t interval_ref = 0;
+    uint64_t interval_ref2 = 0;
+    bool is_reading = false;
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
 
-        if (current_time - interval_ref > 1000000) {
-            interval_ref = current_time;
+        is_reading = false;
+
+        if (current_time - interval_ref2 > 1000000) {
+            interval_ref2 = current_time;
+            print_bh1750_readings();
+
+            is_reading = true;
+
             // mod_adc_1read(current_time, &single_adc);
             // mod_adc_continous_read(&continous_read);
         }
 
-        if (current_time - interval_ref > pdMS_TO_TICKS(1)) {
-            interval_ref = current_time;
-            mod_adc_1read(current_time, &single_adc);
-            adc_read_arr[adc_read_index++] = single_adc.raw;
+        // if (current_time - interval_ref > pdMS_TO_TICKS(1)) {
+        //     interval_ref = current_time;
+        //     mod_adc_1read(current_time, &single_adc);
+        //     adc_read_arr[adc_read_index++] = single_adc.raw;
 
-            if (adc_read_index >= MAX_ADC_SAMPLE) {
-                adc_read_index = 0;
-                data_output.data = (uint16_t*)adc_read_arr;
-                // app_network_push_data(data_output);
+        //     if (adc_read_index >= MAX_ADC_SAMPLE) {
+        //         adc_read_index = 0;
+        //         data_output.data = (uint16_t*)adc_read_arr;
+        //         // app_network_push_data(data_output);
+        //     }
+        // }
+
+        #if WIFI_ENABLED
+            if (!is_reading) {
+                app_network_task(current_time);
             }
-        }
+        #endif
         
         #if CONFIG_IDF_TARGET_ESP32C3
             cdc_read_task();
@@ -275,10 +288,6 @@ void app_main(void) {
 
         ws2812_loop(current_time);
         app_console_task();
-
-        #if WIFI_ENABLED
-            app_network_task(current_time);
-        #endif
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

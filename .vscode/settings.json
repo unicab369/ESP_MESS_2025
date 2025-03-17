@@ -132,7 +132,8 @@
         "esp_wifi_crypto_types.h": "c",
         "mod_wifi.h": "c",
         "web_socket.h": "c",
-        "app_network.h": "c"
+        "app_network.h": "c",
+        "i2c.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

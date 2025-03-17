@@ -34,8 +34,6 @@
 
 #define ESP32_BOARD_V3 true
 
-static const char *TAG = "MAIN";
-
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
