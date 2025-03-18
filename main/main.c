@@ -226,7 +226,7 @@ void app_main(void) {
     memset(adc_read_arr, 0, sizeof(adc_read_arr));
 
     adc_single_read_t single_adc = {
-        .gpio = 34,
+        .gpio = GPIO_34,
         .unit = ADC_UNIT_INTF_1,
         .log_enabled = false
     };

@@ -64,6 +64,10 @@
         
         #define SCL_PIN 32
         #define SDA_PIN 33
+
+        #define GPIO_34 34
+        #define MIC_IN 35
+        #define PIR_IN 36
     #else
         #define LED_FADE_PIN 22
         #define BLINK_PIN 5

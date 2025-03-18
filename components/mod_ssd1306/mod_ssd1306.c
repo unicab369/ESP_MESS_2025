@@ -15,7 +15,7 @@
 // Display dimensions
 #define SSD1306_WIDTH 128
 #define SSD1306_HEIGHT 64
-#define SSD1306_MAX_CHAR (SSD1306_WIDTH/8)
+#define SSD1306_MAX_CHAR (SSD1306_WIDTH/5)
 
 // I2C Configuration
 #define I2C_PORT I2C_NUM_0
@@ -187,7 +187,6 @@ void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
 
     // Send zero buffer for each page
     for (uint8_t page = start_page; page <= end_page; page++) {
-        printf("clearing page %d\n", page);
         send_data(zero_buffer, SSD1306_WIDTH);
     }
 }
@@ -196,8 +195,8 @@ void ssd1306_clear_line(uint8_t page) {
     ssd1306_clear_lines(page, page);
 }
 
-
 void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool clear) {
+    ssd1306_clear_line(page);
     set_page(page);
     set_column(column); 
 
@@ -221,7 +220,6 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
 void ssd1306_print_str(const char *str, uint8_t page) {
     ssd1306_print_str_at(str, page, 0, true);
 }
-
 
 void ssd1306_clear_all(void) {
     uint8_t clear_buffer[SSD1306_WIDTH * SSD1306_PAGES] = {0};
