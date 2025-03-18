@@ -23,6 +23,8 @@ typedef enum {
 
 static i2c_device_t *bh1750 = NULL;
 static i2c_device_t *sht31 = NULL;          // address 0x44 or 0x45
+static i2c_device_t *ap3216 = NULL;
+
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     esp_err_t ret = i2c_setup(scl_pin, sda_pin);
@@ -30,16 +32,25 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     ssd1306_setup(0x3C);
     ssd1306_print_str("Hello Bee", 0);
 
+    //! bh1750
     bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
     ret = i2c_write_byte(bh1750, 0x01);           // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "ERROR POWER_ON BH1750");
     }
 
+    //! sht31
     sht31 = i2c_device_create(I2C_NUM_0, 0x44);
     ret = i2c_write_command(sht31, 0x30, 0xA2);     // SOFT_RESET 0x30A2
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "ERROR SOFT_RESET SHT31");
+    }
+
+    //! AP3216
+    ap3216 = i2c_device_create(I2C_NUM_0, 0x1E);
+    ret = i2c_write_command(ap3216, 0x00, 0x03);    // RESET
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "ERROR SOFT_RESET AP3216");
     }
 }
 
@@ -56,13 +67,33 @@ static esp_err_t bh1750_get_reading(uint64_t current_time) {
     interval_ref = current_time;
 
     char buff[32];
+    esp_err_t ret;
+
     uint8_t readings[2] = {0};
     uint8_t bh_mode[1] = { (uint8_t)BH1750_CONTINUOUS_4LX_RES };
 
-    esp_err_t ret = i2c_write_read(bh1750, bh_mode, sizeof(bh_mode), readings, sizeof(readings));
+    ret = i2c_write_read(bh1750, bh_mode, sizeof(bh_mode), readings, sizeof(readings));
     float bh1750_data = (readings[0] << 8 | readings[1]) / BH1750_READING_ACCURACY;
     snprintf(buff, sizeof(buff), "BH1750: %f", bh1750_data);
     ssd1306_print_str(buff, 2);
+
+    //! AP3216
+    uint8_t valHi; uint8_t valLo;
+    ret = i2c_write_read_byte(ap3216, 0x0F, &valHi);
+    ret = i2c_write_read_byte(ap3216, 0x0E, &valLo);
+
+    int hiByte = valHi & 0b00111111; // PS HIGH_REG 6 bits
+    int loBite = valLo & 0b00001111; // PS LOW_REG 4 bits
+    uint16_t ps = (hiByte << 4) + loBite;
+
+    ret = i2c_write_read_byte(ap3216, 0x0D, &valHi);
+    ret = i2c_write_read_byte(ap3216, 0x0C, &valLo);
+	uint16_t als = (valHi << 8) + valLo;
+
+    snprintf(buff, sizeof(buff), "prox: %u", ps);
+    ssd1306_print_str(buff, 5);
+    snprintf(buff, sizeof(buff), "als: %u", als);
+    ssd1306_print_str(buff, 6);
 
     return ret;
 }
