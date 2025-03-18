@@ -135,7 +135,8 @@
         "app_network.h": "c",
         "i2c.h": "c",
         "cstddef": "c",
-        "mod_ssd1306.h": "c"
+        "mod_ssd1306.h": "c",
+        "iterator": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

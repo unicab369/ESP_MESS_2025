@@ -30,6 +30,7 @@ static i2c_device_t *ap3216 = NULL;
 static i2c_device_t *apds9960 = NULL;
 static i2c_device_t *max4400 = NULL;
 static i2c_device_t *vl53lox = NULL;
+static i2c_device_t *mpu6050 = NULL;
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     esp_err_t ret = i2c_setup(scl_pin, sda_pin);
@@ -78,6 +79,11 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 
     ret = i2c_write_command(vl53lox, 0x00, 0x01);       // write command to START_RANGING REG
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET VL53LOX");
+
+    //! MPU6050
+    mpu6050 = i2c_device_create(I2C_NUM_0, 0x68);
+    ret = i2c_write_command(mpu6050, 0x6B, 0x00);       // WAKEUP REG
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR WAKEUP MPU6050");
 }
 
 void display_print_str(const char *str, uint8_t line) {
@@ -123,7 +129,7 @@ static esp_err_t ap3216_get_reading() {
 static esp_err_t apds9960_get_reading() {
     esp_err_t ret;
 
-    char buff[52];
+    char buff[64];
     uint8_t prox;
     ret = i2c_write_read_byte(apds9960, 0x9C, &prox);      // PROX DATA 0x9c
 
@@ -177,9 +183,27 @@ static esp_err_t vl53lox_get_reading() {
 
         char buff[32];
         snprintf(buff, sizeof(buff), "dist: %u", distance);
-        ssd1306_print_str(buff, 7);
+        // ssd1306_print_str(buff, 7);
     
     // }
+
+    return ret;
+}
+
+//! MPU6050
+static esp_err_t mpu6050_get_reading() {
+    esp_err_t ret;
+
+    uint8_t buff[6];
+    ret = i2c_write_read_command(mpu6050, 0x3B, buff, sizeof(buff));
+
+    int16_t accel_x = (buff[0] << 8) | buff[1];
+    int16_t accel_y = (buff[2] << 8) | buff[3];
+    int16_t accel_z = (buff[4] << 8) | buff[5];
+
+    char str_buff[52];
+    snprintf(str_buff, sizeof(str_buff), "x: %u, y: %u, z: %u", accel_x, accel_y, accel_z);
+    ssd1306_print_str(str_buff, 7);
 
     return ret;
 }
@@ -238,4 +262,5 @@ void i2c_sensor_readings(uint64_t current_time) {
     apds9960_get_reading();
     max4400_get_reading();
     vl53lox_get_reading();
+    mpu6050_get_reading();
 }
