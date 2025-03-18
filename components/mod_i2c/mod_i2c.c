@@ -103,9 +103,14 @@ esp_err_t i2c_write_read_byte(const i2c_device_t *device, uint8_t write_byte, ui
 // }
 
 //! write commadn
-esp_err_t i2c_write_command(const i2c_device_t* device, uint8_t cmd, uint8_t value) {
+esp_err_t i2c_write_command(const i2c_device_t *device, uint8_t cmd, uint8_t value) {
     uint8_t buff[2] = {cmd, value};
     return i2c_write(device, buff, sizeof(buff));
+}
+
+esp_err_t i2c_write_read_command(const i2c_device_t *device, uint8_t cmd, uint8_t *output_buff, uint8_t len) {
+    uint8_t write_buf[1] = { cmd };
+    return i2c_write_read(device, write_buf, sizeof(write_buf), output_buff, len);
 }
 
 esp_err_t i2c_write_command_data(

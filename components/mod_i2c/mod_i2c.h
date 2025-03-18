@@ -22,6 +22,12 @@ esp_err_t i2c_read(const i2c_device_t* device, uint8_t *output, size_t len);
 esp_err_t i2c_write(const i2c_device_t* device, const uint8_t *buffer, size_t len);
 
 esp_err_t i2c_write_command(const i2c_device_t* device, uint8_t cmd, uint8_t value);
+
+esp_err_t i2c_write_read_command(
+    const i2c_device_t *device, uint8_t cmd,
+    uint8_t *output_buff, uint8_t len
+);
+
 esp_err_t i2c_write_command_data(
     const i2c_device_t* device, uint8_t cmd,
     const uint8_t *data, size_t len

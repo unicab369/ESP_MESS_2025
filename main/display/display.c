@@ -32,12 +32,7 @@ static i2c_device_t *apds9960 = NULL;
 
 // Register addresses
 #define ENABLE 0x80
-#define PDATA 0x9C     // Proximity data
-#define CDATAL 0x94    // Clear light low byte
-#define CDATAH 0x95    // Clear light high byte
 #define CONFIG2 0x90   // Configuration
-#define STATUS 0x93    // Status register
-
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     esp_err_t ret = i2c_setup(scl_pin, sda_pin);
@@ -48,23 +43,17 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     //! bh1750
     bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
     ret = i2c_write_byte(bh1750, 0x01);           // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR POWER_ON BH1750");
-    }
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR POWER_ON BH1750");
 
     //! sht31
     sht31 = i2c_device_create(I2C_NUM_0, 0x44);
     ret = i2c_write_command(sht31, 0x30, 0xA2);     // SOFT_RESET 0x30A2
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR SOFT_RESET SHT31");
-    }
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET SHT31");
 
     //! AP3216
     ap3216 = i2c_device_create(I2C_NUM_0, 0x1E);
     ret = i2c_write_command(ap3216, 0x00, 0x03);    // RESET
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR SOFT_RESET AP3216");
-    }
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET AP3216");
 
     //! APDS9960
     uint8_t config[] = {
@@ -76,10 +65,7 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 
     apds9960 = i2c_device_create(I2C_NUM_0, 0x39);
     ret = i2c_write(apds9960, config, sizeof(config));
-
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "ERROR SOFT_RESET APDS9960");
-    }
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET APDS9960");
 }
 
 void display_print_str(const char *str, uint8_t line) {
@@ -123,16 +109,27 @@ static esp_err_t ap3216_get_reading() {
 
 //! ADPS9960
 static esp_err_t apds9960_get_reading() {
-    uint8_t prox2;
-    esp_err_t ret = i2c_write_read_byte(apds9960, PDATA, &prox2);
+    esp_err_t ret;
 
-    uint8_t lux_buff[2];
-    uint8_t cData[1] = { CDATAL };
-    ret = i2c_write_read(apds9960, cData, sizeof(cData), lux_buff, sizeof(lux_buff));
-    uint16_t als2 = (lux_buff[1] << 8) | lux_buff[0];
+    char buff[64];
+    uint8_t prox;
+    ret = i2c_write_read_byte(apds9960, 0x9C, &prox);      // PROX DATA 0x9c
 
-    char buff[32];
-    snprintf(buff, sizeof(buff), "prox: %u. als: %u", prox2, als2);
+    // Clear Light LowByte
+    uint8_t raw[8] = { 0 };
+    ret = i2c_write_read_command(apds9960, 0x94, raw, sizeof(raw));
+
+    uint16_t clear  = (raw[1] << 8) | raw[0];
+    uint16_t red    = (raw[3] << 8) | raw[2];
+    uint16_t green  = (raw[5] << 8) | raw[4];
+    uint16_t blue   = (raw[7] << 8) | raw[6];
+
+    // Method 1: Direct clear channel conversion
+    // 0.0576 * clear;
+
+    // Method 2: RGB coefficients (CIE 1931)
+    // (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+    snprintf(buff, sizeof(buff), "prox: %u, w: %u, r: %u, g: %u, b: %u", prox, clear, red, green, blue);
     ssd1306_print_str(buff, 6);
 
     return ret;
