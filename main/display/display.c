@@ -24,6 +24,19 @@ typedef enum {
 static i2c_device_t *bh1750 = NULL;
 static i2c_device_t *sht31 = NULL;          // address 0x44 or 0x45
 static i2c_device_t *ap3216 = NULL;
+static i2c_device_t *apds9960 = NULL;
+
+#define APDS9960_ADDR 0x39        // I2C address (7-bit)
+#define I2C_MASTER_NUM I2C_NUM_0  // I2C port
+#define I2C_TIMEOUT_MS 1000
+
+// Register addresses
+#define ENABLE 0x80
+#define PDATA 0x9C     // Proximity data
+#define CDATAL 0x94    // Clear light low byte
+#define CDATAH 0x95    // Clear light high byte
+#define CONFIG2 0x90   // Configuration
+#define STATUS 0x93    // Status register
 
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
@@ -52,20 +65,29 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "ERROR SOFT_RESET AP3216");
     }
+
+    //! APDS9960
+    uint8_t config[] = {
+        ENABLE, 0x0F,  // Power ON, Proximity enable, ALS enable, Wait enable
+        CONFIG2, 0x01, // Proximity gain control (4x)
+        0x8F, 0x20,    // Proximity pulse count (8 pulses)
+        0x8E, 0x87     // Proximity pulse length (16us)
+    };
+
+    apds9960 = i2c_device_create(I2C_NUM_0, 0x39);
+    ret = i2c_write(apds9960, config, sizeof(config));
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "ERROR SOFT_RESET APDS9960");
+    }
 }
 
 void display_print_str(const char *str, uint8_t line) {
     ssd1306_print_str(str, line);
 }
 
-
-uint64_t interval_ref = 0;
-
 //! bh1750
-static esp_err_t bh1750_get_reading(uint64_t current_time) {
-    if (current_time - interval_ref < 300000) return ESP_FAIL;
-    interval_ref = current_time;
-
+static esp_err_t bh1750_get_reading() {
     char buff[32];
     esp_err_t ret;
 
@@ -76,10 +98,13 @@ static esp_err_t bh1750_get_reading(uint64_t current_time) {
     float bh1750_data = (readings[0] << 8 | readings[1]) / BH1750_READING_ACCURACY;
     snprintf(buff, sizeof(buff), "BH1750: %f", bh1750_data);
     ssd1306_print_str(buff, 2);
+    return ret;
+}
 
-    //! AP3216
+//! AP3216
+static esp_err_t ap3216_get_reading() {
     uint8_t valHi; uint8_t valLo;
-    ret = i2c_write_read_byte(ap3216, 0x0F, &valHi);
+    esp_err_t ret = i2c_write_read_byte(ap3216, 0x0F, &valHi);
     ret = i2c_write_read_byte(ap3216, 0x0E, &valLo);
 
     int hiByte = valHi & 0b00111111; // PS HIGH_REG 6 bits
@@ -90,9 +115,24 @@ static esp_err_t bh1750_get_reading(uint64_t current_time) {
     ret = i2c_write_read_byte(ap3216, 0x0C, &valLo);
 	uint16_t als = (valHi << 8) + valLo;
 
-    snprintf(buff, sizeof(buff), "prox: %u", ps);
+    char buff[32];
+    snprintf(buff, sizeof(buff), "prox: %u. als: %u", ps, als);
     ssd1306_print_str(buff, 5);
-    snprintf(buff, sizeof(buff), "als: %u", als);
+    return ret;
+}
+
+//! ADPS9960
+static esp_err_t apds9960_get_reading() {
+    uint8_t prox2;
+    esp_err_t ret = i2c_write_read_byte(apds9960, PDATA, &prox2);
+
+    uint8_t lux_buff[2];
+    uint8_t cData[1] = { CDATAL };
+    ret = i2c_write_read(apds9960, cData, sizeof(cData), lux_buff, sizeof(lux_buff));
+    uint16_t als2 = (lux_buff[1] << 8) | lux_buff[0];
+
+    char buff[32];
+    snprintf(buff, sizeof(buff), "prox: %u. als: %u", prox2, als2);
     ssd1306_print_str(buff, 6);
 
     return ret;
@@ -101,6 +141,7 @@ static esp_err_t bh1750_get_reading(uint64_t current_time) {
 //! sht31
 uint64_t sht31_wait_time = 30000;
 uint64_t sht31_timeRef = 0;
+uint64_t interval_ref = 0;
 
 static esp_err_t sht31_get_readings(uint64_t current_time) {
     if (current_time - sht31_timeRef < sht31_wait_time) return ESP_FAIL;
@@ -141,6 +182,12 @@ static esp_err_t sht31_get_readings(uint64_t current_time) {
 }
 
 void i2c_sensor_readings(uint64_t current_time) {
-    bh1750_get_reading(current_time);
     sht31_get_readings(current_time);
+
+    if (current_time - interval_ref < 300000) return;
+    interval_ref = current_time;
+
+    bh1750_get_reading();
+    ap3216_get_reading();
+    apds9960_get_reading();
 }
