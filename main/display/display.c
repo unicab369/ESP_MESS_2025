@@ -19,22 +19,17 @@ typedef enum {
 
 } bh1750_mode_t;
 
-#define BH1750_READING_ACCURACY    1.2
+
+// Register addresses
+#define ENABLE 0x80
+#define CONFIG2 0x90   // Configuration
 
 static i2c_device_t *bh1750 = NULL;
 static i2c_device_t *sht31 = NULL;          // address 0x44 or 0x45
 static i2c_device_t *ap3216 = NULL;
 static i2c_device_t *apds9960 = NULL;
 static i2c_device_t *max4400 = NULL;
-
-#define APDS9960_ADDR 0x39        // I2C address (7-bit)
-#define I2C_MASTER_NUM I2C_NUM_0  // I2C port
-#define I2C_TIMEOUT_MS 1000
-
-// Register addresses
-#define ENABLE 0x80
-#define CONFIG2 0x90   // Configuration
-
+static i2c_device_t *vl53lox = NULL;
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     esp_err_t ret = i2c_setup(scl_pin, sda_pin);
@@ -73,6 +68,16 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     max4400 = i2c_device_create(I2C_NUM_0, 0x4A);       // AO to ground for ADDR 0x4B
     ret = i2c_write_command(max4400, 0x02, 0x80);       // 0x02 Config_Reg, 0x80 Config_value
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET MAX44009");
+
+    //! VL53LOX
+    vl53lox = i2c_device_create(I2C_NUM_0, 0x29);
+
+    uint8_t model_id;
+    ret = i2c_write_read_byte(vl53lox, 0xC0, &model_id);
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR GET_MODEL VL53LOX");
+
+    ret = i2c_write_command(vl53lox, 0x00, 0x01);       // write command to START_RANGING REG
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET VL53LOX");
 }
 
 void display_print_str(const char *str, uint8_t line) {
@@ -88,8 +93,8 @@ static esp_err_t bh1750_get_reading() {
     uint8_t bh_mode[1] = { (uint8_t)BH1750_CONTINUOUS_4LX_RES };
 
     ret = i2c_write_read(bh1750, bh_mode, sizeof(bh_mode), readings, sizeof(readings));
-    float bh1750_data = (readings[0] << 8 | readings[1]) / BH1750_READING_ACCURACY;
-    snprintf(buff, sizeof(buff), "BH1750: %f", bh1750_data);
+    float bh1750_data = (readings[0] << 8 | readings[1]) / 1.2;
+    snprintf(buff, sizeof(buff), "BH1750: %.2f", bh1750_data);
     ssd1306_print_str(buff, 2);
     return ret;
 }
@@ -109,7 +114,7 @@ static esp_err_t ap3216_get_reading() {
 	uint16_t als = (valHi << 8) + valLo;
 
     char buff[32];
-    snprintf(buff, sizeof(buff), "prox: %u. als: %u", ps, als);
+    snprintf(buff, sizeof(buff), "prox: %u, als: %u", ps, als);
     ssd1306_print_str(buff, 5);
     return ret;
 }
@@ -153,7 +158,28 @@ static esp_err_t max4400_get_reading() {
 
     char buff[32];
     snprintf(buff, sizeof(buff), "lux: %.2f", lux);
-    ssd1306_print_str(buff, 7);
+    // ssd1306_print_str(buff, 7);
+
+    return ret;
+}
+
+//! VL53LOX
+static esp_err_t vl53lox_get_reading() {
+    esp_err_t ret;
+
+    uint8_t status;
+    ret = i2c_write_read_byte(vl53lox, 0x13, &status);    // Get STATUS REG
+
+    // if (status & 0x07) {
+        uint8_t reading[2];
+        ret = i2c_write_read_command(vl53lox, 0x14, reading, sizeof(reading));
+        uint8_t distance = (reading[0] << 8) | reading[1];
+
+        char buff[32];
+        snprintf(buff, sizeof(buff), "dist: %u", distance);
+        ssd1306_print_str(buff, 7);
+    
+    // }
 
     return ret;
 }
@@ -191,9 +217,9 @@ static esp_err_t sht31_get_readings(uint64_t current_time) {
         float temp = -45.0f + 175.0f * ((float)temp_raw / 65535.0f);
         float hum = 100.0f * ((float)hum_raw / 65535.0f);
     
-        snprintf(buff, sizeof(buff), "Temp: %f", temp);
+        snprintf(buff, sizeof(buff), "Temp: %.2f", temp);
         ssd1306_print_str(buff, 3);
-        snprintf(buff, sizeof(buff), "hum: %f", hum);
+        snprintf(buff, sizeof(buff), "hum: %.2f", hum);
         ssd1306_print_str(buff, 4);
         sht31_wait_time = 30000;
     }
@@ -211,4 +237,5 @@ void i2c_sensor_readings(uint64_t current_time) {
     ap3216_get_reading();
     apds9960_get_reading();
     max4400_get_reading();
+    vl53lox_get_reading();
 }
