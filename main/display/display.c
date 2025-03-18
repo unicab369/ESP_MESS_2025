@@ -25,6 +25,7 @@ static i2c_device_t *bh1750 = NULL;
 static i2c_device_t *sht31 = NULL;          // address 0x44 or 0x45
 static i2c_device_t *ap3216 = NULL;
 static i2c_device_t *apds9960 = NULL;
+static i2c_device_t *max4400 = NULL;
 
 #define APDS9960_ADDR 0x39        // I2C address (7-bit)
 #define I2C_MASTER_NUM I2C_NUM_0  // I2C port
@@ -33,6 +34,7 @@ static i2c_device_t *apds9960 = NULL;
 // Register addresses
 #define ENABLE 0x80
 #define CONFIG2 0x90   // Configuration
+
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     esp_err_t ret = i2c_setup(scl_pin, sda_pin);
@@ -66,6 +68,11 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     apds9960 = i2c_device_create(I2C_NUM_0, 0x39);
     ret = i2c_write(apds9960, config, sizeof(config));
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET APDS9960");
+
+    //! MAX44009
+    max4400 = i2c_device_create(I2C_NUM_0, 0x4A);       // AO to ground for ADDR 0x4B
+    ret = i2c_write_command(max4400, 0x02, 0x80);       // 0x02 Config_Reg, 0x80 Config_value
+    if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR SOFT_RESET MAX44009");
 }
 
 void display_print_str(const char *str, uint8_t line) {
@@ -111,7 +118,7 @@ static esp_err_t ap3216_get_reading() {
 static esp_err_t apds9960_get_reading() {
     esp_err_t ret;
 
-    char buff[64];
+    char buff[52];
     uint8_t prox;
     ret = i2c_write_read_byte(apds9960, 0x9C, &prox);      // PROX DATA 0x9c
 
@@ -124,13 +131,29 @@ static esp_err_t apds9960_get_reading() {
     uint16_t green  = (raw[5] << 8) | raw[4];
     uint16_t blue   = (raw[7] << 8) | raw[6];
 
-    // Method 1: Direct clear channel conversion
-    // 0.0576 * clear;
-
-    // Method 2: RGB coefficients (CIE 1931)
-    // (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+    // Method 1: Direct clear channel conversion: 0.0576 * clear;
+    // Method 2: RGB coefficients (CIE 1931): (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
     snprintf(buff, sizeof(buff), "prox: %u, w: %u, r: %u, g: %u, b: %u", prox, clear, red, green, blue);
     ssd1306_print_str(buff, 6);
+
+    return ret;
+}
+
+//! MAX44009
+static esp_err_t max4400_get_reading() {
+    esp_err_t ret;
+
+    uint8_t reading[2];
+    ret = i2c_write_read_command(max4400, 0x03, reading, sizeof(reading));
+
+    uint8_t exponent = (reading[0] >> 4) & 0x0F;      // Extract exponent (bits 7-4)
+    uint8_t mantissa = ((reading[0] & 0x0F) << 4) |   // Combine mantissa bits:
+                      ((reading[1] >> 4) & 0x0F);     // high_byte[3:0] + low_byte[7:4]
+    float lux = mantissa * 0.045 * (1 << exponent);   // Final lux calculation
+
+    char buff[32];
+    snprintf(buff, sizeof(buff), "lux: %.2f", lux);
+    ssd1306_print_str(buff, 7);
 
     return ret;
 }
@@ -187,4 +210,5 @@ void i2c_sensor_readings(uint64_t current_time) {
     bh1750_get_reading();
     ap3216_get_reading();
     apds9960_get_reading();
+    max4400_get_reading();
 }
