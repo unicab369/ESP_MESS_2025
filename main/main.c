@@ -258,7 +258,7 @@ void app_main(void) {
             mod_adc_1read(current_time, &mic_adc);
 
             uint8_t value = MAP_VALUE(mic_adc.value, 1500, 1900, 0, 64);
-            printf("value = %u\n", value);
+            // printf("value = %u\n", value);
             display_push_pixel(value, 1);
 
             // printf("mic reading: %u\n", mic_adc.raw);

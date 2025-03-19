@@ -56,17 +56,17 @@ typedef struct {
 
 static esp_err_t ds3231_update_time(ds3231_dateTime_t datetime) {
     uint8_t time[3] = { datetime.sec, datetime.min, datetime.hr };
-    return i2c_write_command_data(ds3231, 0x00, time, sizeof(time));
+    return i2c_write_register(ds3231, 0x00, time, sizeof(time));
 }
 
 static esp_err_t ds3231_update_date(ds3231_dateTime_t datetime) {
-    esp_err_t ret = i2c_write_command(ds3231, 0x04, decimal_to_bcd(datetime.date));
+    esp_err_t ret = i2c_write_register_byte(ds3231, 0x04, decimal_to_bcd(datetime.date));
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR WRITE_DATE DS3231");
 
-    ret = i2c_write_command(ds3231, 0x05, decimal_to_bcd(datetime.month));
+    ret = i2c_write_register_byte(ds3231, 0x05, decimal_to_bcd(datetime.month));
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR WRITE_MONTH DS3231");
 
-    ret = i2c_write_command(ds3231, 0x06, decimal_to_bcd(datetime.year-2000));
+    ret = i2c_write_register_byte(ds3231, 0x06, decimal_to_bcd(datetime.year-2000));
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR WRITE_YEAR DS3231");
     return ret;
 }
@@ -80,17 +80,18 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 
     //! bh1750
     bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
-    ret = i2c_write_byte(bh1750, 0x01);           // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
+    uint8_t data = 0x01;
+    ret = i2c_write(bh1750, &data, 1);           // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
     if (ret != ESP_OK) ESP_LOGE(TAG, "BH1750 ERROR: POWER_ON");
 
     //! sht31
     sht31 = i2c_device_create(I2C_NUM_0, 0x44);
-    ret = i2c_write_command(sht31, 0x30, 0xA2);     // SOFT_RESET 0x30A2
+    ret = i2c_write_register_byte(sht31, 0x30, 0xA2);     // SOFT_RESET 0x30A2
     if (ret != ESP_OK) ESP_LOGE(TAG, "SHT31 ERROR: SOFT_RESET");
 
     //! AP3216
     ap3216 = i2c_device_create(I2C_NUM_0, 0x1E);
-    ret = i2c_write_command(ap3216, 0x00, 0x03);    // RESET
+    ret = i2c_write_register_byte(ap3216, 0x00, 0x03);    // RESET
     if (ret != ESP_OK) ESP_LOGE(TAG, "AP3216 ERROR: SOFT_RESET");
 
     //! APDS9960
@@ -107,29 +108,29 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 
     //! MAX44009
     max4400 = i2c_device_create(I2C_NUM_0, 0x4A);       // AO to ground for ADDR 0x4B
-    ret = i2c_write_command(max4400, 0x02, 0x80);       // 0x02 Config_Reg, 0x80 Config_value
+    ret = i2c_write_register_byte(max4400, 0x02, 0x80);       // 0x02 Config_Reg, 0x80 Config_value
     if (ret != ESP_OK) ESP_LOGE(TAG, "MAX44009 ERROR: SOFT_RESET");
 
     //! VL53LOX
     vl53lox = i2c_device_create(I2C_NUM_0, 0x29);
 
     uint8_t model_id;
-    ret = i2c_write_read_byte(vl53lox, 0xC0, &model_id);
+    ret = i2c_write_read_register(vl53lox, 0xC0, &model_id, 1);
     if (ret != ESP_OK) ESP_LOGE(TAG, "VL53LOX ERROR: GET_MODEL");
 
-    ret = i2c_write_command(vl53lox, 0x00, 0x01);       // write command to START_RANGING REG
+    ret = i2c_write_register_byte(vl53lox, 0x00, 0x01);       // write command to START_RANGING REG
     if (ret != ESP_OK) ESP_LOGE(TAG, "VL53LOX ERROR: SOFT_RESET");
 
     //! MPU6050
     mpu6050 = i2c_device_create(I2C_NUM_0, 0x69);       // ADO HI 0x69, unconnect 0x68
-    ret = i2c_write_command(mpu6050, 0x6B, 0x00);       // WAKEUP REG
+    ret = i2c_write_register_byte(mpu6050, 0x6B, 0x00);       // WAKEUP REG
     if (ret != ESP_OK) ESP_LOGE(TAG, "MPU6050 ERROR: WAKEUP");
 
     //! INA219
     ina219 = i2c_device_create(I2C_NUM_0, 0x40);        // adjust A0 and A1 for 0x41, 0x44, 0x45
 
     uint8_t ina_config[2] = { 0x39, 0x9F };
-    ret = i2c_write_command_data(ina219, 0x00, ina_config, sizeof(ina_config));
+    ret = i2c_write_register(ina219, 0x00, ina_config, sizeof(ina_config));
     if (ret != ESP_OK) ESP_LOGE(TAG, "INA219 ERROR: SOFT_RESET");
 
     //! DS3231
@@ -155,9 +156,8 @@ static esp_err_t bh1750_get_reading() {
     esp_err_t ret;
 
     uint8_t readings[2] = {0};
-    uint8_t bh_mode[1] = { (uint8_t)BH1750_CONTINUOUS_4LX_RES };
-
-    ret = i2c_write_read(bh1750, bh_mode, sizeof(bh_mode), readings, sizeof(readings));
+    ret = i2c_write_read_register(bh1750, BH1750_CONTINUOUS_4LX_RES, readings, sizeof(readings));
+    
     float bh1750_data = (readings[0] << 8 | readings[1]) / 1.2;
     snprintf(buff, sizeof(buff), "BH1750 %.2f", bh1750_data);
     ssd1306_print_str(buff, 2);
@@ -167,15 +167,15 @@ static esp_err_t bh1750_get_reading() {
 //! AP3216
 static esp_err_t ap3216_get_reading() {
     uint8_t valHi; uint8_t valLo;
-    esp_err_t ret = i2c_write_read_byte(ap3216, 0x0F, &valHi);
-    ret = i2c_write_read_byte(ap3216, 0x0E, &valLo);
+    esp_err_t ret = i2c_write_read_register(ap3216, 0x0F, &valHi, 1);
+    ret = i2c_write_read_register(ap3216, 0x0E, &valLo, 1);
 
     int hiByte = valHi & 0b00111111; // PS HIGH_REG 6 bits
     int loBite = valLo & 0b00001111; // PS LOW_REG 4 bits
     uint16_t ps = (hiByte << 4) + loBite;
 
-    ret = i2c_write_read_byte(ap3216, 0x0D, &valHi);
-    ret = i2c_write_read_byte(ap3216, 0x0C, &valLo);
+    ret = i2c_write_read_register(ap3216, 0x0D, &valHi, 1);
+    ret = i2c_write_read_register(ap3216, 0x0C, &valLo, 1);
 	uint16_t als = (valHi << 8) + valLo;
 
     char buff[32];
@@ -190,11 +190,11 @@ static esp_err_t apds9960_get_reading() {
 
     char buff[64];
     uint8_t prox;
-    ret = i2c_write_read_byte(apds9960, 0x9C, &prox);      // PROX DATA 0x9c
+    ret = i2c_write_read_register(apds9960, 0x9C, &prox, 1);      // PROX DATA 0x9c
 
     // Clear Light LowByte
     uint8_t raw[8] = { 0 };
-    ret = i2c_write_read_command(apds9960, 0x94, raw, sizeof(raw));
+    ret = i2c_write_read_register(apds9960, 0x94, raw, sizeof(raw));
 
     uint16_t clear  = (raw[1] << 8) | raw[0];
     uint16_t red    = (raw[3] << 8) | raw[2];
@@ -214,7 +214,7 @@ static esp_err_t max4400_get_reading() {
     esp_err_t ret;
 
     uint8_t reading[2];
-    ret = i2c_write_read_command(max4400, 0x03, reading, sizeof(reading));
+    ret = i2c_write_read_register(max4400, 0x03, reading, sizeof(reading));
 
     uint8_t exponent = (reading[0] >> 4) & 0x0F;      // Extract exponent (bits 7-4)
     uint8_t mantissa = ((reading[0] & 0x0F) << 4) |   // Combine mantissa bits:
@@ -233,11 +233,11 @@ static esp_err_t vl53lox_get_reading() {
     esp_err_t ret;
 
     uint8_t status;
-    ret = i2c_write_read_byte(vl53lox, 0x13, &status);    // Get STATUS REG
+    ret = i2c_write_read_register(vl53lox, 0x13, &status, 1);    // Get STATUS REG
 
     // if (status & 0x07) {
         uint8_t reading[2];
-        ret = i2c_write_read_command(vl53lox, 0x14, reading, sizeof(reading));
+        ret = i2c_write_read_register(vl53lox, 0x14, reading, sizeof(reading));
         uint8_t distance = (reading[0] << 8) | reading[1];
 
         char buff[32];
@@ -254,7 +254,7 @@ static esp_err_t mpu6050_get_reading() {
     esp_err_t ret;
 
     uint8_t buff[6];
-    ret = i2c_write_read_command(mpu6050, 0x3B, buff, sizeof(buff));
+    ret = i2c_write_read_register(mpu6050, 0x3B, buff, sizeof(buff));
 
     int16_t accel_x = (buff[0] << 8) | buff[1];
     int16_t accel_y = (buff[2] << 8) | buff[3];
@@ -272,17 +272,17 @@ static esp_err_t ina219_get_reading() {
     esp_err_t ret;
 
     uint8_t buff[2];
-    ret = i2c_write_read_command(ina219, 0x01, buff, sizeof(buff));
+    ret = i2c_write_read_register(ina219, 0x01, buff, sizeof(buff));
     uint16_t shunt = (buff[0] << 8) | buff[1];
 
-    ret = i2c_write_read_command(ina219, 0x02, buff, sizeof(buff));
+    ret = i2c_write_read_register(ina219, 0x02, buff, sizeof(buff));
     uint16_t bus = (buff[0] << 8) | buff[1];
     uint16_t bus_mV = (bus >> 3) * 4;       // convert to mV
 
-    ret = i2c_write_read_command(ina219, 0x03, buff, sizeof(buff));
+    ret = i2c_write_read_register(ina219, 0x03, buff, sizeof(buff));
     uint16_t power = (buff[0] << 8) | buff[1];
 
-    ret = i2c_write_read_command(ina219, 0x04, buff, sizeof(buff));
+    ret = i2c_write_read_register(ina219, 0x04, buff, sizeof(buff));
     int16_t current = (buff[0] << 8) | buff[1];
 
     char str_buff[52];
@@ -298,7 +298,7 @@ static esp_err_t ina219_get_reading() {
 //! DS3231
 static esp_err_t ds3231_read_time(ds3231_dateTime_t *datetime) {
     uint8_t data[7];
-    esp_err_t ret = i2c_write_read_command(ds3231, 0x00, data, sizeof(data));
+    esp_err_t ret = i2c_write_read_register(ds3231, 0x00, data, sizeof(data));
     datetime->sec   = bcd_to_decimal(data[0]);
     datetime->min   = bcd_to_decimal(data[1]);
     datetime->hr    = bcd_to_decimal(data[2]);
@@ -341,7 +341,7 @@ static esp_err_t sht31_get_readings(uint64_t current_time) {
 
     if (sht31_wait_time == 30000) {
         uint8_t sht_cmd[2] = { 0x24, 0x00 };
-        ret = i2c_write_command(sht31, 0x24, 0x00);     // HIGHREP 0x2400
+        ret = i2c_write_register_byte(sht31, 0x24, 0x00);     // HIGHREP 0x2400
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "ERROR READING SHT31");
             return ret;

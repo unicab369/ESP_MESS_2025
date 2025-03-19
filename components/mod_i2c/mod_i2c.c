@@ -70,7 +70,7 @@ esp_err_t i2c_write_byte_slow(const i2c_device_t* device, const uint8_t byte) {
 }
 
 //! write and read
-esp_err_t i2c_write_read(const i2c_device_t* device, 
+static esp_err_t i2c_write_read(const i2c_device_t* device, 
     const uint8_t *write_buff, size_t write_len,
     const uint8_t *read_buff, size_t read_len
 ) {
@@ -78,7 +78,6 @@ esp_err_t i2c_write_read(const i2c_device_t* device,
                     read_buff, read_len, pdMS_TO_TICKS(50));
 }
 
-//! read write buffer
 esp_err_t i2c_write(const i2c_device_t* device, const uint8_t *buffer, size_t len) {
     return i2c_master_write_to_device(device->port, device->address, buffer, len, pdMS_TO_TICKS(50));
 }
@@ -87,33 +86,18 @@ esp_err_t i2c_read(const i2c_device_t* device, uint8_t *output, size_t len) {
     return i2c_master_read_from_device(device->port, device->address, output, len, pdMS_TO_TICKS(50));
 }
 
-//! read write byte
-esp_err_t i2c_write_byte(const i2c_device_t *device, uint8_t byte) {
-    uint8_t data[1] = {byte};
-    return i2c_write(device, data, 1);
-}
-
-esp_err_t i2c_write_read_byte(const i2c_device_t *device, uint8_t write_byte, uint8_t *read_byte) {
-    uint8_t write_buff[1] = {write_byte};
-    return i2c_write_read(device, write_buff, 1, read_byte, 1);
-}
-
-// esp_err_t i2c_read_byte(const i2c_device_t *device, uint8_t *byte) {
-//     return i2c_read(device, byte, 1);
-// }
-
-//! write commadn
-esp_err_t i2c_write_command(const i2c_device_t *device, uint8_t cmd, uint8_t value) {
-    uint8_t buff[2] = {cmd, value};
+//! write read regsiter
+esp_err_t i2c_write_register_byte(const i2c_device_t *device, uint8_t reg, uint8_t value) {
+    uint8_t buff[2] = {reg, value};
     return i2c_write(device, buff, sizeof(buff));
 }
 
-esp_err_t i2c_write_read_command(const i2c_device_t *device, uint8_t cmd, uint8_t *output_buff, uint8_t len) {
-    uint8_t write_buf[1] = { cmd };
+esp_err_t i2c_write_read_register(const i2c_device_t *device, uint8_t reg, uint8_t *output_buff, uint8_t len) {
+    uint8_t write_buf[1] = { reg };
     return i2c_write_read(device, write_buf, sizeof(write_buf), output_buff, len);
 }
 
-esp_err_t i2c_write_command_data(
+esp_err_t i2c_write_register(
     const i2c_device_t* device, uint8_t cmd,
     const uint8_t *data, size_t len
 ) {

@@ -143,12 +143,12 @@ uint8_t font7x5[95][5] = {
 // Write command to SSD1306
 static void send_command(uint8_t value) {
     uint8_t buff[2] = {SSD1306_CMD, value};
-    i2c_write_command(ssd1306, SSD1306_CMD, value);
+    i2c_write_register_byte(ssd1306, SSD1306_CMD, value);
 }
 
 // Write data to SSD1306
 static void send_data(const uint8_t *data, size_t len) {
-    i2c_write_command_data(ssd1306, SSD1306_DATA, data, len);
+    i2c_write_register(ssd1306, SSD1306_DATA, data, len);
 }
 
 static void set_page(uint8_t page) {
