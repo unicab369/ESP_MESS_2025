@@ -17,17 +17,11 @@
 
 #include "led_toggle.h"
 #include "led_fade.h"
-#include "mod_button.h"
-#include "mod_rotary.h"
 #include "uart_driver.h"
 #include "behavior/behavior.h"
-#include "mod_ws2812.h"
 #include "timer_pulse.h"
 #include "console/app_console.h"
 
-#include "mod_adc.h"
-#include "mod_sd.h"
-#include "mod_mbedtls.h"
 #include "display/display.h"
 #include "sdkconfig.h"
 

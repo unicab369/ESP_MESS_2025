@@ -1,6 +1,13 @@
 #include "main.h"
 
 #include "mod_utility.h"
+#include "mod_adc.h"
+#include "mod_sd.h"
+#include "mod_mbedtls.h"
+#include "mod_ws2812.h"
+#include "mod_button.h"
+#include "mod_rotary.h"
+#include "ssd1306_plot.h"
 
 #define WIFI_ENABLED true
 
@@ -267,6 +274,8 @@ void app_main(void) {
             uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
             display_push_pixel(value, 1);
+
+            ssd1306_spectrum(20);
 
             // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);
