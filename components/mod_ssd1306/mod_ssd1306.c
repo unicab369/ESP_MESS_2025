@@ -307,25 +307,27 @@ void oled_update() {
 uint8_t bar_masks[64][8];  // Lookup table for bar masks
 
 //! Precompute bar_masks
-void precompute_bar_masks(uint8_t height) {
+void precompute_bar_masks(uint8_t height, bool flipped) {
     for (uint8_t h = 0; h < 64; h++) {
-        uint8_t pages = h >> 3;         // Equivalent to height / 8
-        uint8_t remainder = h % 8;      // Equivalent to height % 8
+        uint8_t pages = h >> 3;             // Equivalent to height / 8
+        uint8_t remainder = h & 0x07;       // Equivalent to height % 8
 
         for (uint8_t p = 0; p < 8; p++) {
+            uint8_t page_idx = flipped ? 7 - p : p;
+
             if (p < pages) {
-                bar_masks[h][p] = 0xFF;  // Full page
+                bar_masks[h][page_idx] = 0xFF;  // Full page
             } else if (p == pages) {
-                bar_masks[h][p] = 0xFF << (8 - remainder);  // Partial page
+                bar_masks[h][page_idx] = 0xFF << (8 - remainder);  // Partial page
             } else {
-                bar_masks[h][p] = 0x00;  // Empty page
+                bar_masks[h][page_idx] = 0x00;  // Empty page
             }
         }
     }
 }
 
 // Draw vertical bar for spectrum
-void draw_bar(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
+void draw_bar_horizontal_mode(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
     uint16_t x = b * (width + space);
     if (x + width > SSD1306_WIDTH) return;  // Check overflow
 
@@ -347,6 +349,20 @@ void draw_bar(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
     // printf("b = %u, x = %u\n", b, x);
 }
 
+void draw_bar_vertical_mode(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
+    uint16_t x = b * (width + space);  // Starting x position of the bar
+    if (x + width > SSD1306_WIDTH) return;  // Check overflow
+
+    // Draw the bar
+    for (uint8_t col = 0; col < width; col++) {
+        uint16_t column_offset = x + col;  // Starting column of the bar
+
+        for (uint8_t p = 0; p < 8; p++) {
+            display_buffer[column_offset + p * SSD1306_WIDTH] = bar_masks[height][p];
+        }
+    }
+}
+
 // FFT-based spectrum analyzer core
 void spectrum_analyze(uint8_t num_bands) {
     int16_t samples[] = {
@@ -359,24 +375,28 @@ void spectrum_analyze(uint8_t num_bands) {
     uint8_t band_heights[num_bands];
     memset(band_heights, 0, sizeof(band_heights));
 
-    for(int i = 0; i < sample_len; i++) {
+    for (int i = 0; i < sample_len; i++) {
         int band = map_value(i, 0, sample_len, 0, num_bands);
-        band_heights[band] += abs(samples[i]) >> 3;     // equivalent to / 8
+        band_heights[band] += abs(samples[i]) >> 3;  // Equivalent to / 8
     }
 
     // Constrain band heights to the display height
     for (int b = 0; b < num_bands; b++) {
         band_heights[b] = constrain_value(band_heights[b], 0, 63);
     }
-    
-    precompute_bar_masks(SSD1306_HEIGHT);
+
+    // Precompute bar masks
+    precompute_bar_masks(SSD1306_HEIGHT, false);
+
+    // Clear the display buffer
     memset(display_buffer, 0, sizeof(display_buffer));
 
-    for(int b = 0; b < num_bands; b++) {
-        draw_bar(b, band_heights[b], 5, 1);
+    // Draw all bars
+    for (int b = 0; b < num_bands; b++) {
+        draw_bar_horizontal_mode(b, band_heights[b], 5, 1);
     }
 
-    // Update display
+    // Update the display
     oled_update();
 }
 
