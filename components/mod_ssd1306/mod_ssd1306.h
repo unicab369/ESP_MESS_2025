@@ -8,3 +8,4 @@ void ssd1306_clear_all(void);
 
 void ssd1306_push_pixel(uint8_t y, uint8_t color);
 int do_i2cdetect_cmd(uint8_t scl_pin, uint8_t sda_pin);
+void spectrum_analyze(uint8_t num_bands);

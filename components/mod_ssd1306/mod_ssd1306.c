@@ -11,6 +11,7 @@
 #include "esp_timer.h"
 
 #include "mod_i2c.h"
+#include "mod_utility.h"
 
 // Display dimensions
 #define SSD1306_WIDTH 128
@@ -141,7 +142,7 @@ uint8_t font7x5[95][5] = {
 
 
 // Write command to SSD1306
-static void send_command(uint8_t value) {
+static void send_cmd(uint8_t value) {
     uint8_t buff[2] = {SSD1306_CMD, value};
     i2c_write_register_byte(ssd1306, SSD1306_CMD, value);
 }
@@ -152,23 +153,23 @@ static void send_data(const uint8_t *data, size_t len) {
 }
 
 static void set_page(uint8_t page) {
-    send_command(0xB0 | (page & 0x07)); // Set page address (0-7)
+    send_cmd(0xB0 | (page & 0x07)); // Set page address (0-7)
 }
 
 // Function to set the column address
 static void set_column(uint8_t col) {
-    send_command(0x00 | (col & 0x0F));       // Set lower column address
-    send_command(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
+    send_cmd(0x00 | (col & 0x0F));       // Set lower column address
+    send_cmd(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
 }
 
 static void set_update_target(uint8_t start_page, uint8_t end_page) {
-    send_command(0x21);         // Set column address
-    send_command(0x00);         // Start column = 0
-    send_command(END_COLUMN);   // End column = 127
+    send_cmd(0x21);         // Set column address
+    send_cmd(0x00);         // Start column = 0
+    send_cmd(END_COLUMN);   // End column = 127
 
-    send_command(0x22);         // Set page address
-    send_command(start_page);   // Start page
-    send_command(end_page);     // End page
+    send_cmd(0x22);         // Set page address
+    send_cmd(start_page);   // Start page
+    send_cmd(end_page);     // End page
 }
 
 void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
@@ -216,39 +217,39 @@ void ssd1306_print_str(const char *str, uint8_t page) {
 }
 
 static void set_addressing_mode(uint8_t mode) {
-    send_command(0x20);          // Set addressing mode
-    send_command(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
+    send_cmd(0x20);          // Set addressing mode
+    send_cmd(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
 }
 
 void ssd1306_setup(uint8_t address) {
     ssd1306 = i2c_device_create(I2C_NUM_0, 0x3C);
 
     // Initialize display
-    send_command(0xAE); // Display off
-    send_command(0xD5); // Set display clock divide
-    send_command(0x80);
-    send_command(0xA8); // Set multiplex ratio
-    send_command(0x3F);
-    send_command(0xD3); // Set display offset
-    send_command(0x00);
-    send_command(0x40); // Set start line
-    send_command(0x8D); // Charge pump
-    send_command(0x14);
-    send_command(0x20); // Memory mode
-    send_command(0x00);
-    send_command(0xA1); // Segment remap
-    send_command(0xC8); // COM output scan direction
-    send_command(0xDA); // COM pins hardware
-    send_command(0x12);
-    send_command(0x81); // Contrast control
-    send_command(0xCF);
-    send_command(0xD9); // Pre-charge period
-    send_command(0xF1);
-    send_command(0xDB); // VCOMH deselect level
-    send_command(0x30);
-    send_command(0xA4); // Display resume
-    send_command(0xA6); // Normal display
-    send_command(0xAF); // Display on
+    send_cmd(0xAE); // Display off
+    send_cmd(0xD5); // Set display clock divide
+    send_cmd(0x80);
+    send_cmd(0xA8); // Set multiplex ratio
+    send_cmd(0x3F);
+    send_cmd(0xD3); // Set display offset
+    send_cmd(0x00);
+    send_cmd(0x40); // Set start line
+    send_cmd(0x8D); // Charge pump
+    send_cmd(0x14);
+    send_cmd(0x20); // Memory mode
+    send_cmd(0x00);
+    send_cmd(0xA1); // Segment remap
+    send_cmd(0xC8); // COM output scan direction
+    send_cmd(0xDA); // COM pins hardware
+    send_cmd(0x12);
+    send_cmd(0x81); // Contrast control
+    send_cmd(0xCF);
+    send_cmd(0xD9); // Pre-charge period
+    send_cmd(0xF1);
+    send_cmd(0xDB); // VCOMH deselect level
+    send_cmd(0x30);
+    send_cmd(0xA4); // Display resume
+    send_cmd(0xA6); // Normal display
+    send_cmd(0xAF); // Display on
 
     ssd1306_clear_all();
 
@@ -285,6 +286,69 @@ void ssd1306_push_pixel(uint8_t y, uint8_t color) {
     }
     ssd1306_draw_pixel(x_ref, y, color);
     x_ref+=4;
+}
+
+
+uint8_t display_buffer[SSD1306_WIDTH * (SSD1306_HEIGHT/8)]; // 1024 bytes
+
+void oled_update() {
+    set_update_target(0, 7);
+    send_data(display_buffer, sizeof(display_buffer));
+}
+
+// Draw vertical bar for spectrum
+void draw_bar(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
+    uint16_t x = b * (width + space);
+    if (x + width > SSD1306_WIDTH) return;  // Check overflow
+
+    // Precompute masks for all pages
+    uint8_t masks[8] = {0};
+    uint8_t pages = height / 8;
+    uint8_t remainder = height % 8;
+
+    for (uint8_t p = 0; p < 8; p++) {
+        if (p < pages) {
+            masks[p] = 0xFF;  // Full page is part of the bar
+        } else if (p == pages) {
+            masks[p] = 0xFF << (8 - remainder);  // Partial page for the remainder
+        }
+    }
+
+    // Single loop to fill the display_buffer
+    for (uint8_t p = 0; p < 8; p++) {
+        uint16_t page_offset = (7 - p) * SSD1306_WIDTH + x;
+        for (uint8_t col = 0; col < width; col++) {
+            display_buffer[page_offset + col] = masks[p];
+        }
+    }
+        
+    // printf("b = %u, x = %u\n", b, x);
+}
+
+// FFT-based spectrum analyzer core
+void spectrum_analyze(uint8_t num_bands) {
+    int16_t samples[] = {
+        10, 20, 30, 40, 50, 60, 70, 80, 90, 10, 11, 12, 13, 14, 15, 16,
+        10, 20, 30, 40, 50, 60, 70, 80, 90, 10, 11, 12, 13, 14, 15, 16
+    };
+
+    // Simple energy calculation per band
+    uint8_t sample_len = sizeof(samples) / sizeof(samples[0]);
+    uint8_t band_heights[num_bands];
+    memset(band_heights, 0, sizeof(band_heights));
+
+    for(int i = 0; i < sample_len; i++) {
+        int band = map_value(i, 0, sample_len, 0, num_bands);
+        band_heights[band] += abs(samples[i]) / 8;
+    }
+
+    // Update display
+    memset(display_buffer, 0, sizeof(display_buffer));
+    for(int b = 0; b < num_bands; b++) {
+        uint8_t h = constrain_value(band_heights[b], 0, 63);
+        draw_bar(b, h, 5, 1);
+    }
+    oled_update();
 }
 
 #define I2C_MASTER_TIMEOUT_MS 50   // ms

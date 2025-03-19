@@ -262,11 +262,11 @@ void app_main(void) {
             interval_ref2 = current_time;
             mod_adc_1read(&mic_adc);
             mod_adc_1read(&pir_adc);
-            printf("value = %u\n", pir_adc.value);
+            // printf("value = %u\n", pir_adc.value);
 
-            // uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
+            uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
-            // display_push_pixel(value, 1);
+            display_push_pixel(value, 1);
 
             // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);

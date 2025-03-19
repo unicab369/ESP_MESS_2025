@@ -7,3 +7,5 @@
 
 uint16_t map_value(uint16_t x, uint16_t input_min, uint16_t input_max, 
     uint16_t output_min, uint16_t output_max);
+
+int constrain_value(int value, int low, int high);

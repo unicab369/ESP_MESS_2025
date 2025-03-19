@@ -10,3 +10,9 @@ uint16_t map_value(uint16_t x, uint16_t input_min, uint16_t input_max,
     if (output < output_min) output = output_min;
     return output;
 }
+
+int constrain_value(int value, int low, int high) {
+    if (value < low) return low;
+    if (value > high) return high;
+    return value;
+}
