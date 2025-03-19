@@ -24,13 +24,7 @@ typedef enum __attribute__((packed)) {
 typedef struct {
     uint8_t gpio;
     adc_channel_t channel;
-    adc_oneshot_unit_handle_t oneshot_handler;
-    adc_cali_handle_t calibration_handler;
-    int raw;
-    int voltage;
-    adc_unit_inteface_t unit;    // ADC1 or ADC2
-    uint8_t is_valid;
-    uint8_t log_enabled;
+    int value;
 } adc_single_read_t;
 
 typedef struct {
@@ -40,6 +34,7 @@ typedef struct {
     uint32_t read_count;
 } adc_continous_read_t;
 
+void mod_adc_1read_init(adc_unit_inteface_t unit, uint8_t calibration, uint8_t log);
 void mod_adc_1read_setup(adc_single_read_t *model);
 void mod_adc_1read(uint64_t current_time, adc_single_read_t *model);
 void mod_adc_1read_teardown(adc_single_read_t *model);

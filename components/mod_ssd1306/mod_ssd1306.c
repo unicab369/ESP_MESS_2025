@@ -151,16 +151,6 @@ static void send_data(const uint8_t *data, size_t len) {
     i2c_write_command_data(ssd1306, SSD1306_DATA, data, len);
 }
 
-void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
-    if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT) return; // Out of bounds
-    // Set the pixel in the buffer
-    if (color) {
-        buffer[x + (y / 8) * SSD1306_WIDTH] |= (1 << (y % 8)); // Set pixel
-    } else {
-        buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8)); // Clear pixel
-    }
-}
-
 static void set_page(uint8_t page) {
     send_command(0xB0 | (page & 0x07)); // Set page address (0-7)
 }
@@ -272,6 +262,25 @@ void ssd1306_setup(uint8_t address) {
     // send_data(data, sizeof(data));
 }
 
+
+void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
+    if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT) return; // Out of bounds
+    // Set the pixel in the buffer
+    if (color) {
+        buffer[x + (y / 8) * SSD1306_WIDTH] |= (1 << (y % 8)); // Set pixel
+    } else {
+        buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8)); // Clear pixel
+    }
+    send_data(buffer, sizeof(buffer));
+}
+
+static uint8_t x_ref = 0;
+
+void ssd1306_push_pixel(uint8_t y, uint8_t color) {
+    if (x_ref >= SSD1306_WIDTH) x_ref = SSD1306_WIDTH;
+    ssd1306_draw_pixel(x_ref, y, color);
+    x_ref++;
+}
 
 #define I2C_MASTER_TIMEOUT_MS 50   // ms
 #define I2C_MASTER_NUM I2C_NUM_0

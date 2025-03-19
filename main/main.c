@@ -225,12 +225,18 @@ void app_main(void) {
 
     memset(adc_read_arr, 0, sizeof(adc_read_arr));
 
-    adc_single_read_t single_adc = {
-        .gpio = GPIO_34,
-        .unit = ADC_UNIT_INTF_1,
-        .log_enabled = false
+    mod_adc_1read_init(ADC_UNIT_INTF_1, false, false);
+
+    // adc_single_read_t single_adc = {
+    //     .gpio = GPIO_34,
+    // };
+    // mod_adc_1read_setup(&single_adc);    
+
+    adc_single_read_t mic_adc = {
+        .gpio = MIC_IN,
     };
-    mod_adc_1read_setup(&single_adc);    
+    mod_adc_1read_setup(&mic_adc);
+
 
     // adc_continous_read_t continous_read = (adc_continous_read_t){
     //     .unit = ADC_UNIT_1
@@ -249,13 +255,18 @@ void app_main(void) {
 
         if (current_time - interval_ref2 > 400000) {
             interval_ref2 = current_time;
-            // mod_adc_1read(current_time, &single_adc);
+            mod_adc_1read(current_time, &mic_adc);
+
+            uint8_t value = MAP_VALUE(mic_adc.value, 1500, 1900, 0, 64);
+            printf("value = %u\n", value);
+            display_push_pixel(value, 1);
+
+            // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);
         }
 
         // if (current_time - interval_ref > pdMS_TO_TICKS(1)) {
         //     interval_ref = current_time;
-        //     mod_adc_1read(current_time, &single_adc);
         //     adc_read_arr[adc_read_index++] = single_adc.raw;
 
         //     if (adc_read_index >= MAX_ADC_SAMPLE) {

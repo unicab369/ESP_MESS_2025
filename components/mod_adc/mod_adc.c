@@ -98,65 +98,82 @@ static void adc_calib_deinit(adc_cali_handle_t handle) {
     #endif
 }
 
-#define ADC_ATTEN           ADC_ATTEN_DB_12
+#define ADC_ATTEN   ADC_ATTEN_DB_12
+
+static adc_oneshot_unit_handle_t adc1_handle = NULL;
+static adc_cali_handle_t adc1_calibration_handle = NULL;
+static adc_unit_inteface_t sel_unit = ADC_UNIT_INTF_1;
+static uint8_t calib_enabled = false;
+static uint8_t log_enabled = false;
+
+void mod_adc_1read_init(adc_unit_inteface_t unit, uint8_t calibration, uint8_t log) {
+    //! ADC Init
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = unit,                        // ADC1 or ADC2
+        .ulp_mode = ADC_ULP_MODE_DISABLE,
+    };
+    sel_unit = unit;
+    calib_enabled = calibration;
+    log_enabled = log;
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+}
 
 void mod_adc_1read_setup(adc_single_read_t *model) {
+    if (adc1_handle == NULL) return;
+
     uint8_t channel = 255;
 
     // unit mapping 
-    if (model->unit == ADC_UNIT_INTF_1) {
+    if (sel_unit == ADC_UNIT_INTF_1) {
         channel = gpio_to_adc1_channel(model->gpio);
-    } else if (model->unit == ADC_UNIT_INTF_2) {
+    } else if (sel_unit == ADC_UNIT_INTF_2) {
         channel = gpio_to_adc2_channel(model->gpio);
     }
 
     if (channel == 255) {
-        model->is_valid = 0;
+        adc1_handle = NULL;
         return;
     }
     model->channel = channel;
 
-    // ADC Init
-    adc_oneshot_unit_init_cfg_t init_config1 = {
-        .unit_id = model->unit,
-        .ulp_mode = ADC_ULP_MODE_DISABLE,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &model->oneshot_handler));
-
-    // ADC Config
+    //! ADC Config
     adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_12,
         .atten = ADC_ATTEN,
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(model->oneshot_handler, model->channel, &config));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, model->channel, &config));
 
-    // ADC Calibration
-    adc_calib_init(ADC_UNIT_1, model->channel, ADC_ATTEN, &model->calibration_handler);
-    model->is_valid = 1;
+    if (calib_enabled) {
+        // ADC Calibration
+        adc_calib_init(ADC_UNIT_1, model->channel, ADC_ATTEN, &adc1_calibration_handle);
+    }
 }
 
 void mod_adc_1read(uint64_t current_time, adc_single_read_t *model) {
-    if (!model->is_valid) return;
+    if (adc1_handle == NULL) return;
 
-    ESP_ERROR_CHECK(adc_oneshot_read(model->oneshot_handler, model->channel, &model->raw));
-    // ESP_LOGI(TAG, "ADC%d Channel[%d] Raw Data: %d", ADC_UNIT_1 + 1, model->channel, model->raw);
+    int raw_value = 0;
+    int adc_number = ADC_UNIT_1 + 1;
+    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, model->channel, &raw_value));
 
-    if (model->calibration_handler) {
-        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(model->calibration_handler, model->raw, &model->voltage));
-        if (model->log_enabled)
-            ESP_LOGI(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ADC_UNIT_1 + 1, model->channel, model->voltage);
+    if (adc1_calibration_handle) {
+        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_calibration_handle, raw_value, &model->value));
+        if (log_enabled)
+            ESP_LOGI(TAG, "ADC%d Chan[%d] Calibrated: %d mV", adc_number, model->channel, model->value);
+    } else {
+        model->value = raw_value;
+        if (log_enabled)
+            ESP_LOGI(TAG, "ADC%d Chan[%d] Raw Data: %d", adc_number, model->channel, model->value);
     }
 }
 
 void mod_adc_1read_teardown(adc_single_read_t *model) {
-    adc_oneshot_del_unit(model->oneshot_handler);
+    adc_oneshot_del_unit(adc1_handle);
 
-    if (model->calibration_handler) {
-        adc_calib_deinit(model->calibration_handler);
+    if (adc1_calibration_handle) {
+        adc_calib_deinit(adc1_calibration_handle);
     }
 }
-
-
 
 
 
