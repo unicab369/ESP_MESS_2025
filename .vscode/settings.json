@@ -138,7 +138,8 @@
         "mod_ssd1306.h": "c",
         "iterator": "c",
         "mod_i2c.h": "c",
-        "util_shared.h": "c"
+        "util_shared.h": "c",
+        "mod_utility.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

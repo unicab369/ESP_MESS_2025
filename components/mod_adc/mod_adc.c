@@ -149,7 +149,7 @@ void mod_adc_1read_setup(adc_single_read_t *model) {
     }
 }
 
-void mod_adc_1read(uint64_t current_time, adc_single_read_t *model) {
+void mod_adc_1read(adc_single_read_t *model) {
     if (adc1_handle == NULL) return;
 
     int raw_value = 0;

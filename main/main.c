@@ -1,6 +1,6 @@
 #include "main.h"
 
-#include "util_shared.h"
+#include "mod_utility.h"
 
 #define WIFI_ENABLED true
 
@@ -237,6 +237,11 @@ void app_main(void) {
     };
     mod_adc_1read_setup(&mic_adc);
 
+    adc_single_read_t pir_adc = {
+        .gpio = PIR_IN,
+    };
+    mod_adc_1read_setup(&pir_adc);
+
 
     // adc_continous_read_t continous_read = (adc_continous_read_t){
     //     .unit = ADC_UNIT_1
@@ -253,13 +258,15 @@ void app_main(void) {
 
         i2c_sensor_readings(current_time);
 
-        if (current_time - interval_ref2 > 400000) {
+        if (current_time - interval_ref2 > 200000) {
             interval_ref2 = current_time;
-            mod_adc_1read(current_time, &mic_adc);
+            mod_adc_1read(&mic_adc);
+            mod_adc_1read(&pir_adc);
+            printf("value = %u\n", pir_adc.value);
 
-            uint8_t value = MAP_VALUE(mic_adc.value, 1500, 1900, 0, 64);
-            // printf("value = %u\n", value);
-            display_push_pixel(value, 1);
+            // uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
+            // printf("raw = %u, value = %u\n", mic_adc.value, value);
+            // display_push_pixel(value, 1);
 
             // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);

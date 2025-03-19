@@ -7,7 +7,7 @@
 #include "regex.h"
 #include "esp_nan.h"
 #include "esp_wps.h"
-#include "util_shared.h"
+#include "mod_utility.h"
 
 /* STA Configuration */
 #define EXAMPLE_ESP_MAXIMUM_RETRY           20

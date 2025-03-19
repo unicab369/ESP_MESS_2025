@@ -3,5 +3,7 @@
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 
-#define MAP_VALUE(x, in_min, in_max, out_min, out_max) \
-    ((x) - (in_min)) * ((out_max) - (out_min)) / ((in_max) - (in_min)) + (out_min)
+#include <unistd.h>
+
+uint16_t map_value(uint16_t x, uint16_t input_min, uint16_t input_max, 
+    uint16_t output_min, uint16_t output_max);

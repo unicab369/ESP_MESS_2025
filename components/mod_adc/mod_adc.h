@@ -36,7 +36,7 @@ typedef struct {
 
 void mod_adc_1read_init(adc_unit_inteface_t unit, uint8_t calibration, uint8_t log);
 void mod_adc_1read_setup(adc_single_read_t *model);
-void mod_adc_1read(uint64_t current_time, adc_single_read_t *model);
+void mod_adc_1read(adc_single_read_t *model);
 void mod_adc_1read_teardown(adc_single_read_t *model);
 
 void mod_adc_continous_setup(adc_continous_read_t *model);

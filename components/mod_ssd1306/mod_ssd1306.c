@@ -161,7 +161,7 @@ static void set_column(uint8_t col) {
     send_command(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
 }
 
-static void set_addressing_pages(uint8_t start_page, uint8_t end_page) {
+static void set_update_target(uint8_t start_page, uint8_t end_page) {
     send_command(0x21);         // Set column address
     send_command(0x00);         // Start column = 0
     send_command(END_COLUMN);   // End column = 127
@@ -173,7 +173,7 @@ static void set_addressing_pages(uint8_t start_page, uint8_t end_page) {
 
 void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
     if (end_page>MAX_PAGE_INDEX) return;
-    set_addressing_pages(start_page, end_page);
+    set_update_target(start_page, end_page);
 
     // Send zero buffer for each page
     for (uint8_t page = start_page; page <= end_page; page++) {
@@ -181,12 +181,16 @@ void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
     }
 }
 
-void ssd1306_clear_line(uint8_t page) {
-    ssd1306_clear_lines(page, page);
+void ssd1306_clear_all(void) {
+    printf("****** IM HEREEEE\n");
+
+    for (int i = 0; i < 8; i++) {  // 8 pages for 64-pixel height
+        ssd1306_clear_lines(0, i);
+    }
 }
 
 void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool clear) {
-    ssd1306_clear_line(page);
+    ssd1306_clear_lines(page, page);
     set_page(page);
     set_column(column); 
 
@@ -208,13 +212,7 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
 }
 
 void ssd1306_print_str(const char *str, uint8_t page) {
-    ssd1306_print_str_at(str, page, 0, true);
-}
-
-void ssd1306_clear_all(void) {
-    uint8_t clear_buffer[SSD1306_WIDTH * SSD1306_PAGES] = {0};
-    set_addressing_pages(0, MAX_PAGE_INDEX);
-    send_data(clear_buffer, sizeof(clear_buffer));
+    // ssd1306_print_str_at(str, page, 0, true);
 }
 
 static void set_addressing_mode(uint8_t mode) {
@@ -265,21 +263,28 @@ void ssd1306_setup(uint8_t address) {
 
 void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
     if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT) return; // Out of bounds
+
+    set_update_target(0, 7);
+
     // Set the pixel in the buffer
     if (color) {
         buffer[x + (y / 8) * SSD1306_WIDTH] |= (1 << (y % 8)); // Set pixel
-    } else {
-        buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8)); // Clear pixel
-    }
+    } 
+    // else {
+    //     buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8)); // Clear pixel
+    // }
     send_data(buffer, sizeof(buffer));
 }
 
 static uint8_t x_ref = 0;
 
 void ssd1306_push_pixel(uint8_t y, uint8_t color) {
-    if (x_ref >= SSD1306_WIDTH) x_ref = SSD1306_WIDTH;
+    if (x_ref >= SSD1306_WIDTH) {
+        x_ref = 0;
+        ssd1306_clear_all();
+    }
     ssd1306_draw_pixel(x_ref, y, color);
-    x_ref++;
+    x_ref+=4;
 }
 
 #define I2C_MASTER_TIMEOUT_MS 50   // ms
