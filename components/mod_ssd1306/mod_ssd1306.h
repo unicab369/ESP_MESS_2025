@@ -8,7 +8,7 @@
 
 // Declare the frame_buffer as a 2D array
 extern uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH];
-
+extern uint8_t column_buffer[SSD1306_WIDTH][SSD1306_PAGES];
 
 void ssd1306_setup(uint8_t address);
 void ssd1306_set_addressing_mode(uint8_t mode);
