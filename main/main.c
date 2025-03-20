@@ -273,8 +273,7 @@ void app_main(void) {
 
             uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
-            display_push_pixel(value, 1);
-
+            
             ssd1306_spectrum(20);
 
             // printf("mic reading: %u\n", mic_adc.raw);

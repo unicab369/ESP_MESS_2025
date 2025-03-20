@@ -382,7 +382,3 @@ void i2c_sensor_readings(uint64_t current_time) {
     mpu6050_get_reading();
     ina219_get_reading();
 }
-
-void display_push_pixel(uint8_t y, uint8_t color) {
-    // ssd1306_push_pixel(y, color);
-}

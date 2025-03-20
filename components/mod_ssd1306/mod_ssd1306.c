@@ -136,39 +136,39 @@ uint8_t font7x5[95][5] = {
 
 
 // Write command to SSD1306
-static void send_cmd(uint8_t value) {
+void ssd1306_send_cmd(uint8_t value) {
     uint8_t buff[2] = {SSD1306_CMD, value};
     i2c_write_register_byte(ssd1306, SSD1306_CMD, value);
 }
 
 // Write data to SSD1306
-void send_data(const uint8_t *data, size_t len) {
+void ssd1306_send_data(const uint8_t *data, size_t len) {
     i2c_write_register(ssd1306, SSD1306_DATA, data, len);
 }
 
 static void set_page(uint8_t page) {
-    send_cmd(0xB0 | (page & 0x07)); // Set page address (0-7)
+    ssd1306_send_cmd(0xB0 | (page & 0x07)); // Set page address (0-7)
 }
 
 // Function to set the column address
 static void set_column(uint8_t col) {
-    send_cmd(0x00 | (col & 0x0F));       // Set lower column address
-    send_cmd(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
+    ssd1306_send_cmd(0x00 | (col & 0x0F));       // Set lower column address
+    ssd1306_send_cmd(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
 }
 
 static void set_update_target(uint8_t start_page, uint8_t end_page) {
-    send_cmd(0x21);         // Set column address
-    send_cmd(0x00);         // Start column = 0
-    send_cmd(END_COLUMN);   // End column = 127
+    ssd1306_send_cmd(0x21);         // Set column address
+    ssd1306_send_cmd(0x00);         // Start column = 0
+    ssd1306_send_cmd(END_COLUMN);   // End column = 127
 
-    send_cmd(0x22);         // Set page address
-    send_cmd(start_page);   // Start page
-    send_cmd(end_page);     // End page
+    ssd1306_send_cmd(0x22);         // Set page address
+    ssd1306_send_cmd(start_page);   // Start page
+    ssd1306_send_cmd(end_page);     // End page
 }
 
 void ssd1306_set_addressing_mode(uint8_t mode) {
-    send_cmd(0x20);          // Set addressing mode
-    send_cmd(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
+    ssd1306_send_cmd(0x20);          // Set addressing mode
+    ssd1306_send_cmd(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
 }
 
 
@@ -178,7 +178,7 @@ void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
 
     // Send zero buffer for each page
     for (uint8_t page = start_page; page <= end_page; page++) {
-        send_data(zero_buffer, SSD1306_WIDTH);
+        ssd1306_send_data(zero_buffer, SSD1306_WIDTH);
     }
 }
 
@@ -198,16 +198,16 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
     for (int i=0; i<SSD1306_MAX_CHAR; i++) {
         if (*str) {
             uint8_t char_index = *str - 32; // Adjust for ASCII offset
-            send_data((uint8_t *)font7x5[char_index], 5); // Send font data
+            ssd1306_send_data((uint8_t *)font7x5[char_index], 5); // Send font data
             str++;
         } else {
             // uint8_t empty_data[5] = {0};
-            // send_data(empty_data, 5); // Send font data
+            // ssd1306_send_data(empty_data, 5); // Send font data
         }
     }
     // while (*str) {
     //     uint8_t char_index = *str - 32; // Adjust for ASCII offset
-    //     send_data((uint8_t *)font7x5[char_index], 5); // Send font data
+    //     ssd1306_send_data((uint8_t *)font7x5[char_index], 5); // Send font data
     //     str++;
     // }
 }
@@ -220,31 +220,31 @@ void ssd1306_setup(uint8_t address) {
     ssd1306 = i2c_device_create(I2C_NUM_0, 0x3C);
 
     // Initialize display
-    send_cmd(0xAE); // Display off
-    send_cmd(0xD5); // Set display clock divide
-    send_cmd(0x80);
-    send_cmd(0xA8); // Set multiplex ratio
-    send_cmd(0x3F);
-    send_cmd(0xD3); // Set display offset
-    send_cmd(0x00);
-    send_cmd(0x40); // Set start line
-    send_cmd(0x8D); // Charge pump
-    send_cmd(0x14);
-    send_cmd(0x20); // Memory mode
-    send_cmd(0x00);
-    send_cmd(0xA1); // Segment remap
-    send_cmd(0xC8); // COM output scan direction
-    send_cmd(0xDA); // COM pins hardware
-    send_cmd(0x12);
-    send_cmd(0x81); // Contrast control
-    send_cmd(0xCF);
-    send_cmd(0xD9); // Pre-charge period
-    send_cmd(0xF1);
-    send_cmd(0xDB); // VCOMH deselect level
-    send_cmd(0x30);
-    send_cmd(0xA4); // Display resume
-    send_cmd(0xA6); // Normal display
-    send_cmd(0xAF); // Display on
+    ssd1306_send_cmd(0xAE); // Display off
+    ssd1306_send_cmd(0xD5); // Set display clock divide
+    ssd1306_send_cmd(0x80);
+    ssd1306_send_cmd(0xA8); // Set multiplex ratio
+    ssd1306_send_cmd(0x3F);
+    ssd1306_send_cmd(0xD3); // Set display offset
+    ssd1306_send_cmd(0x00);
+    ssd1306_send_cmd(0x40); // Set start line
+    ssd1306_send_cmd(0x8D); // Charge pump
+    ssd1306_send_cmd(0x14);
+    ssd1306_send_cmd(0x20); // Memory mode
+    ssd1306_send_cmd(0x00);
+    ssd1306_send_cmd(0xA1); // Segment remap
+    ssd1306_send_cmd(0xC8); // COM output scan direction
+    ssd1306_send_cmd(0xDA); // COM pins hardware
+    ssd1306_send_cmd(0x12);
+    ssd1306_send_cmd(0x81); // Contrast control
+    ssd1306_send_cmd(0xCF);
+    ssd1306_send_cmd(0xD9); // Pre-charge period
+    ssd1306_send_cmd(0xF1);
+    ssd1306_send_cmd(0xDB); // VCOMH deselect level
+    ssd1306_send_cmd(0x30);
+    ssd1306_send_cmd(0xA4); // Display resume
+    ssd1306_send_cmd(0xA6); // Normal display
+    ssd1306_send_cmd(0xAF); // Display on
 
     ssd1306_clear_all();
 
@@ -257,7 +257,7 @@ void ssd1306_setup(uint8_t address) {
 
     // Vertical line - required vertical mode
     // uint8_t data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; 
-    // send_data(data, sizeof(data));
+    // ssd1306_send_data(data, sizeof(data));
 }
 
 
@@ -273,24 +273,11 @@ void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
     // else {
     //     buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8)); // Clear pixel
     // }
-    send_data(buffer, sizeof(buffer));
-}
-
-static uint8_t x_ref = 0;
-
-void ssd1306_push_pixel(uint8_t y, uint8_t color) {
-    if (x_ref >= SSD1306_WIDTH) {
-        x_ref = 0;
-        ssd1306_clear_all();
-    }
-    ssd1306_draw_pixel(x_ref, y, color);
-    x_ref+=4;
+    ssd1306_send_data(buffer, sizeof(buffer));
 }
 
 
-
-
-void oled_update() {
+void ssd1306_update_frame() {
     set_update_target(0, 7);
 
     uint8_t flat_buffer[SSD1306_WIDTH * SSD1306_PAGES];
@@ -299,7 +286,7 @@ void oled_update() {
             flat_buffer[p * SSD1306_WIDTH + col] = frame_buffer[p][col];
         }
     }
-    send_data(flat_buffer, sizeof(flat_buffer));
+    ssd1306_send_data(flat_buffer, sizeof(flat_buffer));
 }
 
 

@@ -78,7 +78,7 @@ void ssd1306_spectrum(uint8_t band_cnt) {
     //! Precompute bar masks
     precompute_bar_masks(SSD1306_HEIGHT, true);
 
-    //! Clear the display buffer
+    //! Clear the frame buffer
     memset(frame_buffer, 0, sizeof(frame_buffer));
 
     //! Draw all bars
@@ -86,35 +86,31 @@ void ssd1306_spectrum(uint8_t band_cnt) {
         draw_bar_vertical_mode(b, band_heights[b], 5, 1);
     }
 
-    // Update the display
-    oled_update();
+    //! Update the display
+    ssd1306_update_frame();
 }
 
-// // Draw a vertical line in the frame buffer
-// void ssd1306_draw_vertical_line(uint8_t x, uint8_t start_y, uint8_t end_y) {
-//     for (uint8_t y = start_y; y <= end_y; y++) {
-//         frame_buffer[y / 8][x] |= (1 << (y % 8)); // Set the pixel at (x, y)
-//     }
-// }
+// Draw a vertical line in the frame buffer
+void ssd1306_draw_vertical_line(uint8_t x, uint8_t start_y, uint8_t end_y) {
+    for (uint8_t y = start_y; y <= end_y; y++) {
+        uint8_t page = y / 8;           // Calculate the page
+        uint8_t bit_mask = 1 << (y % 8); // Calculate the bit mask
+        frame_buffer[page][x] |= bit_mask; // Set the pixel at (x, y)
+    }
+}
 
-// // Send the frame buffer to the SSD1306 display
-// void ssd1306_update_display() {
-//     for (uint8_t page = 0; page < SSD1306_PAGES; page++) {
-//         ssd1306_write_cmd(0xB0 | page); // Set page address
-//         ssd1306_write_cmd(0x00);        // Set lower column address
-//         ssd1306_write_cmd(0x10);        // Set higher column address
-
-//         for (uint8_t x = 0; x < SSD1306_WIDTH; x++) {
-//             ssd1306_write_data(frame_buffer[page][x]); // Send frame buffer data
-//         }
-//     }
-// }
-
-
-
-// void ssd1306_spectrum2(uint8_t band_cnt) {
+// void ssd1306_spectrum(uint8_t band_cnt) {
 //     //! vertical addressing mode
 //     ssd1306_set_addressing_mode(0x01);
 
+//     //! Clear the frame buffer
+//     memset(frame_buffer, 0, sizeof(frame_buffer));
 
+//     // Draw multiple vertical lines
+//     ssd1306_draw_vertical_line(10, 5, 30);  // Line from (10, 5) to (10, 30)
+//     ssd1306_draw_vertical_line(50, 10, 40); // Line from (50, 10) to (50, 40)
+//     ssd1306_draw_vertical_line(100, 20, 60);// Line from (100, 20) to (100, 60)
+
+//     //! Update the display
+//     ssd1306_update_frame();
 // }
