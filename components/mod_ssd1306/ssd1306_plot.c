@@ -100,47 +100,53 @@ typedef struct {
 M_Page_Vertical_BitMask page_vertical_bitmasks[SSD1306_HEIGHT];
 
 typedef struct {
-    uint8_t x;
-    uint8_t start_y;
-    uint8_t end_y;
+    uint8_t x;          // X position of the vertical line
+    uint8_t start_y;    // Start Y position of the line
+    uint8_t end_y;      // End Y position of the line
 } M_VerticalLine;
 
-void make_page_vertical_bitmasks() {
+void make_page_vertical_bitmasks(uint8_t inverted) {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
-        page_vertical_bitmasks[y].page = y >> 3;                    // y / 8
-        page_vertical_bitmasks[y].bitmask = (1 << (y & 0x07));      // y % 8
+        uint8_t y_value = inverted ? SSD1306_HEIGHT - 1 - y : y;
+        page_vertical_bitmasks[y].page = y_value >> 3;                    // y / 8
+        page_vertical_bitmasks[y].bitmask = (1 << (y_value & 0x07));      // y % 8
     }
 }
 
+// Draw vertical lines using precomputed masks
 void ssd1306_draw_vertical_lines(const M_VerticalLine *lines, uint8_t num_lines) {
-    //! Iterate over all vertical pixels at once
-    for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
-        //! Fetch precomputed page and bit mask
-        uint8_t page = page_vertical_bitmasks[y].page;
-        uint8_t bitmask = page_vertical_bitmasks[y].bitmask;
+    //! Iterate through all requested vertical lines
+    for (uint8_t i = 0; i < num_lines; i++) {
+        uint8_t x = lines[i].x;
 
-        //! Iterate through all requested vertical lines
-        for (uint8_t i = 0; i < num_lines; i++) {
-            if (y < lines[i].start_y || y > lines[i].end_y) continue;
-            frame_buffer[page][lines[i].x] |= bitmask; // Set the bit in the frame buffer
+        //! Iterate through the y range of the current line
+        for (uint8_t y = lines[i].start_y; y <= lines[i].end_y; y++) {
+            //! Fetch precomputed page and bitmask for y
+            uint8_t page = page_vertical_bitmasks[y].page;
+            uint8_t bitmask = page_vertical_bitmasks[y].bitmask;
+            frame_buffer[page][x] |= bitmask;
         }
     }
 
+    // Update the display (assuming this function is defined elsewhere)
     ssd1306_update_frame();
 }
 
-void ssd1306_spectrum(uint8_t band_cnt) {
 
+void ssd1306_spectrum(uint8_t band_cnt) {
     M_VerticalLine lines[] = {
-        {10, 5, 30},
-        {50, 10, 40},
-        {100, 20, 60}
+        {10, 0, 30},
+        {11, 0, 35},
+        {50, 0, 40},
+        {100, 0, 60}
     };
     uint8_t num_lines = sizeof(lines) / sizeof(lines[0]);
 
-    make_page_vertical_bitmasks();
+    make_page_vertical_bitmasks(true);
     ssd1306_draw_vertical_lines(lines, num_lines);
 }
+
+
 
 
 //////////////////////
