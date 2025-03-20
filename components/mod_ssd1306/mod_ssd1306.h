@@ -12,6 +12,8 @@ extern uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH];
 
 void ssd1306_setup(uint8_t address);
 void ssd1306_set_addressing_mode(uint8_t mode);
+void ssd1306_set_update_target(uint8_t start_page, uint8_t end_page);
+
 void ssd1306_send_cmd(uint8_t value);
 void ssd1306_send_data(const uint8_t *data, size_t len);
 
