@@ -17,6 +17,7 @@
 uint8_t bar_masks[SSD1306_HEIGHT][SSD1306_PAGES];  // Lookup table for bar masks
 uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH];
 
+
 //! Precompute bar_masks
 void precompute_bar_masks(uint8_t height, bool flipped) {
     for (uint8_t h = 0; h < 64; h++) {
@@ -92,28 +93,66 @@ void draw_bar_vertical_mode(uint8_t b, uint8_t height, uint8_t width, uint8_t sp
 
 
 
-void ssd1306_draw_vertical_lines(const uint8_t *x_positions, const uint8_t *start_y, const uint8_t *end_y, uint8_t num_lines) {
-    // Populate the frame buffer with vertical lines
-    for (uint8_t i = 0; i < num_lines; i++) {
-        if (x_positions[i] >= SSD1306_WIDTH || start_y[i] >= SSD1306_HEIGHT || end_y[i] >= SSD1306_HEIGHT) {
-            continue; // Skip out-of-bounds values
-        }
-        for (uint8_t y = start_y[i]; y <= end_y[i]; y++) {
-            uint8_t page = y / 8;
-            uint8_t bit_mask = (1 << (y % 8));
-            frame_buffer[page][x_positions[i]] |= bit_mask;
-        }
-    }
+// void ssd1306_draw_vertical_lines(const uint8_t *x_positions, const uint8_t *start_y, const uint8_t *end_y, uint8_t num_lines) {
+//     // Populate the frame buffer with vertical lines
+//     for (uint8_t i = 0; i < num_lines; i++) {
+//         if (x_positions[i] >= SSD1306_WIDTH || start_y[i] >= SSD1306_HEIGHT || end_y[i] >= SSD1306_HEIGHT) {
+//             continue; // Skip out-of-bounds values
+//         }
+//         for (uint8_t y = start_y[i]; y <= end_y[i]; y++) {
+//             uint8_t page = y / 8;
+//             uint8_t bit_mask = (1 << (y % 8));
+//             frame_buffer[page][x_positions[i]] |= bit_mask;
+//         }
+//     }
 
-    ssd1306_update_frame();
+//     ssd1306_update_frame();
+// }
+
+
+// void ssd1306_spectrum(uint8_t band_cnt) {
+//     uint8_t x_positions[] = {10, 50, 100}; // X positions of the lines
+//     uint8_t start_y[] = {5, 10, 20};      // Start Y positions
+//     uint8_t end_y[] = {30, 40, 60};       // End Y positions
+//     uint8_t num_lines = sizeof(x_positions) / sizeof(x_positions[0]);
+
+//     ssd1306_draw_vertical_lines(x_positions, start_y, end_y, num_lines);
+// }
+
+
+//////////////////////
+
+uint8_t frame_buffer2[SSD1306_WIDTH][SSD1306_PAGES];
+
+void ssd1306_draw_vertical_line(uint8_t col) {
+    // Draw a vertical line at the specified column
+    for (uint8_t p = 0; p < SSD1306_PAGES; p++) {
+        frame_buffer2[col][p] = 0xFF; // Set all pixels in the column to ON
+    }
 }
 
+void ssd1306_update_display() {
+    // Set addressing mode to vertical
+    ssd1306_set_addressing_mode(1);
+
+    // Set the column and page address to cover the entire display
+    ssd1306_set_column_address(0, SSD1306_WIDTH - 1);
+    ssd1306_set_page_address(0, SSD1306_PAGES - 1);
+
+    // Send the entire frame buffer to the display
+    ssd1306_send_data((uint8_t *)frame_buffer2, sizeof(frame_buffer2));
+}
 
 void ssd1306_spectrum(uint8_t band_cnt) {
-    uint8_t x_positions[] = {10, 50, 100}; // X positions of the lines
-    uint8_t start_y[] = {5, 10, 20};      // Start Y positions
-    uint8_t end_y[] = {30, 40, 60};       // End Y positions
-    uint8_t num_lines = sizeof(x_positions) / sizeof(x_positions[0]);
+    // Clear the frame buffer
+    memset(frame_buffer2, 0, sizeof(frame_buffer2));
 
-    ssd1306_draw_vertical_lines(x_positions, start_y, end_y, num_lines);
+    // Draw multiple vertical lines
+    ssd1306_draw_vertical_line(0);   // Vertical line at x = 0
+    ssd1306_draw_vertical_line(32);  // Vertical line at x = 32
+    ssd1306_draw_vertical_line(64);  // Vertical line at x = 64
+    ssd1306_draw_vertical_line(96);  // Vertical line at x = 96
+
+    // Update the display with the frame buffer
+    ssd1306_update_display();
 }

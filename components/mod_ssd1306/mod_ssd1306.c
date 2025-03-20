@@ -151,18 +151,26 @@ void ssd1306_set_addressing_mode(uint8_t mode) {
     ssd1306_send_cmd(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
 }
 
-void ssd1306_set_update_target(uint8_t start_page, uint8_t end_page) {
+void ssd1306_set_column_address(uint8_t start_col, uint8_t end_col) {
     ssd1306_send_cmd(0x21);         // Set column address
-    ssd1306_send_cmd(0x00);         // Start column = 0
-    ssd1306_send_cmd(END_COLUMN);   // End column = 127
+    ssd1306_send_cmd(start_col);    // Start column
+    ssd1306_send_cmd(end_col);      // End column
+}
 
+void ssd1306_set_page_address(uint8_t start_page, uint8_t end_page) {
     ssd1306_send_cmd(0x22);         // Set page address
     ssd1306_send_cmd(start_page);   // Start page
     ssd1306_send_cmd(end_page);     // End page
 }
 
+void ssd1306_clear_frameBuffer() {
+    // Clear the entire frame buffer (set all pixels to OFF)
+    memset(frame_buffer, 0x00, sizeof(frame_buffer));
+}
+
 void ssd1306_update_frame() {
-    ssd1306_set_update_target(0, 7);
+    ssd1306_set_column_address(0, END_COLUMN);
+    ssd1306_set_page_address(0, SSD1306_PAGES - 1);
 
     uint8_t flat_buffer[SSD1306_WIDTH * SSD1306_PAGES];
     for (uint8_t p = 0; p < SSD1306_PAGES; p++) {
@@ -173,20 +181,10 @@ void ssd1306_update_frame() {
     ssd1306_send_data(flat_buffer, sizeof(flat_buffer));
 }
 
-
-static void set_page(uint8_t page) {
-    ssd1306_send_cmd(0xB0 | (page & 0x07)); // Set page address (0-7)
-}
-
-// Function to set the column address
-static void set_column(uint8_t col) {
-    ssd1306_send_cmd(0x00 | (col & 0x0F));       // Set lower column address
-    ssd1306_send_cmd(0x10 | ((col >> 4) & 0x0F)); // Set higher column address
-}
-
 void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
     if (end_page>MAX_PAGE_INDEX) return;
-    ssd1306_set_update_target(start_page, end_page);
+    ssd1306_set_column_address(0, END_COLUMN);
+    ssd1306_set_page_address(start_page, end_page);
 
     // Send zero buffer for each page
     for (uint8_t page = start_page; page <= end_page; page++) {
@@ -204,8 +202,6 @@ void ssd1306_clear_all(void) {
 
 void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool clear) {
     ssd1306_clear_lines(page, page);
-    set_page(page);
-    set_column(column); 
 
     for (int i=0; i<SSD1306_MAX_CHAR; i++) {
         if (*str) {
