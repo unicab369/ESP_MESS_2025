@@ -14,9 +14,8 @@
 // - height: The height of the bar (0 to 63 pixels).
 // - page: The page (0 to 7) within the bar.
 // Each entry bar_masks[height][page] contains the bit pattern (mask) for that page of the bar.
-uint8_t bar_masks[64][8];  // Lookup table for bar masks
-
-uint8_t display_buffer[SSD1306_WIDTH * (SSD1306_HEIGHT/8)];
+uint8_t bar_masks[SSD1306_HEIGHT][SSD1306_PAGES];  // Lookup table for bar masks
+uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH];
 
 //! Precompute bar_masks
 void precompute_bar_masks(uint8_t height, bool flipped) {
@@ -39,75 +38,83 @@ void precompute_bar_masks(uint8_t height, bool flipped) {
 }
 
 // Draw vertical bar for spectrum
-void draw_bar_horizontal_mode(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
-    uint16_t x = b * (width + space);
-    if (x + width > SSD1306_WIDTH) return;  // Check overflow
-
-    //! page_offsets for all pages
-    uint16_t page_offsets[8] = {0};
-    for (uint8_t p = 0; p < 8; p++) {
-        page_offsets[p] = (7 - p) * SSD1306_WIDTH + x;
-    }
-
-    for (uint8_t p = 0; p < 8; p++) {
-        uint16_t offset = page_offsets[p];  // Load precomputed offset
-        uint8_t mask = bar_masks[height][p];
-
-        for (uint8_t col = 0; col < width; col++) {
-            display_buffer[offset + col] |= mask;
-        }
-    }
-        
-    // printf("b = %u, x = %u\n", b, x);
-}
-
 void draw_bar_vertical_mode(uint8_t b, uint8_t height, uint8_t width, uint8_t space) {
     uint16_t x = b * (width + space);  // Starting x position of the bar
     if (x + width > SSD1306_WIDTH) return;  // Check overflow
 
     // Draw the bar
     for (uint8_t col = 0; col < width; col++) {
-        uint16_t column_offset = x + col;  // Starting column of the bar
-
-        for (uint8_t p = 0; p < 8; p++) {
-            display_buffer[column_offset + p * SSD1306_WIDTH] = bar_masks[height][p];
+        for (uint8_t p = 0; p < SSD1306_PAGES; p++) {
+            frame_buffer[p][x + col] = bar_masks[height][p];
         }
     }
 }
 
 // FFT-based spectrum analyzer core
-void ssd1306_spectrum(uint8_t num_bands) {
+void ssd1306_spectrum(uint8_t band_cnt) {
     int16_t samples[] = {
-        10, 20, 30, 40, 50, 60, 70, 80, 150, 10, 11, 12, 13, 14, 15, 16,
-        10, 20, 30, 40, 50, 60, 70, 80, 90, 10, 11, 12, 13, 14, 15, 16
+        10, 20, 30, 40, 50, 60, 70, 80, 150, 10, 11, 12, 13, 100, 15, 16,
+        10, 20, 30, 100, 50, 60, 150, 80, 90, 10, 100, 12, 13, 14, 15, 16
     };
 
     // Simple energy calculation per band
     uint8_t sample_len = sizeof(samples) / sizeof(samples[0]);
-    uint8_t band_heights[num_bands];
+    uint8_t band_heights[band_cnt];
     memset(band_heights, 0, sizeof(band_heights));
 
     for (int i = 0; i < sample_len; i++) {
-        int band = map_value(i, 0, sample_len, 0, num_bands);
+        int band = map_value(i, 0, sample_len, 0, band_cnt);
         band_heights[band] += abs(samples[i]) >> 3;  // Equivalent to / 8
     }
 
     // Constrain band heights to the display height
-    for (int b = 0; b < num_bands; b++) {
+    for (int b = 0; b < band_cnt; b++) {
         band_heights[b] = constrain_value(band_heights[b], 0, 63);
     }
 
-    // Precompute bar masks
+    //! horizontal addressing mode
+    ssd1306_set_addressing_mode(0x00);
+
+    //! Precompute bar masks
     precompute_bar_masks(SSD1306_HEIGHT, true);
 
-    // Clear the display buffer
-    memset(display_buffer, 0, sizeof(display_buffer));
+    //! Clear the display buffer
+    memset(frame_buffer, 0, sizeof(frame_buffer));
 
-    // Draw all bars
-    for (int b = 0; b < num_bands; b++) {
+    //! Draw all bars
+    for (int b = 0; b < band_cnt; b++) {
         draw_bar_vertical_mode(b, band_heights[b], 5, 1);
     }
 
     // Update the display
     oled_update();
 }
+
+// // Draw a vertical line in the frame buffer
+// void ssd1306_draw_vertical_line(uint8_t x, uint8_t start_y, uint8_t end_y) {
+//     for (uint8_t y = start_y; y <= end_y; y++) {
+//         frame_buffer[y / 8][x] |= (1 << (y % 8)); // Set the pixel at (x, y)
+//     }
+// }
+
+// // Send the frame buffer to the SSD1306 display
+// void ssd1306_update_display() {
+//     for (uint8_t page = 0; page < SSD1306_PAGES; page++) {
+//         ssd1306_write_cmd(0xB0 | page); // Set page address
+//         ssd1306_write_cmd(0x00);        // Set lower column address
+//         ssd1306_write_cmd(0x10);        // Set higher column address
+
+//         for (uint8_t x = 0; x < SSD1306_WIDTH; x++) {
+//             ssd1306_write_data(frame_buffer[page][x]); // Send frame buffer data
+//         }
+//     }
+// }
+
+
+
+// void ssd1306_spectrum2(uint8_t band_cnt) {
+//     //! vertical addressing mode
+//     ssd1306_set_addressing_mode(0x01);
+
+
+// }

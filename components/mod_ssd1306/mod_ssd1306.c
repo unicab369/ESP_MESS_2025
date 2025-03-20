@@ -27,11 +27,6 @@
 #define SSD1306_DATA 0x40
 
 
-// 0x00 - Horizontal: Column pointer increments, wraps to next page after reaching end of line.
-// 0x01 - Vertical: Page pointer increments, wraps to next column after reaching end of page.
-// 0x02 - Page: Column pointer increments, stops after reaching end of page.
-#define SSD1306_INITIAL_DISPLAY_MODE 0x00
-
 // static const char *TAG = "SSD1306";
 #define BUFFER_SIZE (SSD1306_WIDTH * SSD1306_HEIGHT / 8)
 
@@ -147,7 +142,7 @@ static void send_cmd(uint8_t value) {
 }
 
 // Write data to SSD1306
-static void send_data(const uint8_t *data, size_t len) {
+void send_data(const uint8_t *data, size_t len) {
     i2c_write_register(ssd1306, SSD1306_DATA, data, len);
 }
 
@@ -170,6 +165,12 @@ static void set_update_target(uint8_t start_page, uint8_t end_page) {
     send_cmd(start_page);   // Start page
     send_cmd(end_page);     // End page
 }
+
+void ssd1306_set_addressing_mode(uint8_t mode) {
+    send_cmd(0x20);          // Set addressing mode
+    send_cmd(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
+}
+
 
 void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
     if (end_page>MAX_PAGE_INDEX) return;
@@ -215,11 +216,6 @@ void ssd1306_print_str(const char *str, uint8_t page) {
     // ssd1306_print_str_at(str, page, 0, true);
 }
 
-static void set_addressing_mode(uint8_t mode) {
-    send_cmd(0x20);          // Set addressing mode
-    send_cmd(mode & 0x03);   // Mode: 0 = horizontal, 1 = vertical, 2 = page
-}
-
 void ssd1306_setup(uint8_t address) {
     ssd1306 = i2c_device_create(I2C_NUM_0, 0x3C);
 
@@ -253,7 +249,11 @@ void ssd1306_setup(uint8_t address) {
     ssd1306_clear_all();
 
     // Page addressing mode
-    set_addressing_mode(SSD1306_INITIAL_DISPLAY_MODE);
+
+    // 0x00 - Horizontal: Column pointer increments, wraps to next page after reaching end of line.
+    // 0x01 - Vertical: Page pointer increments, wraps to next column after reaching end of page.
+    // 0x02 - Page: Column pointer increments, stops after reaching end of page.
+    ssd1306_set_addressing_mode(0x00);
 
     // Vertical line - required vertical mode
     // uint8_t data[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}; 
@@ -292,7 +292,14 @@ void ssd1306_push_pixel(uint8_t y, uint8_t color) {
 
 void oled_update() {
     set_update_target(0, 7);
-    send_data(display_buffer, sizeof(display_buffer));
+
+    uint8_t flat_buffer[SSD1306_WIDTH * SSD1306_PAGES];
+    for (uint8_t p = 0; p < SSD1306_PAGES; p++) {
+        for (uint16_t col = 0; col < SSD1306_WIDTH; col++) {
+            flat_buffer[p * SSD1306_WIDTH + col] = frame_buffer[p][col];
+        }
+    }
+    send_data(flat_buffer, sizeof(flat_buffer));
 }
 
 
