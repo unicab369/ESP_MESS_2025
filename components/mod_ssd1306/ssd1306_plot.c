@@ -10,11 +10,10 @@ uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
 M_Page_Mask page_masks[SSD1306_HEIGHT];
 
 
-void precompute_page_masks(uint8_t inverted) {
+void precompute_page_masks() {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
-        uint8_t y_value = y;
-        page_masks[y].page       = y_value >> 3;             // (y_value / 8)
-        page_masks[y].bitmask    = 1 << (y_value & 0x07);    // (y_value % 8)
+        page_masks[y].page       = y >> 3;             // (y / 8)
+        page_masks[y].bitmask    = 1 << (y & 0x07);    // (y % 8)
     }
 }
 
@@ -51,9 +50,12 @@ void ssd1306_horizontal_line(const M_Line *line) {
     }
 }
 
-void ssd1306_vertical_line(const M_Line *line, uint8_t width) {
-    uint8_t start_page = page_masks[line->start].page;
-    uint8_t end_page = page_masks[line->end].page;
+void ssd1306_vertical_line(const M_Line *line, uint8_t width, uint8_t inverted) {
+    uint8_t start_y = inverted ? (SSD1306_HEIGHT - 1 - line->end) : line->start;
+    uint8_t end_y = inverted ? (SSD1306_HEIGHT - 1 - line->start) : line->end;
+
+    uint8_t start_page = page_masks[start_y].page;
+    uint8_t end_page = page_masks[end_y].page;
 
     //! Iterate through the width of the line
     for (uint8_t w = 0; w < width; w++) {
@@ -67,12 +69,12 @@ void ssd1306_vertical_line(const M_Line *line, uint8_t width) {
 
         //! Handle the start page
         uint8_t bitmask = 0;
-        if (line->start % 8 == 0) {
+        if (start_y % 8 == 0) {
             // Start page is full
             bitmask |= 0xFF;
         } else {
             // Start page is partial
-            for (uint8_t y = line->start; y <= line->end && page_masks[y].page == start_page; y++) {
+            for (uint8_t y = start_y; y <= end_y && page_masks[y].page == start_page; y++) {
                 bitmask |= page_masks[y].bitmask;
             }
         }
@@ -81,12 +83,12 @@ void ssd1306_vertical_line(const M_Line *line, uint8_t width) {
         //! Handle the end page
         if (end_page != start_page) {
             bitmask = 0;
-            if ((line->end + 1) % 8 == 0) {
+            if ((end_y + 1) % 8 == 0) {
                 // End page is full
                 bitmask |= 0xFF;
             } else {
                 // End page is partial
-                for (uint8_t y = line->start; y <= line->end && page_masks[y].page == end_page; y++) {
+                for (uint8_t y = start_y; y <= end_y && page_masks[y].page == end_page; y++) {
                     bitmask |= page_masks[y].bitmask;
                 }
             }
@@ -126,12 +128,12 @@ void ssd1306_spectrum(uint8_t num_band) {
     //! Clear the buffer
     memset(frame_buffer, 0, sizeof(frame_buffer));
 
-    //! precompute page masks
-    precompute_page_masks(false);
+     //! precompute page masks
+    precompute_page_masks();
 
     //! Draw all bars
     for (int i = 0; i < num_band; i++) {
-        ssd1306_vertical_line(&bands[i], 3);
+        ssd1306_vertical_line(&bands[i], 3, false);
     }
 
     //! Draw Horizontal lines
