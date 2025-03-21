@@ -95,9 +95,9 @@ void draw_bar_vertical_mode(uint8_t b, uint8_t height, uint8_t width, uint8_t sp
 typedef struct {
     uint8_t page;
     uint8_t bitmask;
-} M_Page_Vertical_BitMask;
+} M_Page_BitMask;
 
-M_Page_Vertical_BitMask page_vertical_bitmasks[SSD1306_HEIGHT];
+M_Page_BitMask page_bitmasks[SSD1306_HEIGHT];
 
 typedef struct {
     uint8_t xy;          // X or y position of the line
@@ -106,16 +106,16 @@ typedef struct {
 } M_Line;
 
 
-void make_page_vertical_bitmasks(uint8_t inverted) {
+void make_page_bitmasks(uint8_t inverted) {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
         uint8_t y_value = inverted ? SSD1306_HEIGHT - 1 - y : y;
-        page_vertical_bitmasks[y].page = y_value >> 3;                    // y / 8
-        page_vertical_bitmasks[y].bitmask = (1 << (y_value & 0x07));      // y % 8
+        page_bitmasks[y].page = y_value >> 3;                    // y / 8
+        page_bitmasks[y].bitmask = (1 << (y_value & 0x07));      // y % 8
     }
 }
 
-// Draw vertical lines using precomputed masks
-void ssd1306_draw_vertical_lines(const M_Line *lines, uint8_t num_lines) {
+// Draw vertical lines
+void ssd1306_vertical_lines(const M_Line *lines, uint8_t num_lines) {
     //! Iterate through all requested vertical lines
     for (uint8_t i = 0; i < num_lines; i++) {
         uint8_t x = lines[i].xy;
@@ -123,8 +123,8 @@ void ssd1306_draw_vertical_lines(const M_Line *lines, uint8_t num_lines) {
         //! Iterate through the y range of the current line
         for (uint8_t y = lines[i].start; y <= lines[i].end; y++) {
             //! Fetch precomputed page and bitmask for y
-            uint8_t page = page_vertical_bitmasks[y].page;
-            uint8_t bitmask = page_vertical_bitmasks[y].bitmask;
+            uint8_t page = page_bitmasks[y].page;
+            uint8_t bitmask = page_bitmasks[y].bitmask;
             frame_buffer[page][x] |= bitmask;
         }
     }
@@ -133,19 +133,41 @@ void ssd1306_draw_vertical_lines(const M_Line *lines, uint8_t num_lines) {
 }
 
 // Draw horizontal lines
-void ssd1306_draw_horizontal_lines(const M_Line *lines, uint8_t num_lines) {
+void ssd1306_horizontal_lines(const M_Line *lines, uint8_t num_lines) {
     //! Iterate through all requested horizontal lines
     for (uint8_t i = 0; i < num_lines; i++) {
-        uint8_t y = lines[i].xy;
+        M_Line line = lines[i];
 
         //! Fetch precomputed page and bitmask for y
-        uint8_t page = page_vertical_bitmasks[y].page;
-        uint8_t bitmask = page_vertical_bitmasks[y].bitmask;
+        uint8_t page = page_bitmasks[line.xy].page;
+        uint8_t bitmask = page_bitmasks[line.xy].bitmask;
+
+        //! Use a pointer to the start of the row in the frame buffer
+        uint8_t *row_ptr = &frame_buffer[page][line.start];
 
         //! Iterate through the x range of the current line
-        for (uint8_t x = lines[i].start; x <= lines[i].end; x++) {
-            // Set only the specific bit in the frame buffer
-            frame_buffer[page][x] |= bitmask;
+        // for (uint8_t x = line.start; x <= line.end; x++) {
+        //     // Set only the specific bit in the frame buffer
+        //     *row_ptr++ |= bitmask;
+        // }
+
+        //! Process 4 bytes at a time for efficiency
+        uint8_t x = line.start;
+        uint8_t end_x = line.end;
+
+        while (x + 4 <= end_x) {
+            row_ptr[0] |= bitmask;
+            row_ptr[1] |= bitmask;
+            row_ptr[2] |= bitmask;
+            row_ptr[3] |= bitmask;
+            row_ptr += 4;
+            x += 4;
+        }
+
+        //! Process remaining bytes
+        while (x <= end_x) {
+            *row_ptr++ |= bitmask;
+            x++;
         }
     }
 
@@ -153,6 +175,8 @@ void ssd1306_draw_horizontal_lines(const M_Line *lines, uint8_t num_lines) {
 }
 
 void ssd1306_spectrum(uint8_t band_cnt) {
+    make_page_bitmasks(true);
+    
     M_Line lines[] = {
         {10, 0, 30},
         {11, 0, 35},
@@ -160,75 +184,15 @@ void ssd1306_spectrum(uint8_t band_cnt) {
         {100, 0, 60}
     };
     uint8_t num_lines = sizeof(lines) / sizeof(lines[0]);
-
-    make_page_vertical_bitmasks(true);
-    ssd1306_draw_vertical_lines(lines, num_lines);
+    ssd1306_vertical_lines(lines, num_lines);
 
     // Define horizontal lines
     M_Line horizontal_lines[] = {
         {5, 20, 50},   // y = 5, from x = 20 to x = 50
         {10, 60, 100}, // y = 10, from x = 60 to x = 100
-        {15, 0, 127}   // y = 15, from x = 0 to x = 127
+        {15, 0, 120},   // y = 15, from x = 0 to x = 127
+        {50, 30, 100}   // y = 15, from x = 0 to x = 127
     };
     uint8_t num_horizontal_lines = sizeof(horizontal_lines) / sizeof(horizontal_lines[0]);
-    ssd1306_draw_horizontal_lines(horizontal_lines, num_horizontal_lines);
+    ssd1306_horizontal_lines(horizontal_lines, num_horizontal_lines);
 }
-
-
-
-
-//////////////////////
-
-// uint8_t column_buffer[SSD1306_WIDTH][SSD1306_PAGES];
-
-// void ssd1306_draw_vertical_line(uint8_t col, uint8_t y0, uint8_t y1) {
-//     // Ensure y0 <= y1
-//     if (y0 > y1) {
-//         uint8_t temp = y0;
-//         y0 = y1;
-//         y1 = temp;
-//     }
-
-//     uint8_t start_page = y0 >> 3;       // y0 / 8
-//     uint8_t end_page = y1 >> 3;         // y1 / 8
-//     uint8_t start_bit = y0 & 0x07;      // y0 % 8
-//     uint8_t end_bit = y1 & 0x07;        // y1 % 8
-
-//     // Precompute masks for the start and end pages
-//     uint8_t start_mask = 0xFF << start_bit;
-//     uint8_t end_mask = ~(0xFF << (end_bit + 1));
-
-//     // Update the column buffer
-//     for (uint8_t p = start_page; p <= end_page; p++) {
-//         uint8_t mask = 0xFF;
-//         if (p == start_page) mask &= start_mask;
-//         if (p == end_page) mask &= end_mask;
-//         column_buffer[col][p] |= mask;  // Use OR to preserve existing data
-//     }
-// }
-
-// void ssd1306_update_display() {
-//     // Set addressing mode to vertical
-//     ssd1306_set_addressing_mode(1);
-
-//     // Set the column and page address to cover the entire display
-//     ssd1306_set_column_address(0, SSD1306_WIDTH - 1);
-//     ssd1306_set_page_address(0, SSD1306_PAGES - 1);
-
-//     // Send the entire frame buffer to the display
-//     ssd1306_send_data((uint8_t *)column_buffer, sizeof(column_buffer));
-// }
-
-// void ssd1306_spectrum(uint8_t band_cnt) {
-//     // Clear the frame buffer
-//     memset(column_buffer, 0, sizeof(column_buffer));
-
-//     // Draw multiple vertical lines
-//     ssd1306_draw_vertical_line(0, 10, 40);   // Vertical line at x = 0, from y = 10 to y = 50
-//     ssd1306_draw_vertical_line(32, 30, 35);   // Vertical line at x = 32, from y = 5 to y = 60
-//     ssd1306_draw_vertical_line(64, 20, 30);  // Vertical line at x = 64, from y = 20 to y = 40
-//     ssd1306_draw_vertical_line(96, 30, 55);   // Vertical line at x = 96, from y = 0 to y = 63
-
-//     // Update the display with the frame buffer
-//     ssd1306_update_display();
-// }
