@@ -17,33 +17,7 @@ void precompute_page_masks() {
     }
 }
 
-void ssd1306_horizontal_line(const M_Line *line, uint8_t width) {
-    // //! Fetch precomputed page and bitmask for y
-    // uint8_t page = page_masks[line->pos].page;
-    // uint8_t bitmask = page_masks[line->pos].bitmask;
-
-    // //! Use a pointer to the start of the row in the frame buffer
-    // uint8_t x = line->start;
-    // uint8_t end_x = line->end;
-    // uint8_t *row_ptr = &frame_buffer[page][x];
-
-    // //! Replicate the bitmask across both bytes of a uint16_t
-    // uint16_t bulk_bitmask = ((uint16_t)bitmask << 8) | ((uint16_t)bitmask);
-
-    // //! Optimization: Process 2 bytes at a time using uint16_t
-    // while (x + 2 <= end_x) {
-    //     *((uint16_t *)row_ptr) |= bulk_bitmask;
-    //     row_ptr += 2;
-    //     x += 2;
-    // }
-
-    // //! Process remaining byte
-    // if (x <= end_x) {
-    //     *row_ptr++ |= bitmask;
-    //     x++;
-    // }
-
-    //! Fetch the starting y-coordinate
+void ssd1306_horizontal_line(const M_Line *line, uint8_t width, uint8_t flipped) {
     uint8_t start_y = line->pos;
     uint8_t end_y = start_y + width - 1; // Calculate the end y-coordinate
 
@@ -52,34 +26,68 @@ void ssd1306_horizontal_line(const M_Line *line, uint8_t width) {
     uint8_t x = line->start;
     uint8_t end_x = line->end;
 
-    //! Iterate through each y-coordinate affected by the width
-    for (uint8_t y = start_y; y <= end_y; y++) {
-        uint8_t page = page_masks[y].page;
-        uint8_t bitmask = page_masks[y].bitmask;
-        uint8_t *row_ptr = &frame_buffer[page][x];
-        uint16_t bulk_bitmask = ((uint16_t)bitmask << 8) | ((uint16_t)bitmask);
+    if (flipped) {
+        for (uint8_t y = start_y; y <= end_y; y++) {
+            uint8_t page = page_masks[y].page;
+            uint8_t bitmask = page_masks[y].bitmask;
 
-        //! Optimization: Process 2 bytes at a time using uint16_t
-        while (x + 2 <= end_x) {
-            *((uint16_t *)row_ptr) |= bulk_bitmask;
-            row_ptr += 2;
-            x += 2;
+            uint8_t current_x = SSD1306_WIDTH - 1 - x;
+            uint8_t current_end_x = SSD1306_WIDTH - 1 - end_x;
+
+            //! Ensure current_x <= current_end_x
+            if (current_x > current_end_x) {
+                uint8_t temp = current_x;
+                current_x = current_end_x;
+                current_end_x = temp;
+            }
+
+            uint16_t bulk_bitmask = ((uint16_t)bitmask << 8) | ((uint16_t)bitmask);
+            uint8_t *row_ptr = &frame_buffer[page][current_x];
+
+            //! Optimization: Process 2 bytes at a time using uint16_t
+            while (current_x + 2 <= current_end_x) {
+                *((uint16_t *)row_ptr) |= bulk_bitmask;
+                row_ptr += 2;
+                current_x += 2;
+            }
+
+            //! Process remaining byte (if any)
+            if (current_x <= current_end_x) {
+                *row_ptr++ |= bitmask;
+                current_x++;
+            }
         }
+    } else {
+        for (uint8_t y = start_y; y <= end_y; y++) {
+            uint8_t page = page_masks[y].page;
+            uint8_t bitmask = page_masks[y].bitmask;
+    
+            uint16_t bulk_bitmask = ((uint16_t)bitmask << 8) | ((uint16_t)bitmask);
+            uint8_t *row_ptr = &frame_buffer[page][x];
 
-        //! Process remaining byte
-        if (x <= end_x) {
-            *row_ptr++ |= bitmask;
-            x++;
+            //! Optimization: Process 2 bytes at a time using uint16_t
+            while (x + 2 <= end_x) {
+                *((uint16_t *)row_ptr) |= bulk_bitmask;
+                row_ptr += 2;
+                x += 2;
+            }
+
+            //! Process remaining byte
+            if (x <= end_x) {
+                *row_ptr++ |= bitmask;
+                x++;
+            }
+
+            //! Reset x for the next y-coordinate
+            x = line->start;
         }
-
-        //! Reset x for the next y-coordinate
-        x = line->start;
     }
 }
 
-void ssd1306_vertical_line(const M_Line *line, uint8_t width, uint8_t inverted) {
-    uint8_t start_y = inverted ? (SSD1306_HEIGHT - 1 - line->end) : line->start;
-    uint8_t end_y = inverted ? (SSD1306_HEIGHT - 1 - line->start) : line->end;
+
+void ssd1306_vertical_line(const M_Line *line, uint8_t width, uint8_t flipped) {
+    uint8_t start_y = flipped ? (SSD1306_HEIGHT - 1 - line->end) : line->start;
+    uint8_t end_y = flipped ? (SSD1306_HEIGHT - 1 - line->start) : line->end;
 
     uint8_t start_page = page_masks[start_y].page;
     uint8_t end_page = page_masks[end_y].page;
@@ -160,19 +168,8 @@ void ssd1306_spectrum(uint8_t num_band) {
 
     //! Draw all bars
     for (int i = 0; i < num_band; i++) {
-        ssd1306_vertical_line(&bands[i], 3, true);
-    }
-
-    //! Draw Horizontal lines
-    M_Line horz_lines[] = {
-        {5, 20, 50},   // y = 5, from x = 20 to x = 50
-        {15, 60, 100}, // y = 10, from x = 60 to x = 100
-        {30, 0, 120},   // y = 15, from x = 0 to x = 127
-        {50, 30, 100}   // y = 15, from x = 0 to x = 127
-    };
-    uint8_t num_horz_lines = sizeof(horz_lines) / sizeof(horz_lines[0]);
-    for (int i = 0; i < num_horz_lines; i++) {
-        ssd1306_horizontal_line(&horz_lines[i], 3);
+        ssd1306_vertical_line(&bands[i], 4, true);
+        ssd1306_horizontal_line(&bands[i], 4, true);
     }
 
     //! Update the display
