@@ -105,94 +105,89 @@ void precompute_page_masks(uint8_t inverted) {
     }
 }
 
-// Draw horizontal lines
-void ssd1306_horizontal_lines(const M_Line *lines, uint8_t num_lines) {
-    //! Iterate through all requested horizontal lines
-    for (uint8_t i = 0; i < num_lines; i++) {
-        M_Line line = lines[i];
+void ssd1306_horizontal_line(const M_Line *line) {
+    //! Fetch precomputed page and bitmask for y
+    uint8_t page = page_masks[line->pos].page;
+    uint8_t bitmask = page_masks[line->pos].bitmask;
 
-        //! Fetch precomputed page and bitmask for y
-        uint8_t page = page_masks[line.pos].page;
-        uint8_t bitmask = page_masks[line.pos].bitmask;
+    //! Use a pointer to the start of the row in the frame buffer
+    uint8_t x = line->start;
+    uint8_t end_x = line->end;
+    uint8_t *row_ptr = &frame_buffer[page][x];
 
-        //! Use a pointer to the start of the row in the frame buffer
-        uint8_t *row_ptr = &frame_buffer[page][line.start];
+    //! Iterate through the x range of the current line
+    // for (uint8_t i = line.start; i <= line.end; i++) {
+    //     // Set only the specific bit in the frame buffer
+    //     *row_ptr++ |= bitmask;
+    // }
 
-        //! Iterate through the x range of the current line
-        // for (uint8_t x = line.start; x <= line.end; x++) {
-        //     // Set only the specific bit in the frame buffer
-        //     *row_ptr++ |= bitmask;
-        // }
+    //! Optimization: Process 4 bytes at a time for efficiency
+    while (x + 4 <= end_x) {
+        row_ptr[0] |= bitmask;
+        row_ptr[1] |= bitmask;
+        row_ptr[2] |= bitmask;
+        row_ptr[3] |= bitmask;
+        row_ptr += 4;
+        x += 4;
+    }
 
-        //! Optimization: Process 4 bytes at a time for efficiency
-        uint8_t x = line.start;
-        uint8_t end_x = line.end;
-
-        while (x + 4 <= end_x) {
-            row_ptr[0] |= bitmask;
-            row_ptr[1] |= bitmask;
-            row_ptr[2] |= bitmask;
-            row_ptr[3] |= bitmask;
-            row_ptr += 4;
-            x += 4;
-        }
-
-        //! Process remaining bytes
-        while (x <= end_x) {
-            *row_ptr++ |= bitmask;
-            x++;
-        }
+    //! Process remaining bytes
+    while (x <= end_x) {
+        *row_ptr++ |= bitmask;
+        x++;
     }
 }
 
+void ssd1306_vertical_line(const M_Line *line, uint8_t width) {
+    uint8_t start_page = page_masks[line->start].page;
+    uint8_t end_page = page_masks[line->end].page;
 
-void ssd1306_vertical_lines(const M_Line *lines, uint8_t num_lines, uint8_t width) {
-    for (uint8_t i = 0; i < num_lines; i++) {
-        M_Line line = lines[i];
-        uint8_t start_page = page_masks[line.start].page;
-        uint8_t end_page = page_masks[line.end].page;
+    //! Iterate through the width of the line
+    for (uint8_t w = 0; w < width; w++) {
+        uint8_t x_value = line->pos + w;
 
-        //! Iterate through the width of the line
-        for (uint8_t w = 0; w < width; w++) {
-            uint8_t x_value = line.pos + w;
+        // //! Iterate through the y range of the current line
+        // for (uint8_t y = line.start; y <= line.end; y++) {
+        //     //! Fetch precomputed page and bitmask for y
+        //     uint8_t page = page_masks[y].page;
+        //     frame_buffer[page][x_value] |= page_masks[y].bitmask;     // set the bits in frame_buffer
+        //     printf("page: %u, x: %u, bitmask: %u\n", page, x_value, page_masks[y].bitmask);
+        // }
 
-            // //! Iterate through the y range of the current line
-            // for (uint8_t y = line.start; y <= line.end; y++) {
-            //     //! Fetch precomputed page and bitmask for y
-            //     uint8_t page = page_masks[y].page;
-            //     frame_buffer[page][x_value] |= page_masks[y].bitmask;     // set the bits in frame_buffer
-            //     printf("page: %u, x: %u, bitmask: %u\n", page, x_value, page_masks[y].bitmask);
-            // }
+        //! Optimization: drawing segments by page
+        //! Handle full pages: page inbetween start_page and end_page are full page
+        for (uint8_t page = start_page + 1; page < end_page; page++) {
+            frame_buffer[page][x_value] |= 0xFF; // Set all bits in the page
+        }
 
-            //! Optimization: drawing segments by page
-            //! Handle full pages: page inbetween start_page and end_page are full page
-            for (uint8_t page = start_page + 1; page < end_page; page++) {
-                frame_buffer[page][x_value] |= 0xFF; // Set all bits in the page
+        //! Handle the start page
+        uint8_t bitmask = 0;
+        if (line->start % 8 == 0) {
+            // Start page is full
+            bitmask |= 0xFF;
+        } else {
+            // Start page is partial
+            for (uint8_t y = line->start; y <= line->end && page_masks[y].page == start_page; y++) {
+                bitmask |= page_masks[y].bitmask;
+                break;
             }
+        }
+        frame_buffer[start_page][x_value] |= bitmask;
 
-            //! Handle the start page
-            uint8_t bitmask = 0;
-            if (line.start % 8 == 0) {              // Start page is full
+        //! Handle the end page
+        if (end_page != start_page) {
+            bitmask = 0;
+            if ((line->end + 1) % 8 == 0) {
+                // End page is full
                 bitmask |= 0xFF;
-            } else {                                // Start page is partial
-                for (uint8_t y = line.start; y <= line.end && page_masks[y].page == start_page; y++) {
+            } else {
+                // End page is partial
+                for (uint8_t y = line->start; y <= line->end && page_masks[y].page == end_page; y++) {
                     bitmask |= page_masks[y].bitmask;
+                    break;
                 }
             }
-            frame_buffer[start_page][x_value] |= bitmask;
-
-            //! Handle the end page
-            if (end_page != start_page) {
-                bitmask = 0;
-                if ((line.end + 1) % 8 == 0) {      // End page is full
-                    bitmask |= 0xFF;
-                } else {                            // End page is partial
-                    for (uint8_t y = line.start; y <= line.end && page_masks[y].page == end_page; y++) {
-                        bitmask |= page_masks[y].bitmask;
-                    }
-                }
-                frame_buffer[end_page][x_value] |= bitmask;
-            }
+            frame_buffer[end_page][x_value] |= bitmask;
         }
     }
 }
@@ -200,24 +195,31 @@ void ssd1306_vertical_lines(const M_Line *lines, uint8_t num_lines, uint8_t widt
 void ssd1306_spectrum(uint8_t band_cnt) {
     precompute_page_masks(false);
 
-    M_Line lines[] = {
+    M_Line ver_lines[] = {
         {10, 0, 40},
         {40, 0, 55},
         {65, 0, 40},
         {90, 0, 60}
     };
-    uint8_t num_lines = sizeof(lines) / sizeof(lines[0]);
-    ssd1306_vertical_lines(lines, num_lines, 3);
+    uint8_t num_lines = sizeof(ver_lines) / sizeof(ver_lines[0]);
+
+    for (int i = 0; i < num_lines; i++) {
+        ssd1306_vertical_line(&ver_lines[i], 3);
+    }
 
     // Define horizontal lines
-    M_Line horizontal_lines[] = {
+    M_Line horz_lines[] = {
         {5, 20, 50},   // y = 5, from x = 20 to x = 50
         {15, 60, 100}, // y = 10, from x = 60 to x = 100
         {30, 0, 120},   // y = 15, from x = 0 to x = 127
         {50, 30, 100}   // y = 15, from x = 0 to x = 127
     };
-    uint8_t num_horizontal_lines = sizeof(horizontal_lines) / sizeof(horizontal_lines[0]);
-    ssd1306_horizontal_lines(horizontal_lines, num_horizontal_lines);
+    uint8_t num_horz_lines = sizeof(horz_lines) / sizeof(horz_lines[0]);
+
+    for (int i = 0; i < num_horz_lines; i++) {
+        ssd1306_horizontal_line(&horz_lines[i]);
+    }
+
 
     ssd1306_update_frame();
 }
