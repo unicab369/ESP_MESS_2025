@@ -19,8 +19,6 @@
 
 // I2C Configuration
 #define I2C_PORT I2C_NUM_0
-#define SSD1306_PAGES 8
-#define MAX_PAGE_INDEX (SSD1306_PAGES-1)
 
 // Command constants
 #define SSD1306_CMD 0x00
@@ -31,9 +29,6 @@
 #define BUFFER_SIZE (SSD1306_WIDTH * SSD1306_HEIGHT / 8)
 static uint8_t buffer[BUFFER_SIZE]; // Buffer to hold pixel data
 static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
-
-const int END_COLUMN_INDEX = SSD1306_WIDTH - 1;
-const int END_PAGE_INDEX = SSD1306_PAGES - 1;
 
 static i2c_device_t *ssd1306 = NULL;
 
@@ -170,14 +165,14 @@ void ssd1306_clear_frameBuffer() {
 }
 
 void ssd1306_update_frame() {
-    ssd1306_set_column_address(0, END_COLUMN_INDEX);
-    ssd1306_set_page_address(0, END_PAGE_INDEX);
+    ssd1306_set_column_address(0, MAX_WIDTH_INDEX);
+    ssd1306_set_page_address(0, MAX_PAGE_INDEX);
     ssd1306_send_data((uint8_t *)frame_buffer, sizeof(frame_buffer));
 }
 
 void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
     if (end_page>MAX_PAGE_INDEX) return;
-    ssd1306_set_column_address(0, END_COLUMN_INDEX);
+    ssd1306_set_column_address(0, MAX_WIDTH_INDEX);
     ssd1306_set_page_address(start_page, end_page);
 
     // Send zero buffer for each page

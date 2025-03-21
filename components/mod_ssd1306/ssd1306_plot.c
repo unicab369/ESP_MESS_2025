@@ -16,7 +16,6 @@
 // Each entry bar_masks[height][page] contains the bit pattern (mask) for that page of the bar.
 uint8_t bar_masks[SSD1306_HEIGHT][SSD1306_PAGES];  // Lookup table for bar masks
 uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH];
-uint8_t column_buffer[SSD1306_WIDTH][SSD1306_PAGES];
 
 //! Precompute bar_masks
 void precompute_bar_masks(uint8_t height, bool flipped) {
@@ -100,7 +99,7 @@ typedef struct {
 M_Page_BitMask page_bitmasks[SSD1306_HEIGHT];
 
 typedef struct {
-    uint8_t xy;          // X or y position of the line
+    uint8_t xy;         // X or y position of the line
     uint8_t start;      // Start position of the line
     uint8_t end;        // End position of the line
 } M_Line;
@@ -118,14 +117,40 @@ void make_page_bitmasks(uint8_t inverted) {
 void ssd1306_vertical_lines(const M_Line *lines, uint8_t num_lines) {
     //! Iterate through all requested vertical lines
     for (uint8_t i = 0; i < num_lines; i++) {
-        uint8_t x = lines[i].xy;
+        M_Line line = lines[i];
+        
+        if (line.start == 0) {
+            //! Use a pointer to the start of the column in the frame buffer
+            uint8_t *col_ptr = &frame_buffer[0][line.xy];
 
-        //! Iterate through the y range of the current line
-        for (uint8_t y = lines[i].start; y <= lines[i].end; y++) {
-            //! Fetch precomputed page and bitmask for y
-            uint8_t page = page_bitmasks[y].page;
-            uint8_t bitmask = page_bitmasks[y].bitmask;
-            frame_buffer[page][x] |= bitmask;
+            //! Iterate through the y range of the current line
+            for (uint8_t y = 0; y <= line.end; y++) {
+                //! Fetch precomputed page and bitmask for y
+                uint8_t page = page_bitmasks[y].page;
+                uint8_t bitmask = page_bitmasks[y].bitmask;
+                col_ptr[page * SSD1306_WIDTH] |= bitmask;   // set the bits in frame_buffer
+            }
+        }
+        else if (line.end == MAX_HEIGHT_INDEX) {
+            //! Use a pointer to the start of the column in the frame buffer
+            uint8_t *col_ptr = &frame_buffer[0][line.xy];
+
+            //! Iterate through the y range of the current line (end is always SSD1306_WIDTH - 1)
+            for (uint8_t y = 0; y <= MAX_HEIGHT_INDEX; y++) {
+                //! Fetch precomputed page and bitmask for y
+                uint8_t page = page_bitmasks[y].page;
+                uint8_t bitmask = page_bitmasks[y].bitmask;
+                col_ptr[page * SSD1306_WIDTH] |= bitmask;   // set the bits in frame_buffer
+            }
+        }
+        else {
+            //! Iterate through the y range of the current line
+            for (uint8_t y = line.start; y <= line.end; y++) {
+                //! Fetch precomputed page and bitmask for y
+                uint8_t page = page_bitmasks[y].page;
+                uint8_t bitmask = page_bitmasks[y].bitmask;
+                frame_buffer[page][line.xy] |= bitmask;     // set the bits in frame_buffer
+            }
         }
     }
 
@@ -151,7 +176,7 @@ void ssd1306_horizontal_lines(const M_Line *lines, uint8_t num_lines) {
         //     *row_ptr++ |= bitmask;
         // }
 
-        //! Process 4 bytes at a time for efficiency
+        //! Optimization: Process 4 bytes at a time for efficiency
         uint8_t x = line.start;
         uint8_t end_x = line.end;
 

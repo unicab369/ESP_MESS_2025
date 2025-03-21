@@ -4,11 +4,13 @@
 
 #define SSD1306_WIDTH 128
 #define SSD1306_HEIGHT 64
-#define SSD1306_PAGES (SSD1306_HEIGHT / 8)  // 8 pages for 64 rows
 
-// Declare the frame_buffer as a 2D array
+#define SSD1306_PAGES       (SSD1306_HEIGHT / 8) // 8 pages for 64 rows
+#define MAX_PAGE_INDEX      (SSD1306_PAGES - 1)
+
+#define MAX_WIDTH_INDEX     (SSD1306_WIDTH - 1)
+#define MAX_HEIGHT_INDEX    (SSD1306_HEIGHT - 1)
 extern uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH];
-extern uint8_t column_buffer[SSD1306_WIDTH][SSD1306_PAGES];
 
 void ssd1306_setup(uint8_t address);
 void ssd1306_set_addressing_mode(uint8_t mode);
