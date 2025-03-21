@@ -274,7 +274,7 @@ void app_main(void) {
             uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
 
-            ssd1306_spectrum(20);
+            ssd1306_spectrum(6);
 
             // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);

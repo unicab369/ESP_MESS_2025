@@ -17,36 +17,63 @@ void precompute_page_masks() {
     }
 }
 
-void ssd1306_horizontal_line(const M_Line *line) {
-    //! Fetch precomputed page and bitmask for y
-    uint8_t page = page_masks[line->pos].page;
-    uint8_t bitmask = page_masks[line->pos].bitmask;
+void ssd1306_horizontal_line(const M_Line *line, uint8_t width) {
+    // //! Fetch precomputed page and bitmask for y
+    // uint8_t page = page_masks[line->pos].page;
+    // uint8_t bitmask = page_masks[line->pos].bitmask;
 
-    //! Use a pointer to the start of the row in the frame buffer
-    uint8_t x = line->start;
-    uint8_t end_x = line->end;
-    uint8_t *row_ptr = &frame_buffer[page][x];
+    // //! Use a pointer to the start of the row in the frame buffer
+    // uint8_t x = line->start;
+    // uint8_t end_x = line->end;
+    // uint8_t *row_ptr = &frame_buffer[page][x];
 
-    //! Iterate through the x range of the current line
-    // for (uint8_t i = line.start; i <= line.end; i++) {
-    //     // Set only the specific bit in the frame buffer
-    //     *row_ptr++ |= bitmask;
+    // //! Replicate the bitmask across both bytes of a uint16_t
+    // uint16_t bulk_bitmask = ((uint16_t)bitmask << 8) | ((uint16_t)bitmask);
+
+    // //! Optimization: Process 2 bytes at a time using uint16_t
+    // while (x + 2 <= end_x) {
+    //     *((uint16_t *)row_ptr) |= bulk_bitmask;
+    //     row_ptr += 2;
+    //     x += 2;
     // }
 
-    //! Optimization: Process 4 bytes at a time for efficiency
-    while (x + 4 <= end_x) {
-        row_ptr[0] |= bitmask;
-        row_ptr[1] |= bitmask;
-        row_ptr[2] |= bitmask;
-        row_ptr[3] |= bitmask;
-        row_ptr += 4;
-        x += 4;
-    }
+    // //! Process remaining byte
+    // if (x <= end_x) {
+    //     *row_ptr++ |= bitmask;
+    //     x++;
+    // }
 
-    //! Process remaining bytes
-    while (x <= end_x) {
-        *row_ptr++ |= bitmask;
-        x++;
+    //! Fetch the starting y-coordinate
+    uint8_t start_y = line->pos;
+    uint8_t end_y = start_y + width - 1; // Calculate the end y-coordinate
+
+    //! Clamp end_y to avoid exceeding display height
+    if (end_y >= SSD1306_HEIGHT) end_y = SSD1306_HEIGHT - 1;
+    uint8_t x = line->start;
+    uint8_t end_x = line->end;
+
+    //! Iterate through each y-coordinate affected by the width
+    for (uint8_t y = start_y; y <= end_y; y++) {
+        uint8_t page = page_masks[y].page;
+        uint8_t bitmask = page_masks[y].bitmask;
+        uint8_t *row_ptr = &frame_buffer[page][x];
+        uint16_t bulk_bitmask = ((uint16_t)bitmask << 8) | ((uint16_t)bitmask);
+
+        //! Optimization: Process 2 bytes at a time using uint16_t
+        while (x + 2 <= end_x) {
+            *((uint16_t *)row_ptr) |= bulk_bitmask;
+            row_ptr += 2;
+            x += 2;
+        }
+
+        //! Process remaining byte
+        if (x <= end_x) {
+            *row_ptr++ |= bitmask;
+            x++;
+        }
+
+        //! Reset x for the next y-coordinate
+        x = line->start;
     }
 }
 
@@ -133,7 +160,7 @@ void ssd1306_spectrum(uint8_t num_band) {
 
     //! Draw all bars
     for (int i = 0; i < num_band; i++) {
-        ssd1306_vertical_line(&bands[i], 3, false);
+        ssd1306_vertical_line(&bands[i], 3, true);
     }
 
     //! Draw Horizontal lines
@@ -145,7 +172,7 @@ void ssd1306_spectrum(uint8_t num_band) {
     };
     uint8_t num_horz_lines = sizeof(horz_lines) / sizeof(horz_lines[0]);
     for (int i = 0; i < num_horz_lines; i++) {
-        ssd1306_horizontal_line(&horz_lines[i]);
+        ssd1306_horizontal_line(&horz_lines[i], 3);
     }
 
     //! Update the display
