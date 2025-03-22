@@ -174,13 +174,12 @@ const static uint8_t icons_8x8[][8] = {
 };
 
 
-void rotate_90(const uint8_t *original, uint8_t *transposed, uint16_t width, uint16_t height) {
+void rotate_90(const uint8_t *original, uint8_t *rotated, uint16_t width, uint16_t height) {
     // Calculate the number of bytes per row in the original and transposed bitmaps
     uint16_t original_row_bytes = (width + 7) >> 3;      // Bytes per row in the original bitmap
-    uint16_t transposed_row_bytes = (height + 7) >> 3;   // Bytes per row in the transposed bitmap
-    memset(transposed, 0, transposed_row_bytes * width);
+    uint16_t rotated_row_bytes = (height + 7) >> 3;   // Bytes per row in the transposed bitmap
+    memset(rotated, 0, rotated_row_bytes * width);
 
-    // Perform the rotation
     for (uint16_t y = 0; y < height; y++) {              // Iterate over rows in the original bitmap
         uint16_t orig_row_offset = (y >> 3) * original_row_bytes; // Byte offset for the current row
         uint8_t orig_bit = 1 << (y & 0x07);              // Bit position in the current byte
@@ -188,17 +187,45 @@ void rotate_90(const uint8_t *original, uint8_t *transposed, uint16_t width, uin
         for (uint16_t x = 0; x < width; x++) {           // Iterate over columns in the original bitmap
             // Calculate byte and bit positions in the original bitmap
             uint16_t orig_byte = orig_row_offset + x;
-            uint16_t trans_byte = (x >> 3) * transposed_row_bytes + (height - 1 - y);
+            uint16_t trans_byte = (x >> 3) * rotated_row_bytes + (height - 1 - y);
             uint8_t trans_bit = 1 << (x & 0x07);
 
             // Check if the bit is set in the original and set it in the transposed
             if (original[orig_byte] & orig_bit) {
-                transposed[trans_byte] |= trans_bit;
+                rotated[trans_byte] |= trans_bit;
             }
         }
     }
 }
 
+void rotate_180(const uint8_t *original, uint8_t *rotated, uint16_t width, uint16_t height) {
+    // Calculate the number of bytes per row in the original and rotated bitmaps
+    uint16_t row_bytes = (width + 7) >> 3; // Bytes per row
+
+    // Initialize rotated bitmap to all zeros
+    memset(rotated, 0, row_bytes * height);
+
+    // Perform the rotation
+    for (uint16_t y = 0; y < height; y++) {              // Iterate over rows in the original bitmap
+        const uint8_t *orig_row = original + (y * row_bytes); // Pointer to the current row
+        uint8_t *rot_row = rotated + ((height - 1 - y) * row_bytes); // Pointer to the rotated row
+
+        for (uint16_t x = 0; x < width; x++) {           // Iterate over columns in the original bitmap
+            // Calculate byte and bit positions in the original bitmap
+            uint16_t orig_byte = x >> 3;
+            uint8_t orig_bit = 1 << (x & 0x07);
+
+            // Calculate byte and bit positions in the rotated bitmap
+            uint16_t rot_byte = (width - 1 - x) >> 3;
+            uint8_t rot_bit = 1 << ((width - 1 - x) & 0x07);
+
+            // Check if the bit is set in the original and set it in the rotated
+            if (orig_row[orig_byte] & orig_bit) {
+                rot_row[rot_byte] |= rot_bit;
+            }
+        }
+    }
+}
 
 static uint8_t reverse_byte(uint8_t byte) {
     uint8_t reversed_byte = 0;
@@ -267,16 +294,20 @@ void ssd1306_test_bitmaps() {
 
 
     for (int i=0; i < 9; i++) {
-        ssd1306_draw_bitmap(15 * i, 20, icons_8x8[i + 54], 8, 8, 1);
-        ssd1306_draw_bitmap(15 * i, 30, icons_8x8[i + 63], 8, 8, 1);
-        ssd1306_draw_bitmap(15 * i, 40, icons_8x8[i + 72], 8, 8, 1);
+        ssd1306_draw_bitmap(15 * i, 20, icons_8x8[i + 81], 8, 8, 1);
+        ssd1306_draw_bitmap(15 * i, 30, icons_8x8[i + 90], 8, 8, 1);
+        ssd1306_draw_bitmap(15 * i, 40, icons_8x8[i + 99], 8, 8, 1);
     }
 
     uint8_t icon[8];
     memcpy(icon, icons_8x8[0], sizeof(icon));
-    rotate_90(icons_8x8[0], icon, 8, 8);
 
+    rotate_90(icons_8x8[0], icon, 8, 8);
     ssd1306_draw_bitmap(0, 55, icon, 8, 8 , 1);
+
+    rotate_180(icons_8x8[0], icon, 8, 8);
+    ssd1306_draw_bitmap(15, 55, icon, 8, 8 , 1);
+
 
     //! update frame
     ssd1306_update_frame();
