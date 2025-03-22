@@ -5,4 +5,5 @@ idf_component_register(SRCS
                          driver
                          esp_timer
                          mod_spi
+                         mod_utility
                     )

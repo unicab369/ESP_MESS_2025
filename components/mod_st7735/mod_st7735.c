@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "mod_bitmap.h"
 
 #define FONT_WIDTH 5
 #define FONT_HEIGHT 7
@@ -21,8 +22,6 @@ struct {
 } ST7735_DISPLAY_096IN = { 160, 80 };
 
 uint16_t framebuffer[160 * 80];
-
-static esp_err_t current_err;
 
 void st7735_set_address_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, M_Spi_Conf *conf) {
     mod_spi_cmd(0x2A, conf);              // ST7735_CASET
@@ -72,7 +71,6 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 
     st7735_fill_screen(0xF800, conf);
 
-    current_err = ret;
     return ret;
 }
 
@@ -105,4 +103,5 @@ void st7735_draw_text(uint8_t x, uint8_t y, const char* str, uint16_t color, M_S
         x += 6; // Move to next character position
     }
 }
+
 

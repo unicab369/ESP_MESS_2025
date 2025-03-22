@@ -14,6 +14,7 @@ typedef struct {
     int miso;
     int clk;
     int dc;
+    esp_err_t err;
 } M_Spi_Conf;
 
 esp_err_t mod_spi_init(M_Spi_Conf *conf);
