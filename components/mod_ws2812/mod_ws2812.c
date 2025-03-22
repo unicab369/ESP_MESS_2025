@@ -396,7 +396,7 @@ sequenced_star_t seq_star = {
 };
 
 #define MAX_STARS 5
-Star stars[MAX_STARS] = {0};
+static Star stars[MAX_STARS] = {0};
 
 void moving_wave5(uint64_t current_time) {
     memset(led_pixels, 0, sizeof(led_pixels));

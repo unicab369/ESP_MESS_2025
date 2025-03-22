@@ -14,7 +14,7 @@
 #include "mod_utility.h"
 
 #define SSD1306_MAX_CHAR (SSD1306_WIDTH / 5)
-
+#define SSD1306_MAX_PRINTMODE 4
 
 uint8_t FONT_MASK_7x5[95][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // Space
@@ -135,8 +135,8 @@ void ssd1306_set_printMode(uint8_t direction) {
 
     if (ssd1306_print_mode < 0) {
         ssd1306_print_mode = 0;
-    } else if (ssd1306_print_mode > 2) {
-        ssd1306_print_mode = 2;
+    } else if (ssd1306_print_mode > SSD1306_MAX_PRINTMODE - 1) {
+        ssd1306_print_mode = SSD1306_MAX_PRINTMODE - 1;
     }
 
     printf("print_mode: %d\n", ssd1306_print_mode);

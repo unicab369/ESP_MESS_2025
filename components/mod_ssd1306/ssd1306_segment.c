@@ -124,11 +124,10 @@ void ssd1306_print_digits(const char *str, int8_t x, int8_t y, uint8_t width, ui
 }
 
 void ssd1306_test_digits() {
-    if (ssd1306_print_mode != 0) return;
-
     //! Clear the buffer
     memset(frame_buffer, 0, sizeof(frame_buffer));
 
+    //! precompute page masks
     precompute_page_masks();
 
     ssd1306_print_digits("0123456789", 0, 0, 5, 7, 2);
@@ -136,5 +135,6 @@ void ssd1306_test_digits() {
     ssd1306_print_digits("0123456789", 0, 23, 9, 11, 2);
     ssd1306_print_digits("0123456789", 0, 40, 10, 13, 2);
 
+    //! update frame
     ssd1306_update_frame();
 }

@@ -189,8 +189,6 @@ int16_t samples[] = {
 
 // FFT-based spectrum analyzer core
 void ssd1306_spectrum(uint8_t num_band) {
-    if (ssd1306_print_mode != 2) return;
-
     // Simple energy calculation per band
     M_Line bands[num_band];
     memset(bands, 0, sizeof(bands));

@@ -10,6 +10,7 @@
 #include "mod_ssd1306.h"
 #include "ssd1306_plot.h"
 #include "ssd1306_segment.h"
+#include "ssd1306_bitmap.h"
 
 #define WIFI_ENABLED true
 
@@ -277,8 +278,15 @@ void app_main(void) {
             uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
 
-            ssd1306_spectrum(5);
-            ssd1306_test_digits();
+            if (ssd1306_print_mode == 2) {
+                ssd1306_spectrum(5);
+            }
+            else if (ssd1306_print_mode == 3) {
+                ssd1306_test_digits();
+            }
+            else if (ssd1306_print_mode == 0) {
+                ssd1306_test_bitmaps();
+            }
             
             // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);
