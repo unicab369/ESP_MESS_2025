@@ -241,24 +241,6 @@ const uint8_t LINE_MASK[MASK_HEIGHT] = {
     0b1111111, // Row 6: Bottom line (all pixels set)
 };
 
-void draw_horizontal_segment(int16_t x0, int16_t x1, int16_t y) {
-    for (int16_t x = x0; x <= x1; x++) {
-        if (x < 0 || x >= SSD1306_WIDTH || y < 0 || y >= SSD1306_HEIGHT) continue;
-        uint8_t page = page_masks[y].page;
-        uint8_t bitmask = page_masks[y].bitmask;
-        frame_buffer[page][x] |= bitmask;
-    }
-}
-
-void draw_vertical_segment(int16_t x, int16_t y0, int16_t y1) {
-    for (int16_t y = y0; y <= y1; y++) {
-        if (x < 0 || x >= SSD1306_WIDTH || y < 0 || y >= SSD1306_HEIGHT) continue;
-        uint8_t page = page_masks[y].page;
-        uint8_t bitmask = page_masks[y].bitmask;
-        frame_buffer[page][x] |= bitmask;
-    }
-}
-
 void draw_digit(uint8_t digit, int16_t x, int16_t y) {
     if (digit > 9) return;
     if (x + MASK_WIDTH <= 0 || x >= SSD1306_WIDTH ||
@@ -267,58 +249,35 @@ void draw_digit(uint8_t digit, int16_t x, int16_t y) {
     // Get the segment attributes for the digit
     uint8_t attributes = DIGIT_ATTRIBUTES[digit];
 
-    //! Batch update all horizontal segments
-    for (int16_t dx = x + 1; dx < x + MASK_WIDTH - 1; dx++) {
-        if (dx < 0 || dx >= SSD1306_WIDTH) continue;
+    //! Precompute frequently used values
+    int16_t x_end = x + MASK_WIDTH - 1;
+    int16_t y_end = y + MASK_HEIGHT - 1;
+    int16_t y_mid = y + MASK_HEIGHT / 2;
 
-        // Draw the top segment (A)
-        if (attributes & SEGMENT_TOP) {
-            uint8_t page = page_masks[y].page;
-            uint8_t bitmask = page_masks[y].bitmask;
-            frame_buffer[page][dx] |= bitmask;
-        }
-
-        // Draw the middle segment (G)
-        if (attributes & SEGMENT_MIDDLE) {
-            uint8_t page = page_masks[y + MASK_HEIGHT / 2].page;
-            uint8_t bitmask = page_masks[y + MASK_HEIGHT / 2].bitmask;
-            frame_buffer[page][dx] |= bitmask;
-        }
-
-        // Draw the bottom segment (D)
-        if (attributes & SEGMENT_BOTTOM) {
-            uint8_t page = page_masks[y + MASK_HEIGHT - 1].page;
-            uint8_t bitmask = page_masks[y + MASK_HEIGHT - 1].bitmask;
-            frame_buffer[page][dx] |= bitmask;
-        }
-    }
-    
-    //! Batch update all vertical segments
-    for (int16_t dy = y + 1; dy < y + MASK_HEIGHT - 1; dy++) {
+    //! Batch update all segments in a single nested loop
+    for (int16_t dy = y; dy <= y_end; dy++) {
         if (dy < 0 || dy >= SSD1306_HEIGHT) continue;
 
-        // Draw the left segments (F and E)
-        if (attributes & SEGMENT_LEFT_UPPER && dy <= y + MASK_HEIGHT / 2 - 1) {
-            uint8_t page = page_masks[dy].page;
-            uint8_t bitmask = page_masks[dy].bitmask;
-            frame_buffer[page][x] |= bitmask;
-        }
-        if (attributes & SEGMENT_LEFT_LOWER && dy >= y + MASK_HEIGHT / 2) {
-            uint8_t page = page_masks[dy].page;
-            uint8_t bitmask = page_masks[dy].bitmask;
-            frame_buffer[page][x] |= bitmask;
-        }
+        uint8_t page = page_masks[dy].page;
+        uint8_t bitmask = page_masks[dy].bitmask;
 
-        // Draw the right segments (B and C)
-        if (attributes & SEGMENT_RIGHT_UPPER && dy <= y + MASK_HEIGHT / 2 - 1) {
-            uint8_t page = page_masks[dy].page;
-            uint8_t bitmask = page_masks[dy].bitmask;
-            frame_buffer[page][x + MASK_WIDTH - 1] |= bitmask;
-        }
-        if (attributes & SEGMENT_RIGHT_LOWER && dy >= y + MASK_HEIGHT / 2) {
-            uint8_t page = page_masks[dy].page;
-            uint8_t bitmask = page_masks[dy].bitmask;
-            frame_buffer[page][x + MASK_WIDTH - 1] |= bitmask;
+        for (int16_t dx = x; dx <= x_end; dx++) {
+            if (dx < 0 || dx >= SSD1306_WIDTH) continue;
+
+            // Check if the current pixel belongs to any segment
+            bool is_horizontal = (dy == y && (attributes & SEGMENT_TOP)) ||      // Top segment
+                                (dy == y_mid && (attributes & SEGMENT_MIDDLE)) || // Middle segment
+                                (dy == y_end && (attributes & SEGMENT_BOTTOM));  // Bottom segment
+
+            bool is_vertical = (dx == x && ((dy < y_mid && (attributes & SEGMENT_LEFT_UPPER)) || // Left upper
+                                           (dy >= y_mid && (attributes & SEGMENT_LEFT_LOWER)))) || // Left lower
+                              (dx == x_end && ((dy < y_mid && (attributes & SEGMENT_RIGHT_UPPER)) || // Right upper
+                                              (dy >= y_mid && (attributes & SEGMENT_RIGHT_LOWER)))); // Right lower
+
+            // Update the frame buffer if the pixel belongs to any segment
+            if (is_horizontal || is_vertical) {
+                frame_buffer[page][dx] |= bitmask;
+            }
         }
     }
 }
