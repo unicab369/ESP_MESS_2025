@@ -9,10 +9,6 @@
 #define SEGMENT_LEFT_LOWER   (1 << 5)  // Bit 5: Lower part of the left segment
 #define SEGMENT_MIDDLE       (1 << 6)  // Bit 6: Middle segment
 
-// Combined attributes
-#define SEGMENT_RIGHT_BOTH   (SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER) // Both right segments
-#define SEGMENT_LEFT_BOTH    (SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER)   // Both left segments
-
 // Segment attributes for digits 0-9
 const uint8_t DIGIT_ATTRIBUTES[10] = {
     // 0
@@ -45,7 +41,7 @@ const uint8_t DIGIT_ATTRIBUTES[10] = {
     SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE | SEGMENT_BOTTOM,
 };
 
-static void draw_digit(uint8_t digit, int16_t x, int16_t y, uint8_t width, uint8_t height) {
+static void draw_digit(int8_t digit, int16_t x, int16_t y, uint8_t width, uint8_t height) {
     if (digit > 9) return;
 
     //! Precompute frequently used values
@@ -53,7 +49,22 @@ static void draw_digit(uint8_t digit, int16_t x, int16_t y, uint8_t width, uint8
     int16_t x_end = (x + width > SSD1306_WIDTH) ? SSD1306_WIDTH - x : width;
     int16_t y_start = (y < 0) ? -y : 0;
     int16_t y_end = (y + height > SSD1306_HEIGHT) ? SSD1306_HEIGHT - y : height;
-    
+
+    //! Draw digit #1 in the middle of digit frame
+    if (digit == 1) {
+        //! Calculate the middle position for the digit '1'
+        int16_t middle_x = x + (width / 2); // Center of the bounding box
+
+        //! Precompute page and bitmask for vertical segments
+        for (int16_t dy = y_start; dy < y_end; dy++) {
+            int16_t pixel_y = y + dy;
+            uint8_t page = page_masks[pixel_y].page;
+            uint8_t bitmask = page_masks[pixel_y].bitmask;
+            frame_buffer[page][middle_x] |= bitmask;
+        }
+        return;
+    }
+
     //! Precompute page and bitmask for horizontal segments
     uint8_t page_top = page_masks[y + y_start].page;
     uint8_t bitmask_top = page_masks[y + y_start].bitmask;
@@ -102,6 +113,16 @@ static void draw_digit(uint8_t digit, int16_t x, int16_t y, uint8_t width, uint8
     }
 }
 
+void ssd1306_print_digits(const char *str, int8_t x, int8_t y, uint8_t width, uint8_t height, int8_t space) {
+    size_t length = strlen(str);        // Calculate the length of the string
+
+    for (size_t i = 0; i < length; i++) {
+        int8_t number = (int8_t)(str[i] - '0');         // Convert char to int8_t
+        draw_digit(number, x, y, width, height);
+        x += width + space;                             // Update the x position for the next digit
+    }
+}
+
 void ssd1306_test_digits() {
     if (ssd1306_print_mode != 0) return;
 
@@ -110,15 +131,10 @@ void ssd1306_test_digits() {
 
     precompute_page_masks();
 
-    draw_digit(1, 10, 10, 7, 9);
-    draw_digit(2, 20, 10, 7, 9);
-    draw_digit(3, 30, 10, 7, 9);
-    draw_digit(4, 40, 10, 7, 9);
-    draw_digit(5, 50, 10, 7, 9);
-    draw_digit(6, 60, 10, 7, 9);
-    draw_digit(7, 70, 10, 7, 9);
-    draw_digit(8, 80, 10, 7, 9);
-    draw_digit(9, 90, 10, 7, 9);
+    ssd1306_print_digits("0123456789", 0, 0, 5, 7, 2);
+    ssd1306_print_digits("0123456789", 0, 10, 7, 9, 2);
+    ssd1306_print_digits("0123456789", 0, 23, 9, 11, 2);
+    ssd1306_print_digits("0123456789", 0, 40, 10, 13, 2);
 
     ssd1306_update_frame();
 }
