@@ -9,10 +9,10 @@ esp_err_t mod_spi_init(M_Spi_Conf *conf) {
         .sclk_io_num = conf->clk,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 0,
+        .max_transfer_sz = 4096,
     };
 
-    esp_err_t ret = spi_bus_initialize(conf->host, &buscfg, 0);
+    esp_err_t ret = spi_bus_initialize(conf->host, &buscfg, SPI_DMA_CH2);
     if (ret != ESP_OK) {
         ESP_LOGE("SPI", "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
         return ret;

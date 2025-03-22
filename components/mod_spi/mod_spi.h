@@ -10,10 +10,10 @@
 typedef struct {
     spi_device_handle_t spi_handle;
     spi_host_device_t host;
-    int mosi;
-    int miso;
-    int clk;
-    int dc;
+    int8_t mosi;
+    int8_t miso;
+    int8_t clk;
+    int8_t dc;
     esp_err_t err;
 } M_Spi_Conf;
 
