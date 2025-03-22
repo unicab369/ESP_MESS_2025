@@ -3,5 +3,4 @@
 #include <stdio.h>
 #include <string.h>
 
-
-void ssd1306_spectrum(uint8_t num_bands);
+void ssd1306_test_digits();

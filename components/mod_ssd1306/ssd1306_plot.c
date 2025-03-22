@@ -1,8 +1,6 @@
 #include "ssd1306_plot.h"
 
 #include "mod_ssd1306.h"
-#include <stdio.h>
-#include <string.h>
 #include <mod_utility.h>
 
 void ssd1306_horizontal_line(const M_Line *line, uint8_t thickness, uint8_t flipped) {
@@ -184,171 +182,57 @@ void ssd1306_triangle(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2
     ssd1306_draw_line(x2, y2, x0, y0, 1);
 }
 
-#define MASK_HEIGHT 7
-#define MASK_WIDTH 5
-
-#define SEGMENT_TOP          (1 << 0)  // Bit 0: Top segment
-#define SEGMENT_RIGHT_UPPER  (1 << 1)  // Bit 1: Upper part of the right segment
-#define SEGMENT_RIGHT_LOWER  (1 << 2)  // Bit 2: Lower part of the right segment
-#define SEGMENT_BOTTOM       (1 << 3)  // Bit 3: Bottom segment
-#define SEGMENT_LEFT_UPPER   (1 << 4)  // Bit 4: Upper part of the left segment
-#define SEGMENT_LEFT_LOWER   (1 << 5)  // Bit 5: Lower part of the left segment
-#define SEGMENT_MIDDLE       (1 << 6)  // Bit 6: Middle segment
-
-// Combined attributes
-#define SEGMENT_RIGHT_BOTH   (SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER) // Both right segments
-#define SEGMENT_LEFT_BOTH    (SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER)   // Both left segments
-
-// Segment attributes for digits 0-9
-const uint8_t DIGIT_ATTRIBUTES[10] = {
-    // 0
-    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER | 
-    SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER | SEGMENT_BOTTOM,
-    // 1
-    SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER,
-    // 2
-    SEGMENT_TOP | SEGMENT_RIGHT_UPPER | SEGMENT_MIDDLE |
-    SEGMENT_LEFT_LOWER | SEGMENT_BOTTOM,
-    // 3
-    SEGMENT_TOP | SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER |
-    SEGMENT_MIDDLE | SEGMENT_BOTTOM,
-    // 4
-    SEGMENT_LEFT_UPPER | SEGMENT_RIGHT_UPPER |
-    SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE,
-    // 5
-    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_MIDDLE |
-    SEGMENT_RIGHT_LOWER | SEGMENT_BOTTOM,
-    // 6
-    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER |
-    SEGMENT_MIDDLE | SEGMENT_RIGHT_LOWER | SEGMENT_BOTTOM,
-    // 7
-    SEGMENT_TOP | SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER,
-    // 8
-    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER |
-    SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE | SEGMENT_BOTTOM,
-    // 9
-    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_RIGHT_UPPER |
-    SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE | SEGMENT_BOTTOM,
+int16_t samples[] = {
+    10, 20, 30, 40, 50, 60, 35, 20, 63, 10, 11, 12, 13, 63, 15, 16,
+    10, 20, 30, 63, 50, 60, 63, 63, 63, 10, 63, 12, 13, 14, 15, 16
 };
 
-const uint8_t LINE_MASK[MASK_HEIGHT] = {
-    0b1111111, // Row 0: Top line (all pixels set)
-    0b1000001, // Row 1: Left and right lines (first and last pixels set)
-    0b1000001, // Row 2: Left and right lines
-    0b1111111, // Row 3: Middle line (all pixels set)
-    0b1000001, // Row 4: Left and right lines
-    0b1000001, // Row 5: Left and right lines
-    0b1111111, // Row 6: Bottom line (all pixels set)
-};
+// FFT-based spectrum analyzer core
+void ssd1306_spectrum(uint8_t num_band) {
+    if (ssd1306_print_mode != 2) return;
 
-void draw_digit(uint8_t digit, int16_t x, int16_t y) {
-    if (digit > 9) return;
-    if (x + MASK_WIDTH <= 0 || x >= SSD1306_WIDTH ||
-        y + MASK_HEIGHT <= 0 || y >= SSD1306_HEIGHT) return;
+    // Simple energy calculation per band
+    M_Line bands[num_band];
+    memset(bands, 0, sizeof(bands));
 
-    // Get the segment attributes for the digit
-    uint8_t attributes = DIGIT_ATTRIBUTES[digit];
+    uint16_t sample_len = sizeof(samples) / sizeof(samples[0]);
+    uint16_t samp_per_band = sample_len / num_band;
 
-    //! Precompute frequently used values
-    int16_t x_end = x + MASK_WIDTH - 1;
-    int16_t y_end = y + MASK_HEIGHT - 1;
-    int16_t y_mid = y + MASK_HEIGHT / 2;
+    for (int i = 0; i < num_band; i++) {
+        int start_index = i * samp_per_band;
+        int end_index = start_index + samp_per_band;
 
-    //! Batch update all segments in a single nested loop
-    for (int16_t dy = y; dy <= y_end; dy++) {
-        if (dy < 0 || dy >= SSD1306_HEIGHT) continue;
-
-        uint8_t page = page_masks[dy].page;
-        uint8_t bitmask = page_masks[dy].bitmask;
-
-        for (int16_t dx = x; dx <= x_end; dx++) {
-            if (dx < 0 || dx >= SSD1306_WIDTH) continue;
-
-            // Check if the current pixel belongs to any segment
-            bool is_horizontal = (dy == y && (attributes & SEGMENT_TOP)) ||      // Top segment
-                                (dy == y_mid && (attributes & SEGMENT_MIDDLE)) || // Middle segment
-                                (dy == y_end && (attributes & SEGMENT_BOTTOM));  // Bottom segment
-
-            bool is_vertical = (dx == x && ((dy < y_mid && (attributes & SEGMENT_LEFT_UPPER)) || // Left upper
-                                           (dy >= y_mid && (attributes & SEGMENT_LEFT_LOWER)))) || // Left lower
-                              (dx == x_end && ((dy < y_mid && (attributes & SEGMENT_RIGHT_UPPER)) || // Right upper
-                                              (dy >= y_mid && (attributes & SEGMENT_RIGHT_LOWER)))); // Right lower
-
-            // Update the frame buffer if the pixel belongs to any segment
-            if (is_horizontal || is_vertical) {
-                frame_buffer[page][dx] |= bitmask;
-            }
+        uint16_t sum = 0;
+        for (int i = start_index; i < end_index; i++) {
+            sum += abs(samples[i]); // Use absolute value as magnitude
         }
-    }
-}
 
-void ssd1306_spectrum(uint8_t num_band)  {
-    if (ssd1306_print_mode != 0) return;
+        // Calculate the average magnitude for the bin
+        bands[i].pos = i * 5;
+        bands[i].end = sum / samp_per_band;
+    }
+
+    //! Clear the buffer
+    memset(frame_buffer, 0, sizeof(frame_buffer));
+
+     //! precompute page masks
     precompute_page_masks();
 
-    draw_digit(1, 10, 10);
-    draw_digit(2, 20, 10);
-    draw_digit(3, 30, 10);
-    draw_digit(4, 40, 10);
-    draw_digit(5, 50, 10);
-    draw_digit(6, 60, 10);
-    draw_digit(7, 70, 10);
-    draw_digit(8, 80, 10);
-    draw_digit(9, 90, 10);
+    //! Draw bars
+    for (int i = 0; i < num_band; i++) {
+        ssd1306_vertical_line(&bands[i], 4, true);
+        ssd1306_horizontal_line(&bands[i], 4, true);
+    }
 
+    //! Draw rectangle
+    ssd1306_rectangle(30, 10, 70, 30);
+
+    //! Draw line
+    ssd1306_draw_line(20, 20, 80, 50, 3);
+
+    //! Draw triangle
+    ssd1306_triangle(55, 25, 90, 20, 70, 60);
+
+    //! Update the display
     ssd1306_update_frame();
 }
-
-
-// int16_t samples[] = {
-//     10, 20, 30, 40, 50, 60, 35, 20, 63, 10, 11, 12, 13, 63, 15, 16,
-//     10, 20, 30, 63, 50, 60, 63, 63, 63, 10, 63, 12, 13, 14, 15, 16
-// };
-
-// // FFT-based spectrum analyzer core
-// void ssd1306_spectrum(uint8_t num_band) {
-//     // Simple energy calculation per band
-//     M_Line bands[num_band];
-//     memset(bands, 0, sizeof(bands));
-
-//     uint16_t sample_len = sizeof(samples) / sizeof(samples[0]);
-//     uint16_t samp_per_band = sample_len / num_band;
-
-//     for (int i = 0; i < num_band; i++) {
-//         int start_index = i * samp_per_band;
-//         int end_index = start_index + samp_per_band;
-
-//         uint16_t sum = 0;
-//         for (int i = start_index; i < end_index; i++) {
-//             sum += abs(samples[i]); // Use absolute value as magnitude
-//         }
-
-//         // Calculate the average magnitude for the bin
-//         bands[i].pos = i * 5;
-//         bands[i].end = sum / samp_per_band;
-//     }
-
-//     //! Clear the buffer
-//     memset(frame_buffer, 0, sizeof(frame_buffer));
-
-//      //! precompute page masks
-//     precompute_page_masks();
-
-//     //! Draw bars
-//     for (int i = 0; i < num_band; i++) {
-//         ssd1306_vertical_line(&bands[i], 4, true);
-//         ssd1306_horizontal_line(&bands[i], 4, true);
-//     }
-
-//     //! Draw rectangle
-//     ssd1306_rectangle(30, 10, 70, 30);
-
-//     //! Draw line
-//     ssd1306_draw_line(20, 20, 80, 50, 3);
-
-//     //! Draw triangle
-//     ssd1306_triangle(55, 25, 90, 20, 70, 60);
-
-//     //! Update the display
-//     ssd1306_update_frame();
-// }

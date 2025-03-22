@@ -9,6 +9,7 @@
 #include "mod_rotary.h"
 #include "mod_ssd1306.h"
 #include "ssd1306_plot.h"
+#include "ssd1306_segment.h"
 
 #define WIFI_ENABLED true
 
@@ -277,7 +278,8 @@ void app_main(void) {
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
 
             ssd1306_spectrum(5);
-
+            ssd1306_test_digits();
+            
             // printf("mic reading: %u\n", mic_adc.raw);
             // mod_adc_continous_read(&continous_read);
         }
