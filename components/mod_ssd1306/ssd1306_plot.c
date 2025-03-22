@@ -187,107 +187,139 @@ void ssd1306_triangle(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t x2
 #define MASK_HEIGHT 7
 #define MASK_WIDTH 5
 
-#define SEGMENT_TOP    (1 << 0) // Top segment (A)
-#define SEGMENT_LEFT   (1 << 1) // Left segment (F and E)
-#define SEGMENT_RIGHT  (1 << 2) // Right segment (B and C)
-#define SEGMENT_MIDDLE (1 << 3) // Middle segment (G)
-#define SEGMENT_BOTTOM (1 << 4) // Bottom segment (D)
+#define SEGMENT_TOP          (1 << 0)  // Bit 0: Top segment
+#define SEGMENT_RIGHT_UPPER  (1 << 1)  // Bit 1: Upper part of the right segment
+#define SEGMENT_RIGHT_LOWER  (1 << 2)  // Bit 2: Lower part of the right segment
+#define SEGMENT_BOTTOM       (1 << 3)  // Bit 3: Bottom segment
+#define SEGMENT_LEFT_UPPER   (1 << 4)  // Bit 4: Upper part of the left segment
+#define SEGMENT_LEFT_LOWER   (1 << 5)  // Bit 5: Lower part of the left segment
+#define SEGMENT_MIDDLE       (1 << 6)  // Bit 6: Middle segment
+
+// Combined attributes
+#define SEGMENT_RIGHT_BOTH   (SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER) // Both right segments
+#define SEGMENT_LEFT_BOTH    (SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER)   // Both left segments
 
 // Segment attributes for digits 0-9
 const uint8_t DIGIT_ATTRIBUTES[10] = {
-    SEGMENT_TOP | SEGMENT_LEFT | SEGMENT_RIGHT | SEGMENT_BOTTOM, // 0
-    SEGMENT_RIGHT,                                              // 1
-    SEGMENT_TOP | SEGMENT_RIGHT | SEGMENT_MIDDLE | SEGMENT_LEFT | SEGMENT_BOTTOM, // 2
-    SEGMENT_TOP | SEGMENT_RIGHT | SEGMENT_MIDDLE | SEGMENT_BOTTOM, // 3
-    SEGMENT_LEFT | SEGMENT_RIGHT | SEGMENT_MIDDLE | SEGMENT_TOP, // 4
-    SEGMENT_TOP | SEGMENT_LEFT | SEGMENT_MIDDLE | SEGMENT_RIGHT | SEGMENT_BOTTOM, // 5
-    SEGMENT_TOP | SEGMENT_LEFT | SEGMENT_MIDDLE | SEGMENT_RIGHT | SEGMENT_BOTTOM, // 6
-    SEGMENT_TOP | SEGMENT_RIGHT,                                // 7
-    SEGMENT_TOP | SEGMENT_LEFT | SEGMENT_RIGHT | SEGMENT_MIDDLE | SEGMENT_BOTTOM, // 8
-    SEGMENT_TOP | SEGMENT_LEFT | SEGMENT_RIGHT | SEGMENT_MIDDLE, // 9
+    // 0
+    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER | 
+    SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER | SEGMENT_BOTTOM,
+    // 1
+    SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER,
+    // 2
+    SEGMENT_TOP | SEGMENT_RIGHT_UPPER | SEGMENT_MIDDLE |
+    SEGMENT_LEFT_LOWER | SEGMENT_BOTTOM,
+    // 3
+    SEGMENT_TOP | SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER |
+    SEGMENT_MIDDLE | SEGMENT_BOTTOM,
+    // 4
+    SEGMENT_LEFT_UPPER | SEGMENT_RIGHT_UPPER |
+    SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE,
+    // 5
+    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_MIDDLE |
+    SEGMENT_RIGHT_LOWER | SEGMENT_BOTTOM,
+    // 6
+    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER |
+    SEGMENT_MIDDLE | SEGMENT_RIGHT_LOWER | SEGMENT_BOTTOM,
+    // 7
+    SEGMENT_TOP | SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER,
+    // 8
+    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_LEFT_LOWER |
+    SEGMENT_RIGHT_UPPER | SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE | SEGMENT_BOTTOM,
+    // 9
+    SEGMENT_TOP | SEGMENT_LEFT_UPPER | SEGMENT_RIGHT_UPPER |
+    SEGMENT_RIGHT_LOWER | SEGMENT_MIDDLE | SEGMENT_BOTTOM,
 };
 
 const uint8_t LINE_MASK[MASK_HEIGHT] = {
-    0b11111, // Row 0: Top line (all pixels set)
-    0b10001, // Row 1: Left and right lines (first and last pixels set)
-    0b10001, // Row 2: Left and right lines
-    0b11111, // Row 3: Middle line (all pixels set)
-    0b10001, // Row 4: Left and right lines
-    0b10001, // Row 5: Left and right lines
-    0b11111, // Row 6: Bottom line (all pixels set)
+    0b1111111, // Row 0: Top line (all pixels set)
+    0b1000001, // Row 1: Left and right lines (first and last pixels set)
+    0b1000001, // Row 2: Left and right lines
+    0b1111111, // Row 3: Middle line (all pixels set)
+    0b1000001, // Row 4: Left and right lines
+    0b1000001, // Row 5: Left and right lines
+    0b1111111, // Row 6: Bottom line (all pixels set)
 };
 
-void draw_segment(int16_t x0, int16_t y0, int16_t x1, int16_t y1) {
-    // Determine if the segment is horizontal or vertical
-    if (y0 == y1) {
-        // Horizontal segment
-        for (int16_t x = x0; x <= x1; x++) {
-            if (x < 0 || x >= SSD1306_WIDTH || y0 < 0 || y0 >= SSD1306_HEIGHT) continue;
-            uint8_t page = page_masks[y0].page;
-            uint8_t bitmask = page_masks[y0].bitmask;
-            frame_buffer[page][x] |= bitmask;
-        }
-    } else if (x0 == x1) {
-        // Vertical segment
-        for (int16_t y = y0; y <= y1; y++) {
-            if (x0 < 0 || x0 >= SSD1306_WIDTH || y < 0 || y >= SSD1306_HEIGHT) continue;
-            uint8_t page = page_masks[y].page;
-            uint8_t bitmask = page_masks[y].bitmask;
-            frame_buffer[page][x0] |= bitmask;
-        }
+void draw_horizontal_segment(int16_t x0, int16_t x1, int16_t y) {
+    for (int16_t x = x0; x <= x1; x++) {
+        if (x < 0 || x >= SSD1306_WIDTH || y < 0 || y >= SSD1306_HEIGHT) continue;
+        uint8_t page = page_masks[y].page;
+        uint8_t bitmask = page_masks[y].bitmask;
+        frame_buffer[page][x] |= bitmask;
+    }
+}
+
+void draw_vertical_segment(int16_t x, int16_t y0, int16_t y1) {
+    for (int16_t y = y0; y <= y1; y++) {
+        if (x < 0 || x >= SSD1306_WIDTH || y < 0 || y >= SSD1306_HEIGHT) continue;
+        uint8_t page = page_masks[y].page;
+        uint8_t bitmask = page_masks[y].bitmask;
+        frame_buffer[page][x] |= bitmask;
     }
 }
 
 void draw_digit(uint8_t digit, int16_t x, int16_t y) {
     if (digit > 9) return;
-    if (x + MASK_WIDTH <= 0 || x >= SSD1306_WIDTH || y + MASK_HEIGHT <= 0 || y >= SSD1306_HEIGHT) {
-        return;
-    }
-    
+    if (x + MASK_WIDTH <= 0 || x >= SSD1306_WIDTH ||
+        y + MASK_HEIGHT <= 0 || y >= SSD1306_HEIGHT) return;
+
     // Get the segment attributes for the digit
     uint8_t attributes = DIGIT_ATTRIBUTES[digit];
-    int16_t start_x = (x < 0) ? -x : 0;
-    int16_t end_x = (x + MASK_WIDTH > SSD1306_WIDTH) ? SSD1306_WIDTH - x : MASK_WIDTH;
 
-    int16_t start_y = (y < 0) ? -y : 0;
-    int16_t end_y = (y + MASK_HEIGHT > SSD1306_HEIGHT) ? SSD1306_HEIGHT - y : MASK_HEIGHT;
+    //! Batch update all horizontal segments
+    for (int16_t dx = x + 1; dx < x + MASK_WIDTH - 1; dx++) {
+        if (dx < 0 || dx >= SSD1306_WIDTH) continue;
 
-    // Draw the top segment (A)
-    int16_t top_left_x = x + start_x;
-    int16_t top_left_y = y + start_y;
-    int16_t top_right_x = x + end_x - 1;
-    int16_t top_right_y = y + start_y;
+        // Draw the top segment (A)
+        if (attributes & SEGMENT_TOP) {
+            uint8_t page = page_masks[y].page;
+            uint8_t bitmask = page_masks[y].bitmask;
+            frame_buffer[page][dx] |= bitmask;
+        }
 
-    if (attributes & SEGMENT_TOP) {
-        draw_segment(top_left_x, top_left_y, top_right_x, top_right_y);
+        // Draw the middle segment (G)
+        if (attributes & SEGMENT_MIDDLE) {
+            uint8_t page = page_masks[y + MASK_HEIGHT / 2].page;
+            uint8_t bitmask = page_masks[y + MASK_HEIGHT / 2].bitmask;
+            frame_buffer[page][dx] |= bitmask;
+        }
+
+        // Draw the bottom segment (D)
+        if (attributes & SEGMENT_BOTTOM) {
+            uint8_t page = page_masks[y + MASK_HEIGHT - 1].page;
+            uint8_t bitmask = page_masks[y + MASK_HEIGHT - 1].bitmask;
+            frame_buffer[page][dx] |= bitmask;
+        }
     }
+    
+    //! Batch update all vertical segments
+    for (int16_t dy = y + 1; dy < y + MASK_HEIGHT - 1; dy++) {
+        if (dy < 0 || dy >= SSD1306_HEIGHT) continue;
 
-    // Draw the left segment (F and E)
-    int16_t bottom_left_x = x + start_x;
-    int16_t bottom_left_y = y + end_y - 1;
-    if (attributes & SEGMENT_LEFT) {
-        draw_segment(top_left_x, top_left_y + 1, bottom_left_x, bottom_left_y - 1);
-    }
+        // Draw the left segments (F and E)
+        if (attributes & SEGMENT_LEFT_UPPER && dy <= y + MASK_HEIGHT / 2 - 1) {
+            uint8_t page = page_masks[dy].page;
+            uint8_t bitmask = page_masks[dy].bitmask;
+            frame_buffer[page][x] |= bitmask;
+        }
+        if (attributes & SEGMENT_LEFT_LOWER && dy >= y + MASK_HEIGHT / 2) {
+            uint8_t page = page_masks[dy].page;
+            uint8_t bitmask = page_masks[dy].bitmask;
+            frame_buffer[page][x] |= bitmask;
+        }
 
-    // Draw the right segment (B and C)
-    int16_t bottom_right_x = x + end_x - 1;
-    int16_t bottom_right_y = y + end_y - 1;
-    if (attributes & SEGMENT_RIGHT) {
-        draw_segment(top_right_x, top_right_y + 1, bottom_right_x, bottom_right_y - 1);
-    }
-
-    // Draw the bottom segment (D)
-    if (attributes & SEGMENT_BOTTOM) {
-        draw_segment(bottom_left_x, bottom_left_y, bottom_right_x, bottom_right_y);
-    }
-
-    // Draw the middle segment (G)
-    if (attributes & SEGMENT_MIDDLE) {
-        int16_t mid_left_x = x + start_x;
-        int16_t mid_right_x = x + end_x - 1;
-        int16_t mid_left_y = y + (MASK_HEIGHT / 2);
-        int16_t mid_right_y = y + (MASK_HEIGHT / 2);
-        draw_segment(mid_left_x, mid_left_y, mid_right_x, mid_right_y);
+        // Draw the right segments (B and C)
+        if (attributes & SEGMENT_RIGHT_UPPER && dy <= y + MASK_HEIGHT / 2 - 1) {
+            uint8_t page = page_masks[dy].page;
+            uint8_t bitmask = page_masks[dy].bitmask;
+            frame_buffer[page][x + MASK_WIDTH - 1] |= bitmask;
+        }
+        if (attributes & SEGMENT_RIGHT_LOWER && dy >= y + MASK_HEIGHT / 2) {
+            uint8_t page = page_masks[dy].page;
+            uint8_t bitmask = page_masks[dy].bitmask;
+            frame_buffer[page][x + MASK_WIDTH - 1] |= bitmask;
+        }
     }
 }
 
@@ -295,10 +327,16 @@ void ssd1306_spectrum(uint8_t num_band)  {
     if (ssd1306_print_mode != 0) return;
     precompute_page_masks();
 
-    draw_digit(2, 10, 10);
+    draw_digit(1, 10, 10);
+    draw_digit(2, 20, 10);
     draw_digit(3, 30, 10);
-    draw_digit(4, 50, 10);
-    
+    draw_digit(4, 40, 10);
+    draw_digit(5, 50, 10);
+    draw_digit(6, 60, 10);
+    draw_digit(7, 70, 10);
+    draw_digit(8, 80, 10);
+    draw_digit(9, 90, 10);
+
     ssd1306_update_frame();
 }
 
