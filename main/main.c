@@ -11,6 +11,7 @@
 #include "ssd1306_plot.h"
 #include "ssd1306_segment.h"
 #include "ssd1306_bitmap.h"
+// #include "mod_spi.h"
 
 #define WIFI_ENABLED true
 
@@ -142,7 +143,18 @@ void app_main(void) {
     mod_sd_spi_config(&sd_config);
     mod_sd_test();
 
-    display_spi_setup(SPI2_MOSI, SPI2_SCLK, SPI2_DC, SPI2_RES);
+    M_Spi_Conf spi3_conf = {
+        .host = SPI3_HOST,
+        .mosi = SPI2_MOSI,
+        .clk = SPI2_SCLK,
+        .dc = SPI2_DC
+    };
+
+    ret = mod_spi_init(&spi3_conf);
+    if (ret == ESP_OK) {
+        display_spi_setup(SPI2_RES, &spi3_conf);
+    }
+    
 
     app_console_setup();
 

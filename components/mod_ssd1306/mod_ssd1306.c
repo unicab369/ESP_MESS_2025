@@ -15,7 +15,17 @@
 #define SSD1306_MAX_CHAR (SSD1306_WIDTH / 5)
 #define SSD1306_MAX_PRINTMODE 4
 
-uint8_t FONT_MASK_7x5[95][5] = {
+// static const char *TAG = "SSD1306";
+static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
+static i2c_device_t *ssd1306 = NULL;
+
+uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
+M_Page_Mask page_masks[SSD1306_HEIGHT];
+
+int8_t ssd1306_print_mode = 0;
+
+
+uint8_t FONT_7x5[95][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // Space
     {0x00, 0x00, 0x5F, 0x00, 0x00}, // !
     {0x00, 0x07, 0x00, 0x07, 0x00}, // "
@@ -113,14 +123,6 @@ uint8_t FONT_MASK_7x5[95][5] = {
     {0x08, 0x08, 0x2A, 0x1C, 0x08}  // ~
 };
 
-// static const char *TAG = "SSD1306";
-static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
-static i2c_device_t *ssd1306 = NULL;
-
-uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
-M_Page_Mask page_masks[SSD1306_HEIGHT];
-
-int8_t ssd1306_print_mode = 0;
 
 void precompute_page_masks() {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
@@ -203,7 +205,7 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
     for (int i=0; i<SSD1306_MAX_CHAR; i++) {
         if (*str) {
             uint8_t char_index = *str - 32; // Adjust for ASCII offset
-            ssd1306_send_data((uint8_t *)FONT_MASK_7x5[char_index], 5); // Send font data
+            ssd1306_send_data((uint8_t *)FONT_7x5[char_index], 5); // Send font data
             str++;
         } else {
             // uint8_t empty_data[5] = {0};
