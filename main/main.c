@@ -121,7 +121,7 @@ void app_main(void) {
         });
     #endif
 
-    mod_sd_spi_config(&(storage_sd_config_t) {
+    storage_sd_config_t sd_config = {
         .mmc_enabled = true,
 
         //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
@@ -137,8 +137,12 @@ void app_main(void) {
             .sclk = SPI_CLK,
             .cs = SPI_CS
         },
-    });
+    };
+
+    mod_sd_spi_config(&sd_config);
     mod_sd_test();
+
+    display_spi_setup(SPI2_MOSI, SPI2_SCLK, SPI2_DC, SPI2_RES);
 
     app_console_setup();
 

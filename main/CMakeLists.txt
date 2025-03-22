@@ -30,6 +30,7 @@ idf_component_register(SRCS "main.c"
                         mod_adc
                         mod_utility
                         mod_i2c
+                        mod_st7735
                     REQUIRES
                         driver
                         uart_driver

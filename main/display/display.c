@@ -7,6 +7,8 @@
 #include "esp_err.h"
 #include "mod_i2c.h"
 
+#include "mod_st7735.h"
+
 static const char *TAG = "I2C_DEVICE";
 
 typedef enum {
@@ -143,7 +145,12 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     ret = ds3231_update_date(new_time);
     ret = ds3231_update_time(new_time);
     if (ret != ESP_OK) ESP_LOGE(TAG, "DS3231 ERROR: TIME_SET");
-    
+}
+
+void display_spi_setup(uint8_t mosi, uint8_t clk, uint8_t dc, uint8_t rst) {
+    st7735_init(mosi, clk, dc, rst);
+
+    st7735_draw_text(10, 10, "Hello, ST7735!", 0x00AA);
 }
 
 void display_print_str(const char *str, uint8_t line) {

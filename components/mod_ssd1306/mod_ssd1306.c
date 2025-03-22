@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "driver/i2c.h"
-#include "esp_log.h"
 #include "esp_timer.h"
 
 #include "mod_i2c.h"
