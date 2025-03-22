@@ -10,7 +10,7 @@ idf_component_register(SRCS "main.c"
                             "console/cmd_espnow/cmd_espnow.c"
                             "app_network/app_network.c"
                             "modbus/modbus.c"
-                            "display/display.c"
+                            "devices/display/display.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES
                         esp_driver_rmt

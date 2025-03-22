@@ -7,7 +7,7 @@
 
 // modules
 #include "mod_sd.h"
-#include "display/display.h"
+#include "devices/display/display.h"
 
 // networking
 #include "mod_wifi.h"

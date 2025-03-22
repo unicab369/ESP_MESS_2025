@@ -70,6 +70,8 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
     return ret;
 }
 
+
+
 void st7735_draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint16_t bg_color, M_Spi_Conf *conf) {
     const uint8_t *char_data = FONT_7x5[c - 32];
     uint8_t tft_frame_buffer[5 * 7 * 2];    // Frame buffer for a 5x7 character (2 bytes per pixel in RGB565)
