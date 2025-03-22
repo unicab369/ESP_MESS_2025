@@ -7,6 +7,7 @@
 #include "mod_ws2812.h"
 #include "mod_button.h"
 #include "mod_rotary.h"
+#include "mod_ssd1306.h"
 #include "ssd1306_plot.h"
 
 #define WIFI_ENABLED true
@@ -17,8 +18,8 @@
 #endif
 
 static const char *TAG = "MAIN";
-
 static uint8_t esp_mac[6];
+
 
 // Button event callback
 void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
@@ -62,7 +63,8 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
     }
 }
 
-void rotary_event_handler(int16_t value, bool direction) {
+void rotary_event_handler(int16_t value, int8_t direction) {
+    ssd1306_set_printMode(direction);
     behavior_process_rotary(value, direction);
 }
 

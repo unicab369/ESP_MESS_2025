@@ -11,7 +11,7 @@
 static int16_t value = 0;
 static int last_clk_state;
 static int last_dt_state;
-static bool direction;
+static int8_t direction;
 static uint8_t CLK_PIN;
 static uint8_t DT_PIN;
 static uint64_t last_update_time = 0;
@@ -48,10 +48,10 @@ void rotary_loop(uint64_t current_time) {
             if (clk_state != last_clk_state) {
                 if (clk_state == dt_state) {
                     value--;
-                    direction = false;  // Counter Clockwise
+                    direction = -1;  // Counter Clockwise
                 } else {
                     value++;
-                    direction = true;   // Clockwise
+                    direction = 1;   // Clockwise
                 }
 
                 // Trigger the callback if enough time has passed since the last update

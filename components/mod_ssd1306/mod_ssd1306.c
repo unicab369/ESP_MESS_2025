@@ -13,26 +13,10 @@
 #include "mod_i2c.h"
 #include "mod_utility.h"
 
-// Display dimensions
-
-#define SSD1306_MAX_CHAR (SSD1306_WIDTH/5)
-
-// I2C Configuration
-#define I2C_PORT I2C_NUM_0
-
-// Command constants
-#define SSD1306_CMD 0x00
-#define SSD1306_DATA 0x40
+#define SSD1306_MAX_CHAR (SSD1306_WIDTH / 5)
 
 
-// static const char *TAG = "SSD1306";
-#define BUFFER_SIZE (SSD1306_WIDTH * SSD1306_HEIGHT / 8)
-static uint8_t buffer[BUFFER_SIZE]; // Buffer to hold pixel data
-static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
-
-static i2c_device_t *ssd1306 = NULL;
-
-uint8_t font7x5[95][5] = {
+uint8_t FONT_MASK_7x5[95][5] = {
     {0x00, 0x00, 0x00, 0x00, 0x00}, // Space
     {0x00, 0x00, 0x5F, 0x00, 0x00}, // !
     {0x00, 0x07, 0x00, 0x07, 0x00}, // "
@@ -130,16 +114,43 @@ uint8_t font7x5[95][5] = {
     {0x08, 0x08, 0x2A, 0x1C, 0x08}  // ~
 };
 
+// static const char *TAG = "SSD1306";
+static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
+static i2c_device_t *ssd1306 = NULL;
+
+uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
+M_Page_Mask page_masks[SSD1306_HEIGHT];
+
+int8_t ssd1306_print_mode = 0;
+
+void precompute_page_masks() {
+    for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
+        page_masks[y].page       = y >> 3;             // (y / 8)
+        page_masks[y].bitmask    = 1 << (y & 0x07);    // (y % 8)
+    }
+}
+
+void ssd1306_set_printMode(uint8_t direction) {
+    ssd1306_print_mode += direction;
+
+    if (ssd1306_print_mode < 0) {
+        ssd1306_print_mode = 0;
+    } else if (ssd1306_print_mode > 2) {
+        ssd1306_print_mode = 2;
+    }
+
+    printf("print_mode: %d\n", ssd1306_print_mode);
+}
 
 // Write command to SSD1306
 void ssd1306_send_cmd(uint8_t value) {
-    uint8_t buff[2] = {SSD1306_CMD, value};
-    i2c_write_register_byte(ssd1306, SSD1306_CMD, value);
+    uint8_t buff[2] = {0x00, value};                    // CMD Register 0x00
+    i2c_write_register_byte(ssd1306, 0x00, value);
 }
 
 // Write data to SSD1306
 void ssd1306_send_data(const uint8_t *data, size_t len) {
-    i2c_write_register(ssd1306, SSD1306_DATA, data, len);
+    i2c_write_register(ssd1306, 0x40, data, len);       // DATA Register 0x40
 }
 
 void ssd1306_set_addressing_mode(uint8_t mode) {
@@ -165,14 +176,14 @@ void ssd1306_clear_frameBuffer() {
 }
 
 void ssd1306_update_frame() {
-    ssd1306_set_column_address(0, MAX_WIDTH_INDEX);
+    ssd1306_set_column_address(0, SSD1306_MAX_WIDTH_INDEX);
     ssd1306_set_page_address(0, MAX_PAGE_INDEX);
     ssd1306_send_data((uint8_t *)frame_buffer, sizeof(frame_buffer));
 }
 
 void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
     if (end_page>MAX_PAGE_INDEX) return;
-    ssd1306_set_column_address(0, MAX_WIDTH_INDEX);
+    ssd1306_set_column_address(0, SSD1306_MAX_WIDTH_INDEX);
     ssd1306_set_page_address(start_page, end_page);
 
     // Send zero buffer for each page
@@ -182,8 +193,6 @@ void ssd1306_clear_lines(uint8_t start_page, uint8_t end_page) {
 }
 
 void ssd1306_clear_all(void) {
-    printf("****** IM HEREEEE\n");
-
     for (int i = 0; i < 8; i++) {  // 8 pages for 64-pixel height
         ssd1306_clear_lines(0, i);
     }
@@ -195,7 +204,7 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
     for (int i=0; i<SSD1306_MAX_CHAR; i++) {
         if (*str) {
             uint8_t char_index = *str - 32; // Adjust for ASCII offset
-            ssd1306_send_data((uint8_t *)font7x5[char_index], 5); // Send font data
+            ssd1306_send_data((uint8_t *)FONT_MASK_7x5[char_index], 5); // Send font data
             str++;
         } else {
             // uint8_t empty_data[5] = {0};
@@ -210,7 +219,8 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
 }
 
 void ssd1306_print_str(const char *str, uint8_t page) {
-    // ssd1306_print_str_at(str, page, 0, true);
+    if (ssd1306_print_mode != 1) return;
+    ssd1306_print_str_at(str, page, 0, true);
 }
 
 void ssd1306_setup(uint8_t address) {
@@ -258,23 +268,6 @@ void ssd1306_setup(uint8_t address) {
 }
 
 
-void ssd1306_draw_pixel(uint8_t x, uint8_t y, uint8_t color) {
-    if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT) return; // Out of bounds
-    ssd1306_set_update_target(0, 7);
-
-    // Set the pixel in the buffer
-    if (color) {
-        buffer[x + (y / 8) * SSD1306_WIDTH] |= (1 << (y % 8)); // Set pixel
-    } 
-    // else {
-    //     buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8)); // Clear pixel
-    // }
-    ssd1306_send_data(buffer, sizeof(buffer));
-}
-
-#define I2C_MASTER_TIMEOUT_MS 50   // ms
-#define I2C_MASTER_NUM I2C_NUM_0
-
 int do_i2cdetect_cmd(uint8_t scl_pin, uint8_t sda_pin) {
     // Initialize I2C
     i2c_config_t conf = {
@@ -285,8 +278,8 @@ int do_i2cdetect_cmd(uint8_t scl_pin, uint8_t sda_pin) {
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 400000,
     };
-    i2c_param_config(I2C_PORT, &conf);
-    i2c_driver_install(I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    i2c_param_config(I2C_NUM_0, &conf);
+    i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
     
     esp_err_t ret;
     printf("Scanning I2C bus...\n");
@@ -298,7 +291,7 @@ int do_i2cdetect_cmd(uint8_t scl_pin, uint8_t sda_pin) {
         i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
         i2c_master_stop(cmd);
 
-        esp_err_t ret = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 50 / portTICK_PERIOD_MS);
+        esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 50 / portTICK_PERIOD_MS);
         i2c_cmd_link_delete(cmd);
 
         if (ret == ESP_OK) {

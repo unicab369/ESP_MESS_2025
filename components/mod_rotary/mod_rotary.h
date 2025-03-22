@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 // Callback function
-typedef void (*rotary_callback_t)(int16_t value, bool direction);
+typedef void (*rotary_callback_t)(int16_t value, int8_t direction);
 
 // Function prototypes
 void rotary_setup(uint8_t clk_pin, uint8_t dt_pin, rotary_callback_t callback);
