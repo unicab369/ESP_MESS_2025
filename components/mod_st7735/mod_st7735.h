@@ -7,5 +7,15 @@
 
 #include "mod_spi.h"
 
+
+typedef struct {
+    uint8_t x;
+    uint8_t y;
+    uint16_t color;
+    uint8_t page_wrap;
+    uint8_t word_wrap;
+    const char* text;
+} M_TFT_Text;
+
 esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf);
-void st7735_draw_text(uint8_t x, uint8_t y, const char* str, uint16_t color, bool is_wrap, M_Spi_Conf *conf);
+void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config);

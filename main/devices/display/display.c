@@ -19,7 +19,19 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 
 void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
     st7735_init(rst, conf);
-    st7735_draw_text(0, 0, "Hello Bee! What is Thy bidding, my master?", 0x00AA, true, conf);
+
+    M_TFT_Text tft_text = {
+        .x = 0,
+        .y = 0,
+        .color = 0x00AA,
+        .page_wrap = 1,
+        .word_wrap = 0,
+        .text = "Hello Bee! What is Thy bidding, my master? Tell me!"
+                "\nTomorrow is another day!"
+                "\n\nThis is a new line. Making a new line.",
+    };
+
+    st7735_draw_text(&tft_text, conf);
 }
 
 void display_print_str(const char *str, uint8_t line) {
