@@ -105,6 +105,8 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 }
 
 
+
+
 void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     int buff_idx = 0;
 
@@ -125,7 +127,6 @@ void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     }
 }
 
-
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
 
@@ -137,9 +138,22 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     uint8_t char_spacing = model->char_spacing; // Spacing between characters
     const char *text = model->text;             // Pointer to the text
 
+    //! Variables for tracking line size and line indexes
+    uint16_t accumulated_size   = 0; // Accumulated size of characters on the current line (in bytes)
+    uint16_t line_idx           = 0;     // Current line index
+
     while (*text) {
         //! Handle newline character
         if (*text == '\n') {
+            //! Print the remaining size of the current line if it has data
+            if (accumulated_size > 0) {
+                printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
+            }
+
+            //! Reset for the next line
+            accumulated_size = 0; // Clear the accumulated size
+            line_idx++;       // Increment line number
+
             current_x = start_x; // Reset x to the start position
             current_y += font_height + 1; // Move y to the next line (font height + 1 pixel spacing)
 
@@ -167,6 +181,15 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         //! Handle word wrapping
         if (current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
+                //! Print the remaining size of the current line if it has data
+                if (accumulated_size > 0) {
+                    printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
+                }
+
+                //! Reset for the next line
+                accumulated_size = 0;       // Clear the accumulated size
+                line_idx++;                 // Increment line number
+
                 //! Move the entire word to the next line
                 current_x = start_x;            // Reset x to the start position
                 current_y += font_height + 1;   // Move y to the next line
@@ -180,6 +203,15 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
                     //! Handle wrapping for individual characters
                     if (current_x + char_width > ST7735_WIDTH) {
+                        //! Print the remaining size of the current line if it has data
+                        if (accumulated_size > 0) {
+                            printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
+                        }
+
+                        //! Reset for the next line
+                        accumulated_size = 0;       // Clear the accumulated size
+                        line_idx++;                 // Increment line number
+
                         current_x = start_x;            // Reset x to the start position
                         current_y += font_height + 1;   // Move y to the next line
 
@@ -187,11 +219,21 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                         if (current_y + font_height > ST7735_HEIGHT) break;
                     }
 
-                    //! Calculate the size of the frame buffer
-                    uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
-                    uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
+                    //! Calculate the size of the current character in bytes
+                    uint16_t char_size_bytes = model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
+
+                    //! Accumulate the size of the current character
+                    accumulated_size += char_size_bytes;
+
+                    //! Check if the accumulated size exceeds 500 bytes
+                    if (accumulated_size >= 500) {
+                        printf("Line %d: Size = %d bytes (full)\n", line_idx, 500);
+                        accumulated_size -= 500; // Keep the remaining bytes for the next print
+                    }
 
                     //! Render the current character
+                    uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
+                    uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
                     draw_char(model, frame_buff, *text);
 
                     //! Set the address window to cover the character area
@@ -212,11 +254,21 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
         //! Render the current word
         while (text < word_end) {
-            //! Calculate the size of the frame buffer
-            uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
-            uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
+            //! Calculate the size of the current character in bytes
+            uint16_t char_size_bytes = model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
+
+            //! Accumulate the size of the current character
+            accumulated_size += char_size_bytes;
+
+            //! Check if the accumulated size exceeds 500 bytes
+            if (accumulated_size >= 500) {
+                printf("Line %d: Size = %d bytes (full)\n", line_idx, 500);
+                accumulated_size -= 500; // Keep the remaining bytes for the next print
+            }
 
             //! Render the current character
+            uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
+            uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
             draw_char(model, frame_buff, *text);
 
             //! Set the address window to cover the character area
@@ -236,5 +288,10 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             current_x += font_width + char_spacing; // Add space between words
             text++;
         }
+    }
+
+    //! Print the remaining size of the last line if it has data
+    if (accumulated_size > 0) {
+        printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
     }
 }
