@@ -105,10 +105,43 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 }
 
 
+void draw_char(M_TFT_Text *model, uint8_t x, uint8_t y, char c, M_Spi_Conf *config) {
+    //! Calculate the size of the frame buffer
+    uint16_t frame_buffer_size = model->font_width * model->font_height * 2; // 2 bytes per pixel (RGB565)
+    uint8_t tft_frame_buffer[frame_buffer_size]; // Frame buffer for the character
+    int buff_idx = 0;
+
+    //! Get the font data for the current character
+    const uint8_t *char_data = &model->font[(c - 32) * model->font_width * ((model->font_height + 7) / 8)];
+
+    //! Render the character into the frame buffer
+    for (int j = 0; j < model->font_height; j++) { // Rows
+        for (int i = 0; i < model->font_width; i++) { // Columns
+            if (char_data[(i + (j / 8) * model->font_width)] & (1 << (j % 8))) {
+                //! Pixel is part of the character (foreground color)
+                tft_frame_buffer[buff_idx++] = model->color >> 8;   // High byte of RGB565
+                tft_frame_buffer[buff_idx++] = model->color & 0xFF; // Low byte of RGB565
+            } else {
+                //! Pixel is not part of the character (background color)
+                tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR >> 8;   // High byte of RGB565
+                tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR & 0xFF; // Low byte of RGB565
+            }
+        }
+    }
+
+    //! Set the address window to cover the character area
+    st7735_set_address_window(x, y, x + model->font_width - 1, y + model->font_height - 1, config);
+
+    //! Send the frame buffer to the display in one transaction
+    mod_spi_data(tft_frame_buffer, frame_buffer_size, config);
+}
+
+
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
 
     uint8_t current_x = model->x;               // Current x position
+    uint8_t current_y = model->y;               // Current y position
     uint8_t start_x = model->x;                 // Initial x position for each line
     const char *text = model->text;             // Pointer to the text
     uint8_t font_width = model->font_width;     // Font width
@@ -119,10 +152,10 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         //! Handle newline character
         if (*text == '\n') {
             current_x = start_x; // Reset x to the start position
-            model->y += font_height + 1; // Move y to the next line (font height + 1 pixel spacing)
+            current_y += font_height + 1; // Move y to the next line (font height + 1 pixel spacing)
 
             //! Stop rendering if the display height is exceeded
-            if (model->y + font_height > ST7735_HEIGHT) break;
+            if (current_y + font_height > ST7735_HEIGHT) break;
 
             text++; // Move to the next character
             continue;
@@ -137,17 +170,17 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                 if (model->word_wrap && *text != ' ') {
                     //! Move the entire word to the next line
                     current_x = start_x; // Reset x to the start position
-                    model->y += font_height + 1; // Move y to the next line
+                    current_y += font_height + 1; // Move y to the next line
 
                     //! Stop rendering if the display height is exceeded
-                    if (model->y + font_height > ST7735_HEIGHT) break;
+                    if (current_y + font_height > ST7735_HEIGHT) break;
                 } else {
                     //! Break the word and wrap to the next line
                     current_x = start_x; // Reset x to the start position
-                    model->y += font_height + 1; // Move y to the next line
+                    current_y += font_height + 1; // Move y to the next line
 
                     //! Stop rendering if the display height is exceeded
-                    if (model->y + font_height > ST7735_HEIGHT) break;
+                    if (current_y + font_height > ST7735_HEIGHT) break;
                 }
             } else {
                 //! Handle truncation: stop rendering
@@ -155,34 +188,8 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             }
         }
 
-        // Get the font data for the current character
-        const uint8_t *char_data = &model->font[(*text - 32) * font_width * ((font_height + 7) / 8)];
-
-        //! Calculate the size of the frame buffer
-        uint16_t frame_buffer_size = font_width * font_height * 2; // 2 bytes per pixel (RGB565)
-        uint8_t tft_frame_buffer[frame_buffer_size]; // Frame buffer for the character
-        int buff_idx = 0;
-
-        //! Render the character into the frame buffer
-        for (int j = 0; j < font_height; j++) { // Rows
-            for (int i = 0; i < font_width; i++) { // Columns
-                if (char_data[(i + (j / 8) * font_width)] & (1 << (j % 8))) {
-                    //! Pixel is part of the character (foreground color)
-                    tft_frame_buffer[buff_idx++] = model->color >> 8;   // High byte of RGB565
-                    tft_frame_buffer[buff_idx++] = model->color & 0xFF; // Low byte of RGB565
-                } else {
-                    //! Pixel is not part of the character (background color)
-                    tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR >> 8;   // High byte of RGB565
-                    tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR & 0xFF; // Low byte of RGB565
-                }
-            }
-        }
-
-        //! Set the address window to cover the character area
-        st7735_set_address_window(current_x, model->y, current_x + font_width - 1, model->y + font_height - 1, config);
-
-        //! Send the frame buffer to the display in one transaction
-        mod_spi_data(tft_frame_buffer, frame_buffer_size, config);
+        //! Render the current character
+        draw_char(model, current_x, current_y, *text, config);
 
         //! Move to the next character position
         current_x += char_width;    // Move x by character width + spacing
