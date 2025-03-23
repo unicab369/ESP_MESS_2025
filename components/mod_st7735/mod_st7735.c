@@ -125,28 +125,8 @@ void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     }
 }
 
-
-
-typedef struct {
-    uint16_t line_idx;
-    uint16_t accumulated_size; // Accumulated size of characters on the current line (in bytes)
-    uint8_t current_x;         // Current x position
-    uint8_t current_y;         // Current y position
-    uint8_t render_start_x;    // Starting x position of the current buffer
-    uint8_t render_end_x;      // Ending x position of the current buffer
-    uint8_t font_height;
-} M_Render_State;
-
-void handle_buffer(M_Render_State *state, uint16_t buffer_size) {
-    if (state->accumulated_size > 0) {
-        printf("Line %d: Size = %d bytes,\t Window: [x=%d, y=%d] to [x=%d, y=%d]\n", 
-                state->line_idx, buffer_size, state->render_start_x, state->current_y, 
-                state->render_end_x, state->current_y + state->font_height - 1);
-    }
-}
-
-bool reset_render_state(M_Render_State *state, uint8_t start_x) {
-    state->accumulated_size = 0;
+static bool reset_render_state(M_Render_State *state, uint8_t start_x) {
+    state->char_buff_count = 0; // Clear the accumulated characters
     state->current_x = start_x;
     state->render_start_x = start_x;
     state->render_end_x = start_x;
@@ -158,6 +138,26 @@ bool reset_render_state(M_Render_State *state, uint8_t start_x) {
     //! check if current_y is outbounded
     return state->current_y + state->font_height > ST7735_HEIGHT;
 }
+
+static void handle_buffer(M_Render_State *state) {
+    if (state->char_buff_count <= 0) return;
+
+    //! Print the buffer details
+    printf("L%d: %d chars,\t [x=%d, y=%d] to [x=%d, y=%d] ", 
+                state->line_idx, state->char_buff_count, state->render_start_x, state->current_y, 
+                state->render_end_x, state->current_y + state->font_height - 1);
+
+    //! Print the accumulated characters
+    printf("chars: ");
+    for (uint8_t i = 0; i < state->char_buff_count; i++) {
+        printf("%c", state->char_buff_data[i]);
+    }
+    printf("\n");
+
+    //! Reset the accumulated character count
+    state->char_buff_count = 0;
+}
+
 
 //! Main function to draw text
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
@@ -171,21 +171,21 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     //! Initialize rendering state
     M_Render_State state = {
         .line_idx = 0,
-        .accumulated_size = 0,
         .current_x = model->x,
         .current_y = model->y,
         .render_start_x = model->x,
-        .render_end_x = model->y,
-        .font_height = model->font_height
+        .render_end_x = model->x,
+        .font_height = model->font_height,
+        .char_buff_count = 0
     };
 
     while (*text) {
         //! Handle newline character
         if (*text == '\n') {
             //! Print the remaining buffer
-            handle_buffer(&state, state.accumulated_size);
+            handle_buffer(&state);
 
-            //! reset state for the nextline. Check for outbound ST7735_HEIGHT
+            //! Reset state for the next line and check for outbound ST7735_HEIGHT
             bool outbound_height = reset_render_state(&state, start_x);
             if (outbound_height) break;
 
@@ -211,9 +211,9 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         if (state.current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
                 //! Print the remaining buffer
-                handle_buffer(&state, state.accumulated_size);
-                
-                //! reset state for the nextline. Check for outbound ST7735_HEIGHT
+                handle_buffer(&state);
+
+                //! Reset state for the next line and check for outbound ST7735_HEIGHT
                 bool outbound_height = reset_render_state(&state, start_x);
                 if (outbound_height) break;
 
@@ -225,27 +225,20 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                     //! Handle wrapping for individual characters
                     if (state.current_x + char_width > ST7735_WIDTH) {
                         //! Print the remaining buffer
-                        handle_buffer(&state, state.accumulated_size);
+                        handle_buffer(&state);
 
-                        //! reset state for the nextline. Check for outbound ST7735_HEIGHT
+                        //! Reset state for the next line and check for outbound ST7735_HEIGHT
                         bool outbound_height = reset_render_state(&state, start_x);
                         if (outbound_height) break;
                     }
 
-                    //! Accumulate the size of the current character
-                    state.accumulated_size += model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
+                    //! Accumulate the current character
+                    state.char_buff_data[state.char_buff_count++] = *text;
+                    state.render_end_x = state.current_x + font_width; // Update the rendering window
 
-                    //! Update the rendering window
-                    state.render_end_x = state.current_x + font_width;
-
-                    //! Check if the accumulated size exceeds 500 bytes
-                    if (state.accumulated_size >= 500) {
-                        handle_buffer(&state, 500);
-                        state.accumulated_size -= 500; // Keep the remaining bytes for the next print
-
-                        //! Update the rendering window for the next chunk
-                        state.render_start_x = state.render_end_x;
-                        state.render_end_x = state.render_start_x;
+                    //! Check if the buffer is full
+                    if (state.char_buff_count >= MAX_CHAR_COUNT) {
+                        handle_buffer(&state);
                     }
 
                     //! Render the current character
@@ -271,20 +264,13 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
         //! Render the current word
         while (text < word_end) {
-            //! Accumulate the size of the current character
-            state.accumulated_size += model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
+            //! Accumulate the current character
+            state.char_buff_data[state.char_buff_count++] = *text;
+            state.render_end_x = state.current_x + font_width; // Update the rendering window
 
-            //! Update the rendering window
-            state.render_end_x = state.current_x + font_width;
-
-            //! Check if the accumulated size exceeds 500 bytes
-            if (state.accumulated_size >= 500) {
-                handle_buffer(&state, 500);
-                state.accumulated_size -= 500; // Keep the remaining bytes for the next print
-
-                //! Update the rendering window for the next chunk
-                state.render_start_x = state.render_end_x;
-                state.render_end_x = state.render_start_x;
+            //! Check if the buffer is full
+            if (state.char_buff_count >= MAX_CHAR_COUNT) {
+                handle_buffer(&state);
             }
 
             //! Render the current character
@@ -304,13 +290,23 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             text++;                                           // Move to the next character
         }
 
-        //! Skip the space character after the word
+        //! Handle the space character
         if (*text == ' ') {
+            //! Accumulate the space character
+            state.char_buff_data[state.char_buff_count++] = *text;
+            state.render_end_x = state.current_x + font_width; // Update the rendering window
+
+            //! Check if the buffer is full
+            if (state.char_buff_count >= MAX_CHAR_COUNT) {
+                handle_buffer(&state);
+            }
+
+            //! Move to the next character position
             state.current_x += font_width + char_spacing; // Add space between words
-            text++;
+            text++;                                       // Move to the next character
         }
     }
 
     //! Print the remaining buffer if it has data
-    handle_buffer(&state, state.accumulated_size);
+    handle_buffer(&state);
 }
