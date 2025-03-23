@@ -105,10 +105,7 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 }
 
 
-void draw_char(M_TFT_Text *model, uint8_t x, uint8_t y, char c, M_Spi_Conf *config) {
-    //! Calculate the size of the frame buffer
-    uint16_t frame_buffer_size = model->font_width * model->font_height; // Number of pixels
-    uint16_t tft_frame_buffer[frame_buffer_size]; // Frame buffer for the character (uint16_t for RGB565)
+void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     int buff_idx = 0;
 
     //! Get the font data for the current character
@@ -119,19 +116,13 @@ void draw_char(M_TFT_Text *model, uint8_t x, uint8_t y, char c, M_Spi_Conf *conf
         for (int i = 0; i < model->font_width; i++) { // Columns
             if (char_data[(i + (j / 8) * model->font_width)] & (1 << (j % 8))) {
                 //! Pixel is part of the character (foreground color)
-                tft_frame_buffer[buff_idx++] = model->color; // RGB565 color
+                buff[buff_idx++] = model->color; // RGB565 color
             } else {
                 //! Pixel is not part of the character (background color)
-                tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR; // RGB565 background color
+                buff[buff_idx++] = BACKGROUND_COLOR; // RGB565 background color
             }
         }
     }
-
-    //! Set the address window to cover the character area
-    st7735_set_address_window(x, y, x + model->font_width - 1, y + model->font_height - 1, config);
-
-    //! Send the frame buffer to the display in one transaction
-    mod_spi_data((uint8_t *)tft_frame_buffer, frame_buffer_size * 2, config); // Multiply by 2 for uint16_t size
 }
 
 
@@ -196,8 +187,19 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                         if (current_y + font_height > ST7735_HEIGHT) break;
                     }
 
+                    //! Calculate the size of the frame buffer
+                    uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
+                    uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
+
                     //! Render the current character
-                    draw_char(model, current_x, current_y, *text, config);
+                    draw_char(model, frame_buff, *text);
+
+                    //! Set the address window to cover the character area
+                    st7735_set_address_window(current_x, current_y, 
+                        current_x + model->font_width - 1, current_y + model->font_height - 1, config);
+
+                    //! Send the frame buffer to the display in one transaction
+                    mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
 
                     //! Move to the next character position
                     current_x += char_width;    // Move x by character width + spacing
@@ -210,8 +212,19 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
         //! Render the current word
         while (text < word_end) {
+            //! Calculate the size of the frame buffer
+            uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
+            uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
+
             //! Render the current character
-            draw_char(model, current_x, current_y, *text, config);
+            draw_char(model, frame_buff, *text);
+
+            //! Set the address window to cover the character area
+            st7735_set_address_window(current_x, current_y,
+                current_x + model->font_width - 1, current_y + model->font_height - 1, config);
+
+            //! Send the frame buffer to the display in one transaction
+            mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
 
             //! Move to the next character position
             current_x += font_width + char_spacing;     // Move x by character width + spacing
