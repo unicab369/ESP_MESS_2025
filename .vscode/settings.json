@@ -142,7 +142,8 @@
         "mod_utility.h": "c",
         "ssd1306_plot.h": "c",
         "mod_spi.h": "c",
-        "mod_st7735.h": "c"
+        "mod_st7735.h": "c",
+        "mod_bitmap.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

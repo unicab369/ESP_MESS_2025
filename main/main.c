@@ -11,6 +11,9 @@
 #include "ssd1306_plot.h"
 #include "ssd1306_segment.h"
 #include "ssd1306_bitmap.h"
+
+#include "devices/i2c/sensors.h"
+
 // #include "mod_spi.h"
 
 #define WIFI_ENABLED true
@@ -91,6 +94,56 @@ static void http_request_handler(uint16_t **data, size_t *size) {
     *size = MAX_ADC_SAMPLE;
 }
 
+char display_buff[64];
+
+void on_resolve_bh1750(float lux) {
+    snprintf(display_buff, sizeof(display_buff), "BH1750 %.2f", lux);
+    ssd1306_print_str(display_buff, 2);
+}
+
+void on_resolve_ap3216(uint16_t ps, uint16_t als) {
+    snprintf(display_buff, sizeof(display_buff), "prox %u, als %u", ps, als);
+    ssd1306_print_str(display_buff, 5);
+}
+
+void on_resolve_apds9960(uint8_t prox, uint16_t clear,
+    uint16_t red, uint16_t green, uint16_t blue) {
+    snprintf(display_buff, sizeof(display_buff), "ps %u, w %u, r %u, g %u, b %u", prox, clear, red, green, blue);
+    ssd1306_print_str(display_buff, 6);
+}
+
+void on_resolve_max4400(float lux) {
+    snprintf(display_buff, sizeof(display_buff), "lux %.2f", lux);
+    // ssd1306_print_str(display_buff, 7);
+}
+
+void on_resolve_vl53lox(uint8_t distance) {
+    snprintf(display_buff, sizeof(display_buff), "dist: %u", distance);
+    // ssd1306_print_str(display_buff, 7);
+}
+
+void on_resolve_mpu6050(int16_t accel_x, int16_t accel_y, int16_t accel_z) {
+    snprintf(display_buff, sizeof(display_buff), "x %u, y %u, z %u", accel_x, accel_y, accel_z);
+    ssd1306_print_str(display_buff, 4);
+}
+
+void on_resolve_ina219(int16_t shunt, int16_t bus_mV, int16_t current, int16_t power) {
+    snprintf(display_buff, sizeof(display_buff),"sh %hu, bus %hu, cur %hd, p %hu", 
+                shunt, bus_mV, current, power);
+    ssd1306_print_str(display_buff, 7);
+}
+
+void on_resolve_ds3231(ds3231_dateTime_t *datetime) {
+    snprintf(display_buff, sizeof(display_buff), "%u/%u/%u %u:%u:%u", 
+            datetime->month, datetime->date, datetime->year,
+            datetime->hr, datetime->min, datetime->sec);
+    ssd1306_print_str(display_buff, 1);
+}
+
+void on_resolve_sht31(float temp, float hum) {
+    snprintf(display_buff, sizeof(display_buff), "Temp %.2f, hum %.2f", temp, hum);
+    ssd1306_print_str(display_buff, 3);
+}
 
 void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
@@ -108,6 +161,21 @@ void app_main(void) {
     #endif
 
     display_setup(SCL_PIN, SDA_PIN);
+
+    M_Sensors_Interface sensors_intf = {
+        .on_handle_bh1750 = on_resolve_bh1750,
+        .on_handle_ap3216 = on_resolve_ap3216,
+        .on_handle_apds9960 = on_resolve_apds9960,
+        .on_handle_max4400 = on_resolve_max4400,
+        .on_handle_vl53lox = on_resolve_vl53lox,
+        .on_handle_mpu6050 = on_resolve_mpu6050,
+        .on_handle_ina219 = on_resolve_ina219,
+        .on_handle_ds3231 = on_resolve_ds3231,
+        .on_handle_sht31 = on_resolve_sht31
+
+    };
+    i2c_sensors_setup(&sensors_intf);
+    
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     #if WIFI_ENABLED

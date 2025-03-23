@@ -11,6 +11,7 @@ idf_component_register(SRCS "main.c"
                             "app_network/app_network.c"
                             "modbus/modbus.c"
                             "devices/display/display.c"
+                            "devices/i2c/sensors.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES
                         esp_driver_rmt
