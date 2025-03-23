@@ -12,17 +12,8 @@
 #define ST7735_HEIGHT 80
 #define DISPLAY_NUM_PIXELS (ST7735_WIDTH * ST7735_HEIGHT)
 
-struct {
-    uint8_t width;
-    uint8_t height;
-} ST7735_DISPLAY_18IN = { 128, 160 };
 
-struct {
-    uint8_t width;
-    uint8_t height;
-} ST7735_DISPLAY_096IN = { 160, 80 };
-
-uint16_t framebuffer[160 * 80];
+uint16_t tft_buffer[160 * 80];
 
 // uint16_t tft_buffer[DISPLAY_NUM_PIXELS];
 
@@ -40,32 +31,40 @@ void st7735_set_address_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, M
     mod_spi_cmd(0x2C, conf);              // ST7735_RAMWR
 }
 
-void st7735_flush_framebuffer(M_Spi_Conf *conf) {
-    st7735_set_address_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1, conf);
-
-    // Send the entire framebuffer
-    // mod_spi_data((uint8_t *)tft_buffer, DISPLAY_NUM_PIXELS * 2, conf);
-}
-
-// void st7735_fill_screen(uint16_t color, M_Spi_Conf *conf) {
-//     // Fill the framebuffer with the specified color
-//     for (int i = 0; i < DISPLAY_NUM_PIXELS; i++) {
-//         tft_buffer[i] = color;
-//     }
-
-//     // Send the entire framebuffer to the display
-//     st7735_flush_framebuffer(conf);
-// }
 
 void st7735_fill_screen(uint16_t color, M_Spi_Conf *conf) {
-    st7735_set_address_window(0, 0, ST7735_DISPLAY_096IN.width - 1, ST7735_DISPLAY_096IN.height - 1, conf);
-    
+    // Set the address window to cover the entire screen
+    st7735_set_address_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1, conf);
+
+    // Precompute the high and low bytes of the color
     uint8_t color_high = color >> 8;
     uint8_t color_low = color & 0xFF;
-    uint8_t data[] = {color_high, color_low};
 
-    for (int i = 0; i < ST7735_DISPLAY_096IN.width * ST7735_DISPLAY_096IN.height; i++) {
-        mod_spi_data(data, 2, conf);
+    const size_t CHUNK_SIZE = 2000;
+    uint8_t chunk[CHUNK_SIZE]; // Buffer to hold the chunk
+
+    // Calculate the total number of pixels
+    size_t total_pixels = ST7735_WIDTH * ST7735_HEIGHT;
+
+    // Fill the screen in chunks
+    size_t pixels_sent = 0;
+    while (pixels_sent < total_pixels) {
+        // Determine the number of pixels to send in this chunk
+        size_t pixels_in_chunk = (total_pixels - pixels_sent > CHUNK_SIZE / 2)
+                                ? CHUNK_SIZE / 2
+                                : (total_pixels - pixels_sent);
+
+        // Fill the chunk with the color data
+        for (size_t i = 0; i < pixels_in_chunk; i++) {
+            chunk[2 * i] = color_high;   // High byte
+            chunk[2 * i + 1] = color_low; // Low byte
+        }
+
+        // Send the chunk to the display
+        mod_spi_data(chunk, pixels_in_chunk * 2, conf);
+
+        // Update the number of pixels sent
+        pixels_sent += pixels_in_chunk;
     }
 }
 
