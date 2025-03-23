@@ -75,7 +75,6 @@ void st7735_fill_screen(uint16_t color, M_Spi_Conf *conf) {
     }
 }
 
-
 esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
     //! Set the RST pin
     esp_err_t ret = gpio_set_direction(rst, GPIO_MODE_OUTPUT);
@@ -105,35 +104,52 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
     return ret;
 }
 
+void st7735_draw_text(uint8_t x, uint8_t y, const char* str, uint16_t color, bool is_wrap, M_Spi_Conf *conf) {
+    //! Save the initial x position for wrapping
+    uint8_t current_x = x;
 
-void st7735_draw_text(uint8_t x, uint8_t y, const char* str, uint16_t color, M_Spi_Conf *conf) {
     while (*str) {
         const uint8_t *char_data = FONT_7x5[*str - 32];
+        //! buffer contains char Width * Height * 2 (Color)
         uint8_t tft_frame_buffer[5 * 7 * 2];
-        int buffer_index = 0;
+        int buff_idx = 0;
 
+        //! Handle Wraping
+        if (current_x + 5 > ST7735_WIDTH) {
+            if (is_wrap) {
+                //! Handle Wrap: to the next line
+                current_x = x; // Reset x to the start position
+                y += 8; // Move y to the next line (7 pixels for the character + 1 pixel spacing)
+                if (y + 7 > ST7735_HEIGHT) break;
+            } else {
+                //! Handle Trunction: draw as normal
+                break;
+            }
+        }
+
+        //! Render the character into the frame buffer
         for (int j = 0; j < 7; j++) { // Rows
             for (int i = 0; i < 5; i++) { // Columns
                 if (char_data[i] & (1 << j)) {
                     //! Pixel is part of the character (foreground color)
-                    tft_frame_buffer[buffer_index++] = color >> 8;   // High byte of RGB565
-                    tft_frame_buffer[buffer_index++] = color & 0xFF; // Low byte of RGB565
+                    tft_frame_buffer[buff_idx++] = color >> 8;   // High byte of RGB565
+                    tft_frame_buffer[buff_idx++] = color & 0xFF; // Low byte of RGB565
                 } else {
                     //! Pixel is not part of the character (background color)
-                    tft_frame_buffer[buffer_index++] = BACKGROUND_COLOR >> 8;   // High byte of RGB565
-                    tft_frame_buffer[buffer_index++] = BACKGROUND_COLOR & 0xFF; // Low byte of RGB565
+                    tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR >> 8;   // High byte of RGB565
+                    tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR & 0xFF; // Low byte of RGB565
                 }
             }
         }
 
         //! Set the address window to cover the character area
-        st7735_set_address_window(x, y, x + 4, y + 6, conf); // Character is 5x7 pixels
+        st7735_set_address_window(current_x, y, current_x + 4, y + 6, conf); // Character is 5x7 pixels
 
         //! Send the frame buffer to the display in one transaction
         mod_spi_data(tft_frame_buffer, sizeof(tft_frame_buffer), conf);
 
         //! Move to the next character position
-        x += 6; // 5 pixels for the character + 1 pixel spacing
+        current_x += 6; // 5 pixels for the character + 1 pixel spacing
         str++; // Move to the next character in the string
     }
 }

@@ -19,7 +19,7 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 
 void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
     st7735_init(rst, conf);
-    st7735_draw_text(10, 10, "Hello, ST7735!", 0x00AA, conf);
+    st7735_draw_text(0, 0, "Hello Bee! What is Thy bidding, my master?", 0x00AA, true, conf);
 }
 
 void display_print_str(const char *str, uint8_t line) {
