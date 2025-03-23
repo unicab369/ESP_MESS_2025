@@ -143,10 +143,10 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     uint8_t current_x = model->x;               // Current x position
     uint8_t current_y = model->y;               // Current y position
     uint8_t start_x = model->x;                 // Initial x position for each line
-    const char *text = model->text;             // Pointer to the text
     uint8_t font_width = model->font_width;     // Font width
     uint8_t font_height = model->font_height;   // Font height
     uint8_t char_spacing = model->char_spacing; // Spacing between characters
+    const char *text = model->text;             // Pointer to the text
 
     while (*text) {
         //! Handle newline character
@@ -159,40 +159,72 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
             text++; // Move to the next character
             continue;
+        }                   // Move to the next character
+
+        //! Find the end of the current word
+        const char *word_end = text;
+        while (*word_end && *word_end != ' ' && *word_end != '\n') {
+            word_end++;
         }
 
-        // Calculate the width of the current character
-        uint8_t char_width = font_width + char_spacing;
+        //! Calculate the width of the current word
+        uint8_t word_width = 0;
+        const char *temp = text;
+        while (temp < word_end) {
+            word_width += font_width + char_spacing; // Add character width + spacing
+            temp++;
+        }
 
-        //! Handle wrapping
-        if (current_x + char_width > ST7735_WIDTH) {
-            if (model->page_wrap) {
-                if (model->word_wrap && *text != ' ') {
-                    //! Move the entire word to the next line
-                    current_x = start_x; // Reset x to the start position
-                    current_y += font_height + 1; // Move y to the next line
+        //! Handle word wrapping
+        if (current_x + word_width > ST7735_WIDTH) {
+            if (model->word_wrap) {
+                //! Move the entire word to the next line
+                current_x = start_x;            // Reset x to the start position
+                current_y += font_height + 1;   // Move y to the next line
 
-                    //! Stop rendering if the display height is exceeded
-                    if (current_y + font_height > ST7735_HEIGHT) break;
-                } else {
-                    //! Break the word and wrap to the next line
-                    current_x = start_x; // Reset x to the start position
-                    current_y += font_height + 1; // Move y to the next line
+                //! Stop rendering if the display height is exceeded
+                if (current_y + font_height > ST7735_HEIGHT) break;
+            } 
+            else {
+                //! Break the word and print the part that fits
+                while (text < word_end) {
+                    uint8_t char_width = font_width + char_spacing;
 
-                    //! Stop rendering if the display height is exceeded
-                    if (current_y + font_height > ST7735_HEIGHT) break;
+                    //! Handle wrapping for individual characters
+                    if (current_x + char_width > ST7735_WIDTH) {
+                        current_x = start_x;            // Reset x to the start position
+                        current_y += font_height + 1;   // Move y to the next line
+
+                        //! Stop rendering if the display height is exceeded
+                        if (current_y + font_height > ST7735_HEIGHT) break;
+                    }
+
+                    //! Render the current character
+                    draw_char(model, current_x, current_y, *text, config);
+
+                    //! Move to the next character position
+                    current_x += char_width;    // Move x by character width + spacing
+                    text++;                     // Move to the next character
                 }
-            } else {
-                //! Handle truncation: stop rendering
-                break;
+
+                continue; // Skip the space handling below
             }
         }
 
-        //! Render the current character
-        draw_char(model, current_x, current_y, *text, config);
+        //! Render the current word
+        while (text < word_end) {
+            //! Render the current character
+            draw_char(model, current_x, current_y, *text, config);
 
-        //! Move to the next character position
-        current_x += char_width;    // Move x by character width + spacing
-        text++;                     // Move to the next character
+            //! Move to the next character position
+            current_x += font_width + char_spacing;     // Move x by character width + spacing
+            text++;                                     // Move to the next character
+        }
+
+        //! Skip the space character after the word
+        if (*text == ' ') {
+            current_x += font_width + char_spacing; // Add space between words
+            text++;
+        }
     }
 }
