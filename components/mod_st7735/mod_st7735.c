@@ -144,7 +144,7 @@ void handle_buffer(M_Render_State *state, uint8_t font_height, uint16_t buffer_s
     }
 }
 
-void reset_render_state(M_Render_State *state, uint8_t start_x, uint8_t font_height) {
+bool reset_render_state(M_Render_State *state, uint8_t start_x, uint8_t font_height) {
     state->accumulated_size = 0;
     state->current_x = start_x;
     state->current_y += font_height + 1; // Move to the next line
@@ -153,6 +153,9 @@ void reset_render_state(M_Render_State *state, uint8_t start_x, uint8_t font_hei
 
     //! move to next line
     state->line_idx++;
+
+    //! check if current_y is outbounded
+    return state->current_y + font_height > ST7735_HEIGHT;
 }
 
 //! Main function to draw text
@@ -178,12 +181,12 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     while (*text) {
         //! Handle newline character
         if (*text == '\n') {
-            //! Print the remaining buffer _AND_ reset state for the nextline
+            //! Print the remaining buffer
             handle_buffer(&state, font_height, state.accumulated_size);
-            reset_render_state(&state, start_x, font_height);
 
-            //! Stop rendering if the display height is exceeded
-            if (state.current_y + font_height > ST7735_HEIGHT) break;
+            //! reset state for the nextline. Check for outbound ST7735_HEIGHT
+            bool outbound_height = reset_render_state(&state, start_x, font_height);
+            if (outbound_height) break;
 
             text++; // Move to the next character
             continue;
@@ -206,12 +209,13 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         //! Handle word wrapping
         if (state.current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
-                //! Print the remaining buffer _AND_ reset state for the nextline
+                //! Print the remaining buffer
                 handle_buffer(&state, font_height, state.accumulated_size);
-                reset_render_state(&state, start_x, font_height);
+                
+                //! reset state for the nextline. Check for outbound ST7735_HEIGHT
+                bool outbound_height = reset_render_state(&state, start_x, font_height);
+                if (outbound_height) break;
 
-                //! Stop rendering if the display height is exceeded
-                if (state.current_y + font_height > ST7735_HEIGHT) break;
             } else {
                 //! Break the word and print the part that fits
                 while (text < word_end) {
@@ -219,12 +223,12 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
                     //! Handle wrapping for individual characters
                     if (state.current_x + char_width > ST7735_WIDTH) {
-                        //! Print the remaining buffer _AND_ reset state for the nextline
+                        //! Print the remaining buffer
                         handle_buffer(&state, font_height, state.accumulated_size);
-                        reset_render_state(&state, start_x, font_height);
 
-                        //! Stop rendering if the display height is exceeded
-                        if (state.current_y + font_height > ST7735_HEIGHT) break;
+                        //! reset state for the nextline. Check for outbound ST7735_HEIGHT
+                        bool outbound_height = reset_render_state(&state, start_x, font_height);
+                        if (outbound_height) break;
                     }
 
                     //! Accumulate the size of the current character
