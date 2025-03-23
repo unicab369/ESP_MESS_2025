@@ -107,12 +107,37 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 
 
 
-void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
-    int buff_idx = 0;
 
+//! Struct to track rendering state
+typedef struct {
+    uint16_t accumulated_size; // Accumulated size of characters on the current line (in bytes)
+    uint8_t current_x;         // Current x position
+    uint8_t current_y;         // Current y position
+    uint8_t render_start_x;    // Starting x position of the current buffer
+    uint8_t render_end_x;      // Ending x position of the current buffer
+} RenderState;
+
+void handle_buffer(RenderState *state, uint16_t line_idx, uint8_t font_height, uint16_t buffer_size) {
+    if (state->accumulated_size > 0) {
+        printf("Line %d: Size = %d bytes,\t Window: [x=%d, y=%d] to [x=%d, y=%d]\n", 
+                line_idx, buffer_size, state->render_start_x, state->current_y, 
+                state->render_end_x, state->current_y + font_height - 1);
+    }
+}
+
+void reset_render_state(RenderState *state, uint8_t start_x, uint8_t font_height) {
+    state->accumulated_size = 0;
+    state->current_x = start_x;
+    state->current_y += font_height + 1; // Move to the next line
+    state->render_start_x = start_x;
+    state->render_end_x = start_x;
+}
+
+void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     //! Get the font data for the current character
     const uint8_t *char_data = &model->font[(c - 32) * model->font_width * ((model->font_height + 7) / 8)];
-
+    int buff_idx = 0;
+    
     //! Render the character into the frame buffer
     for (int j = 0; j < model->font_height; j++) { // Rows
         for (int i = 0; i < model->font_width; i++) { // Columns
@@ -127,38 +152,39 @@ void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     }
 }
 
+//! Main function to draw text
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
 
-    uint8_t current_x = model->x;               // Current x position
-    uint8_t current_y = model->y;               // Current y position
+    //! Initialize rendering state
+    RenderState state = {
+        .accumulated_size = 0,
+        .current_x = model->x,
+        .current_y = model->y,
+        .render_start_x = model->x,
+        .render_end_x = model->y
+    };
+
     uint8_t start_x = model->x;                 // Initial x position for each line
     uint8_t font_width = model->font_width;     // Font width
     uint8_t font_height = model->font_height;   // Font height
     uint8_t char_spacing = model->char_spacing; // Spacing between characters
     const char *text = model->text;             // Pointer to the text
 
-    //! Variables for tracking line size and line indexes
-    uint16_t accumulated_size   = 0; // Accumulated size of characters on the current line (in bytes)
-    uint16_t line_idx           = 0;     // Current line index
+    uint16_t line_idx = 0; // Current line index
 
     while (*text) {
         //! Handle newline character
         if (*text == '\n') {
-            //! Print the remaining size of the current line if it has data
-            if (accumulated_size > 0) {
-                printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
-            }
+            //! Print the remaining buffer if it has data
+            handle_buffer(&state, line_idx, font_height, state.accumulated_size);
 
             //! Reset for the next line
-            accumulated_size = 0; // Clear the accumulated size
-            line_idx++;       // Increment line number
-
-            current_x = start_x; // Reset x to the start position
-            current_y += font_height + 1; // Move y to the next line (font height + 1 pixel spacing)
+            reset_render_state(&state, start_x, font_height);
+            line_idx++;
 
             //! Stop rendering if the display height is exceeded
-            if (current_y + font_height > ST7735_HEIGHT) break;
+            if (state.current_y + font_height > ST7735_HEIGHT) break;
 
             text++; // Move to the next character
             continue;
@@ -179,56 +205,49 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         }
 
         //! Handle word wrapping
-        if (current_x + word_width > ST7735_WIDTH) {
+        if (state.current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
-                //! Print the remaining size of the current line if it has data
-                if (accumulated_size > 0) {
-                    printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
-                }
+                //! Print the remaining buffer if it has data
+                handle_buffer(&state, line_idx, font_height, state.accumulated_size);
 
                 //! Reset for the next line
-                accumulated_size = 0;       // Clear the accumulated size
-                line_idx++;                 // Increment line number
-
-                //! Move the entire word to the next line
-                current_x = start_x;            // Reset x to the start position
-                current_y += font_height + 1;   // Move y to the next line
+                reset_render_state(&state, start_x, font_height);
+                line_idx++;
 
                 //! Stop rendering if the display height is exceeded
-                if (current_y + font_height > ST7735_HEIGHT) break;
+                if (state.current_y + font_height > ST7735_HEIGHT) break;
             } else {
                 //! Break the word and print the part that fits
                 while (text < word_end) {
                     uint8_t char_width = font_width + char_spacing;
 
                     //! Handle wrapping for individual characters
-                    if (current_x + char_width > ST7735_WIDTH) {
-                        //! Print the remaining size of the current line if it has data
-                        if (accumulated_size > 0) {
-                            printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
-                        }
+                    if (state.current_x + char_width > ST7735_WIDTH) {
+                        //! Print the remaining buffer if it has data
+                        handle_buffer(&state, line_idx, font_height, state.accumulated_size);
 
                         //! Reset for the next line
-                        accumulated_size = 0;       // Clear the accumulated size
-                        line_idx++;                 // Increment line number
-
-                        current_x = start_x;            // Reset x to the start position
-                        current_y += font_height + 1;   // Move y to the next line
+                        reset_render_state(&state, start_x, font_height);
+                        line_idx++;
 
                         //! Stop rendering if the display height is exceeded
-                        if (current_y + font_height > ST7735_HEIGHT) break;
+                        if (state.current_y + font_height > ST7735_HEIGHT) break;
                     }
 
-                    //! Calculate the size of the current character in bytes
-                    uint16_t char_size_bytes = model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
-
                     //! Accumulate the size of the current character
-                    accumulated_size += char_size_bytes;
+                    state.accumulated_size += model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
+
+                    //! Update the rendering window
+                    state.render_end_x = state.current_x + font_width;
 
                     //! Check if the accumulated size exceeds 500 bytes
-                    if (accumulated_size >= 500) {
-                        printf("Line %d: Size = %d bytes (full)\n", line_idx, 500);
-                        accumulated_size -= 500; // Keep the remaining bytes for the next print
+                    if (state.accumulated_size >= 500) {
+                        handle_buffer(&state, line_idx, font_height, 500);
+                        state.accumulated_size -= 500; // Keep the remaining bytes for the next print
+
+                        //! Update the rendering window for the next chunk
+                        state.render_start_x = state.render_end_x;
+                        state.render_end_x = state.render_start_x;
                     }
 
                     //! Render the current character
@@ -237,15 +256,15 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                     draw_char(model, frame_buff, *text);
 
                     //! Set the address window to cover the character area
-                    st7735_set_address_window(current_x, current_y, 
-                        current_x + model->font_width - 1, current_y + model->font_height - 1, config);
+                    st7735_set_address_window(state.current_x, state.current_y, 
+                        state.current_x + model->font_width - 1, state.current_y + model->font_height - 1, config);
 
                     //! Send the frame buffer to the display in one transaction
                     mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
 
                     //! Move to the next character position
-                    current_x += char_width;    // Move x by character width + spacing
-                    text++;                     // Move to the next character
+                    state.current_x += char_width;    // Move x by character width + spacing
+                    text++;                           // Move to the next character
                 }
 
                 continue; // Skip the space handling below
@@ -254,16 +273,20 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
         //! Render the current word
         while (text < word_end) {
-            //! Calculate the size of the current character in bytes
-            uint16_t char_size_bytes = model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
-
             //! Accumulate the size of the current character
-            accumulated_size += char_size_bytes;
+            state.accumulated_size += model->font_width * model->font_height * 2; // Each pixel is 2 bytes (RGB565)
+
+            //! Update the rendering window
+            state.render_end_x = state.current_x + font_width;
 
             //! Check if the accumulated size exceeds 500 bytes
-            if (accumulated_size >= 500) {
-                printf("Line %d: Size = %d bytes (full)\n", line_idx, 500);
-                accumulated_size -= 500; // Keep the remaining bytes for the next print
+            if (state.accumulated_size >= 500) {
+                handle_buffer(&state, line_idx, font_height, 500);
+                state.accumulated_size -= 500; // Keep the remaining bytes for the next print
+
+                //! Update the rendering window for the next chunk
+                state.render_start_x = state.render_end_x;
+                state.render_end_x = state.render_start_x;
             }
 
             //! Render the current character
@@ -272,26 +295,24 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             draw_char(model, frame_buff, *text);
 
             //! Set the address window to cover the character area
-            st7735_set_address_window(current_x, current_y,
-                current_x + model->font_width - 1, current_y + model->font_height - 1, config);
+            st7735_set_address_window(state.current_x, state.current_y,
+                state.current_x + model->font_width - 1, state.current_y + model->font_height - 1, config);
 
             //! Send the frame buffer to the display in one transaction
             mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
 
             //! Move to the next character position
-            current_x += font_width + char_spacing;     // Move x by character width + spacing
-            text++;                                     // Move to the next character
+            state.current_x += font_width + char_spacing;     // Move x by character width + spacing
+            text++;                                           // Move to the next character
         }
 
         //! Skip the space character after the word
         if (*text == ' ') {
-            current_x += font_width + char_spacing; // Add space between words
+            state.current_x += font_width + char_spacing; // Add space between words
             text++;
         }
     }
 
-    //! Print the remaining size of the last line if it has data
-    if (accumulated_size > 0) {
-        printf("Line %d: Size = %d bytes (remaining)\n", line_idx, accumulated_size);
-    }
+    //! Print the remaining buffer if it has data
+    handle_buffer(&state, line_idx, font_height, state.accumulated_size);
 }
