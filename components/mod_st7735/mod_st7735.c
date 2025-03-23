@@ -107,8 +107,8 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 
 void draw_char(M_TFT_Text *model, uint8_t x, uint8_t y, char c, M_Spi_Conf *config) {
     //! Calculate the size of the frame buffer
-    uint16_t frame_buffer_size = model->font_width * model->font_height * 2; // 2 bytes per pixel (RGB565)
-    uint8_t tft_frame_buffer[frame_buffer_size]; // Frame buffer for the character
+    uint16_t frame_buffer_size = model->font_width * model->font_height; // Number of pixels
+    uint16_t tft_frame_buffer[frame_buffer_size]; // Frame buffer for the character (uint16_t for RGB565)
     int buff_idx = 0;
 
     //! Get the font data for the current character
@@ -119,12 +119,10 @@ void draw_char(M_TFT_Text *model, uint8_t x, uint8_t y, char c, M_Spi_Conf *conf
         for (int i = 0; i < model->font_width; i++) { // Columns
             if (char_data[(i + (j / 8) * model->font_width)] & (1 << (j % 8))) {
                 //! Pixel is part of the character (foreground color)
-                tft_frame_buffer[buff_idx++] = model->color >> 8;   // High byte of RGB565
-                tft_frame_buffer[buff_idx++] = model->color & 0xFF; // Low byte of RGB565
+                tft_frame_buffer[buff_idx++] = model->color; // RGB565 color
             } else {
                 //! Pixel is not part of the character (background color)
-                tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR >> 8;   // High byte of RGB565
-                tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR & 0xFF; // Low byte of RGB565
+                tft_frame_buffer[buff_idx++] = BACKGROUND_COLOR; // RGB565 background color
             }
         }
     }
@@ -133,7 +131,7 @@ void draw_char(M_TFT_Text *model, uint8_t x, uint8_t y, char c, M_Spi_Conf *conf
     st7735_set_address_window(x, y, x + model->font_width - 1, y + model->font_height - 1, config);
 
     //! Send the frame buffer to the display in one transaction
-    mod_spi_data(tft_frame_buffer, frame_buffer_size, config);
+    mod_spi_data((uint8_t *)tft_frame_buffer, frame_buffer_size * 2, config); // Multiply by 2 for uint16_t size
 }
 
 
@@ -159,7 +157,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
             text++; // Move to the next character
             continue;
-        }                   // Move to the next character
+        }
 
         //! Find the end of the current word
         const char *word_end = text;
@@ -184,8 +182,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
                 //! Stop rendering if the display height is exceeded
                 if (current_y + font_height > ST7735_HEIGHT) break;
-            } 
-            else {
+            } else {
                 //! Break the word and print the part that fits
                 while (text < word_end) {
                     uint8_t char_width = font_width + char_spacing;
