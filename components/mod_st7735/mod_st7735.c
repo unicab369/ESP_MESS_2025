@@ -134,28 +134,29 @@ typedef struct {
     uint8_t current_y;         // Current y position
     uint8_t render_start_x;    // Starting x position of the current buffer
     uint8_t render_end_x;      // Ending x position of the current buffer
+    uint8_t font_height;
 } M_Render_State;
 
-void handle_buffer(M_Render_State *state, uint8_t font_height, uint16_t buffer_size) {
+void handle_buffer(M_Render_State *state, uint16_t buffer_size) {
     if (state->accumulated_size > 0) {
         printf("Line %d: Size = %d bytes,\t Window: [x=%d, y=%d] to [x=%d, y=%d]\n", 
                 state->line_idx, buffer_size, state->render_start_x, state->current_y, 
-                state->render_end_x, state->current_y + font_height - 1);
+                state->render_end_x, state->current_y + state->font_height - 1);
     }
 }
 
-bool reset_render_state(M_Render_State *state, uint8_t start_x, uint8_t font_height) {
+bool reset_render_state(M_Render_State *state, uint8_t start_x) {
     state->accumulated_size = 0;
     state->current_x = start_x;
-    state->current_y += font_height + 1; // Move to the next line
     state->render_start_x = start_x;
     state->render_end_x = start_x;
+    state->current_y += state->font_height + 1; // Move to the next line
 
     //! move to next line
     state->line_idx++;
 
     //! check if current_y is outbounded
-    return state->current_y + font_height > ST7735_HEIGHT;
+    return state->current_y + state->font_height > ST7735_HEIGHT;
 }
 
 //! Main function to draw text
@@ -164,7 +165,6 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
     uint8_t start_x = model->x;                 // Initial x position for each line
     uint8_t font_width = model->font_width;     // Font width
-    uint8_t font_height = model->font_height;   // Font height
     uint8_t char_spacing = model->char_spacing; // Spacing between characters
     const char *text = model->text;             // Pointer to the text
 
@@ -175,17 +175,18 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         .current_x = model->x,
         .current_y = model->y,
         .render_start_x = model->x,
-        .render_end_x = model->y
+        .render_end_x = model->y,
+        .font_height = model->font_height
     };
 
     while (*text) {
         //! Handle newline character
         if (*text == '\n') {
             //! Print the remaining buffer
-            handle_buffer(&state, font_height, state.accumulated_size);
+            handle_buffer(&state, state.accumulated_size);
 
             //! reset state for the nextline. Check for outbound ST7735_HEIGHT
-            bool outbound_height = reset_render_state(&state, start_x, font_height);
+            bool outbound_height = reset_render_state(&state, start_x);
             if (outbound_height) break;
 
             text++; // Move to the next character
@@ -210,10 +211,10 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         if (state.current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
                 //! Print the remaining buffer
-                handle_buffer(&state, font_height, state.accumulated_size);
+                handle_buffer(&state, state.accumulated_size);
                 
                 //! reset state for the nextline. Check for outbound ST7735_HEIGHT
-                bool outbound_height = reset_render_state(&state, start_x, font_height);
+                bool outbound_height = reset_render_state(&state, start_x);
                 if (outbound_height) break;
 
             } else {
@@ -224,10 +225,10 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                     //! Handle wrapping for individual characters
                     if (state.current_x + char_width > ST7735_WIDTH) {
                         //! Print the remaining buffer
-                        handle_buffer(&state, font_height, state.accumulated_size);
+                        handle_buffer(&state, state.accumulated_size);
 
                         //! reset state for the nextline. Check for outbound ST7735_HEIGHT
-                        bool outbound_height = reset_render_state(&state, start_x, font_height);
+                        bool outbound_height = reset_render_state(&state, start_x);
                         if (outbound_height) break;
                     }
 
@@ -239,7 +240,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
                     //! Check if the accumulated size exceeds 500 bytes
                     if (state.accumulated_size >= 500) {
-                        handle_buffer(&state, font_height, 500);
+                        handle_buffer(&state, 500);
                         state.accumulated_size -= 500; // Keep the remaining bytes for the next print
 
                         //! Update the rendering window for the next chunk
@@ -278,7 +279,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
             //! Check if the accumulated size exceeds 500 bytes
             if (state.accumulated_size >= 500) {
-                handle_buffer(&state, font_height, 500);
+                handle_buffer(&state, 500);
                 state.accumulated_size -= 500; // Keep the remaining bytes for the next print
 
                 //! Update the rendering window for the next chunk
@@ -311,5 +312,5 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     }
 
     //! Print the remaining buffer if it has data
-    handle_buffer(&state, font_height, state.accumulated_size);
+    handle_buffer(&state, state.accumulated_size);
 }
