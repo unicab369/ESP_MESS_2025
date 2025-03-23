@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "mod_i2c.h"
+#include "mod_bitmap.h"
 
 static const char *TAG = "I2C_DEVICE";
 
@@ -26,6 +27,11 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
         .color = 0x00AA,
         .page_wrap = 1,
         .word_wrap = 0,
+
+        .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
+        .font_width = 5,                        // Font width
+        .font_height = 7,                       // Font height
+        .char_spacing = 1,                      // Spacing between characters
         .text = "Hello Bee! What is Thy bidding, my master? Tell me!"
                 "\nTomorrow is another day!"
                 "\n\nThis is a new line. Making a new line.",

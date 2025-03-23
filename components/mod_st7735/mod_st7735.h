@@ -14,6 +14,11 @@ typedef struct {
     uint16_t color;
     uint8_t page_wrap;
     uint8_t word_wrap;
+
+    const uint8_t *font;    // Pointer to the font data
+    uint8_t font_width;     // Width of each character in the font
+    uint8_t font_height;    // Height of each character in the font
+    uint8_t char_spacing;   // Spacing between characters (default: 1 pixel)
     const char* text;
 } M_TFT_Text;
 

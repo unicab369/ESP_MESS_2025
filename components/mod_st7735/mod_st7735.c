@@ -106,48 +106,67 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
 
 
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
-    if (!model || !config || !model->text) return; // Error handling
+    if (!model || !config || !model->text || !model->font) return; // Error handling
 
-    //! Save the initial x position for wrapping
-    uint8_t current_x = model->x;
+    uint8_t current_x = model->x;               // Current x position
+    uint8_t start_x = model->x;                 // Initial x position for each line
+    const char *text = model->text;             // Pointer to the text
+    uint8_t font_width = model->font_width;     // Font width
+    uint8_t font_height = model->font_height;   // Font height
+    uint8_t char_spacing = model->char_spacing; // Spacing between characters
 
-    while (*model->text) {
+    while (*text) {
         //! Handle newline character
-        if (*model->text == '\n') {
-            current_x = model->x; // Reset x to the start position
-            model->y += 8; // Move y to the next line (7 pixels for the character + 1 pixel spacing)
+        if (*text == '\n') {
+            current_x = start_x; // Reset x to the start position
+            model->y += font_height + 1; // Move y to the next line (font height + 1 pixel spacing)
 
             //! Stop rendering if the display height is exceeded
-            if (model->y + 7 > ST7735_HEIGHT) break;
+            if (model->y + font_height > ST7735_HEIGHT) break;
 
-            model->text++; // Move to the next character in the string
-            continue; // Skip rendering for the newline character
+            text++; // Move to the next character
+            continue;
         }
 
-        //! Handle Wraping
-        if (current_x + 5 > ST7735_WIDTH) {
-            if (model->page_wrap) {
-                //! Handle Wrap: to the next line
-                current_x = model->x; // Reset x to the start position
-                model->y += 8; // Move y to the next line (7 pixels for the character + 1 pixel spacing)
+        // Calculate the width of the current character
+        uint8_t char_width = font_width + char_spacing;
 
-                //! Stop rendering if the display height is exceeded
-                if (model->y + 7 > ST7735_HEIGHT) break;
+        //! Handle wrapping
+        if (current_x + char_width > ST7735_WIDTH) {
+            if (model->page_wrap) {
+                if (model->word_wrap && *text != ' ') {
+                    //! Move the entire word to the next line
+                    current_x = start_x; // Reset x to the start position
+                    model->y += font_height + 1; // Move y to the next line
+
+                    //! Stop rendering if the display height is exceeded
+                    if (model->y + font_height > ST7735_HEIGHT) break;
+                } else {
+                    //! Break the word and wrap to the next line
+                    current_x = start_x; // Reset x to the start position
+                    model->y += font_height + 1; // Move y to the next line
+
+                    //! Stop rendering if the display height is exceeded
+                    if (model->y + font_height > ST7735_HEIGHT) break;
+                }
             } else {
-                //! Handle Truncation: stop rendering
+                //! Handle truncation: stop rendering
                 break;
             }
         }
 
-        //! buffer contains char Width * Height * 2 (Color)
-        uint8_t tft_frame_buffer[5 * 7 * 2]; // Frame buffer for a 5x7 character (2 bytes per pixel)
-        const uint8_t *char_data = FONT_7x5[*model->text - 32]; // Get font data for the current character
+        // Get the font data for the current character
+        const uint8_t *char_data = &model->font[(*text - 32) * font_width * ((font_height + 7) / 8)];
+
+        //! Calculate the size of the frame buffer
+        uint16_t frame_buffer_size = font_width * font_height * 2; // 2 bytes per pixel (RGB565)
+        uint8_t tft_frame_buffer[frame_buffer_size]; // Frame buffer for the character
         int buff_idx = 0;
 
         //! Render the character into the frame buffer
-        for (int j = 0; j < 7; j++) { // Rows
-            for (int i = 0; i < 5; i++) { // Columns
-                if (char_data[i] & (1 << j)) {
+        for (int j = 0; j < font_height; j++) { // Rows
+            for (int i = 0; i < font_width; i++) { // Columns
+                if (char_data[(i + (j / 8) * font_width)] & (1 << (j % 8))) {
                     //! Pixel is part of the character (foreground color)
                     tft_frame_buffer[buff_idx++] = model->color >> 8;   // High byte of RGB565
                     tft_frame_buffer[buff_idx++] = model->color & 0xFF; // Low byte of RGB565
@@ -160,13 +179,13 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         }
 
         //! Set the address window to cover the character area
-        st7735_set_address_window(current_x, model->y, current_x + 4, model->y + 6, config); // Character is 5x7 pixels
+        st7735_set_address_window(current_x, model->y, current_x + font_width - 1, model->y + font_height - 1, config);
 
         //! Send the frame buffer to the display in one transaction
-        mod_spi_data(tft_frame_buffer, sizeof(tft_frame_buffer), config);
+        mod_spi_data(tft_frame_buffer, frame_buffer_size, config);
 
         //! Move to the next character position
-        current_x += 6;     // 5 pixels for the character + 1 pixel spacing
-        model->text++;      // Move to the next character in the string
+        current_x += char_width;    // Move x by character width + spacing
+        text++;                     // Move to the next character
     }
 }
