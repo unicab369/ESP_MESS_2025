@@ -18,6 +18,7 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
     ssd1306_print_str("Hello Bee", 0);
 }
 
+//# TODO: char_spacing crash above value 1
 void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
     st7735_init(rst, conf);
 
