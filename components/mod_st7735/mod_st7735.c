@@ -201,18 +201,19 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
 
 
 static bool reset_render_state() {
-    //! Reset state for the next line 
-    render_state.char_count = 0;                 // Clear the accumulated characters
-    render_state.current_x = 0;                       // Reset x to the start position
-    render_state.x0 = 0;                  // Reset render_start_x to the start position
+    // Reset state for the next line 
+    render_state.char_count = 0;                            // Clear the accumulated characters
+    render_state.current_x = 0;                             // Reset x to the start position
+    render_state.x0 = 0;                                    // Reset render_start_x to the start position
     render_state.current_y += render_state.font_height + 1; // Move y to the next line
 
-    //! Move to the next line
+    // Move to the next line
     render_state.line_idx++;
 
     //! Check if current_y is out of bounds
     return render_state.current_y + render_state.font_height > ST7735_HEIGHT;
 }
+
 
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
@@ -220,6 +221,8 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     uint8_t font_width = model->font_width;     // Font width
     uint8_t char_spacing = model->char_spacing; // Spacing between characters
     const char *text = model->text;             // Pointer to the text
+
+    uint8_t char_width = font_width + char_spacing;
 
     //# Initialize rendering state
     render_state.current_x = model->x;
@@ -230,19 +233,6 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     render_state.x0 = model->x;
 
     while (*text) {
-        //# Handle newline character
-        if (*text == '\n') {
-            //! Print any remaining buffer before resetting
-            send_text_buffer(model, config);
-
-            //! Reset state for the next line and check for outbound ST7735_HEIGHT
-            bool outbound_height = reset_render_state();
-            if (outbound_height) break;
-
-            text++; // Move to the next character
-            continue;
-        }
-
         // Find the end of the current word
         const char *word_end = text;
         while (*word_end && *word_end != ' ' && *word_end != '\n') {
@@ -257,47 +247,62 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             temp++;
         }
 
-        //# Handle word wrapping
-        if (render_state.current_x + word_width > ST7735_WIDTH) {
-            if (model->word_wrap) {
-                //! Print any remaining buffer before resetting
-                send_text_buffer(model, config);
+        //# Handle newline character
+        if (*text == '\n') {
+            //! Print any remaining buffer before resetting
+            send_text_buffer(model, config);
 
-                //! Reset state for the next line and check for outbound ST7735_HEIGHT
-                bool outbound_height = reset_render_state();
-                if (outbound_height) break;
+            //! Reset state for the next line and check for outbound ST7735_HEIGHT
+            bool outbound_height = reset_render_state();
+            if (outbound_height) break;
 
-            } else {
-                // Break the word and print the part that fits
-                while (text < word_end) {
-                    uint8_t char_width = font_width + char_spacing;
-
-                    // Handle wrapping for individual characters
-                    if (render_state.current_x + char_width > ST7735_WIDTH) {
-                        //! Print any remaining buffer before resetting
-                        send_text_buffer(model, config);
-
-                        //! Reset state for the next line and check for outbound ST7735_HEIGHT
-                        bool outbound_height = reset_render_state();
-                        if (outbound_height) break;
-                    }
-
-                    // Accumulate the current character
-                    render_state.char_buff[render_state.char_count++] = *text;
-
-                    //! Check if the buffer is full
-                    if (render_state.char_count >= MAX_CHAR_COUNT) {
-                        send_text_buffer(model, config);
-                    }
-
-                    // Move to the next character position
-                    render_state.current_x += char_width + char_spacing;       // Move x by character width + spacing
-                    text++;                                             // Move to the next character
-                }
-
-                continue; // Skip the space handling below
-            }
+            text++;     // Move to the next character
+            continue;
         }
+
+        //# Handle word wrapping
+        // if (render_state.current_x + word_width > ST7735_WIDTH) {
+            if (model->word_wrap) {
+                if (render_state.current_x + word_width > ST7735_WIDTH) {
+                    //! Print any remaining buffer before resetting
+                    send_text_buffer(model, config);
+
+                    //! Reset state for the next line and check for outbound ST7735_HEIGHT
+                    bool outbound_height = reset_render_state();
+                    if (outbound_height) break;
+                }
+            } else {
+                if (render_state.current_x + word_width > ST7735_WIDTH) {
+                    // Break the word and print the part that fits
+                    while (text < word_end) {
+
+                        // Handle wrapping for individual characters
+                        if (render_state.current_x + char_width > ST7735_WIDTH) {
+                            //! Print any remaining buffer before resetting
+                            send_text_buffer(model, config);
+
+                            //! Reset state for the next line and check for outbound ST7735_HEIGHT
+                            bool outbound_height = reset_render_state();
+                            if (outbound_height) break;
+                        }
+
+                        // Accumulate the current character
+                        render_state.char_buff[render_state.char_count++] = *text;
+
+                        //! Check if the buffer is full
+                        if (render_state.char_count >= MAX_CHAR_COUNT) {
+                            send_text_buffer(model, config);
+                        }
+
+                        // Move to the next character position
+                        render_state.current_x += char_width;               // Move x by character width + spacing
+                        text++;                                             // Move to the next character
+                    }
+
+                    continue; // Skip the space handling below
+                }
+            }
+        // }
 
         //# Render the current word
         while (text < word_end) {
@@ -310,8 +315,8 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             }
 
             // Move to the next character position
-            render_state.current_x += font_width + char_spacing;     // Move x by character width + spacing
-            text++;                                           // Move to the next character
+            render_state.current_x += char_width;     // Move x by character width + spacing
+            text++;                                                 // Move to the next character
         }
 
         //# Handle the space character
@@ -325,8 +330,8 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             }
 
             // Move to the next character position
-            render_state.current_x += font_width + char_spacing; // Add space between words
-            text++;                                       // Move to the next character
+            render_state.current_x += char_width;    // Add space between words
+            text++;                                                 // Move to the next character
         }
     }
 
