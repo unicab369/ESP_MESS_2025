@@ -198,9 +198,7 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
     render_state.x0 = x1;
 }
 
-
-
-static bool reset_render_state() {
+bool flush_buffer_and_reset() {
     // Reset state for the next line 
     render_state.char_count = 0;                            // Clear the accumulated characters
     render_state.current_x = 0;                             // Reset x to the start position
@@ -213,7 +211,6 @@ static bool reset_render_state() {
     //! Check if current_y is out of bounds
     return render_state.current_y + render_state.font_height > ST7735_HEIGHT;
 }
-
 
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
@@ -233,79 +230,59 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     render_state.x0 = model->x;
 
     while (*text) {
-        // Find the end of the current word
+        //# Find the end of the current word and calculate its width
+        uint8_t word_width = 0;
         const char *word_end = text;
         while (*word_end && *word_end != ' ' && *word_end != '\n') {
-            word_end++;
-        }
-
-        // Calculate the width of the current word
-        uint8_t word_width = 0;
-        const char *temp = text;
-        while (temp < word_end) {
             word_width += font_width + char_spacing; // Add character width + spacing
-            temp++;
+            word_end++;
         }
 
         //# Handle newline character
         if (*text == '\n') {
-            //! Print any remaining buffer before resetting
-            send_text_buffer(model, config);
-
-            //! Reset state for the next line and check for outbound ST7735_HEIGHT
-            bool outbound_height = reset_render_state();
-            if (outbound_height) break;
-
+            send_text_buffer(model, config);;
+            if (flush_buffer_and_reset()) break;
             text++;     // Move to the next character
             continue;
         }
 
         //# Handle word wrapping
-        // if (render_state.current_x + word_width > ST7735_WIDTH) {
+        if (render_state.current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
-                if (render_state.current_x + word_width > ST7735_WIDTH) {
-                    //! Print any remaining buffer before resetting
-                    send_text_buffer(model, config);
+                send_text_buffer(model, config);
+                if (flush_buffer_and_reset()) break;
 
-                    //! Reset state for the next line and check for outbound ST7735_HEIGHT
-                    bool outbound_height = reset_render_state();
-                    if (outbound_height) break;
-                }
             } else {
-                if (render_state.current_x + word_width > ST7735_WIDTH) {
-                    // Break the word and print the part that fits
-                    while (text < word_end) {
+                // Break the word and print the part that fits
+                while (text < word_end) {
 
-                        // Handle wrapping for individual characters
-                        if (render_state.current_x + char_width > ST7735_WIDTH) {
-                            //! Print any remaining buffer before resetting
-                            send_text_buffer(model, config);
-
-                            //! Reset state for the next line and check for outbound ST7735_HEIGHT
-                            bool outbound_height = reset_render_state();
-                            if (outbound_height) break;
-                        }
-
-                        // Accumulate the current character
-                        render_state.char_buff[render_state.char_count++] = *text;
-
-                        //! Check if the buffer is full
-                        if (render_state.char_count >= MAX_CHAR_COUNT) {
-                            send_text_buffer(model, config);
-                        }
-
-                        // Move to the next character position
-                        render_state.current_x += char_width;               // Move x by character width + spacing
-                        text++;                                             // Move to the next character
+                    // Handle wrapping for individual characters
+                    if (render_state.current_x + char_width > ST7735_WIDTH) {
+                        send_text_buffer(model, config);
+                        if (flush_buffer_and_reset()) break;
                     }
 
-                    continue; // Skip the space handling below
-                }
-            }
-        // }
+                    // Accumulate the current character
+                    render_state.char_buff[render_state.char_count++] = *text;
 
-        //# Render the current word
-        while (text < word_end) {
+                    //! Check if the buffer is full
+                    if (render_state.char_count >= MAX_CHAR_COUNT) {
+                        send_text_buffer(model, config);
+                    }
+
+                    // Move to the next character position
+                    render_state.current_x += char_width;               // Move x by character width + spacing
+                    text++;                                             // Move to the next character
+                }
+
+                continue; // Skip the space handling below
+            }
+        }
+
+        //# This while loop processes a sequence of characters (stored in the text pointer) until it reaches
+        //# the end of a word (word_end) or encounters a space character (' ')
+        
+        while (text < word_end || (*text == ' ' && text < word_end + 1)) {
             // Accumulate the current character
             render_state.char_buff[render_state.char_count++] = *text;
 
@@ -316,21 +293,6 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
             // Move to the next character position
             render_state.current_x += char_width;     // Move x by character width + spacing
-            text++;                                                 // Move to the next character
-        }
-
-        //# Handle the space character
-        if (*text == ' ') {
-            // Accumulate the space character
-            render_state.char_buff[render_state.char_count++] = *text;
-
-            //! Check if the buffer is full
-            if (render_state.char_count >= MAX_CHAR_COUNT) {
-                send_text_buffer(model, config);
-            }
-
-            // Move to the next character position
-            render_state.current_x += char_width;    // Add space between words
             text++;                                                 // Move to the next character
         }
     }
