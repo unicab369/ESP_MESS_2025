@@ -27,7 +27,7 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
         .y = 0,
         .color = 0x00AA,
         .page_wrap = 1,
-        .word_wrap = 0,
+        .word_wrap = 1,
 
         .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
         .font_width = 5,                        // Font width
@@ -39,6 +39,8 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
     };
 
     st7735_draw_text(&tft_text, conf);
+
+    st7735_draw_line(0, 0, 100, 100, 0xBB00, conf);
 }
 
 void display_print_str(const char *str, uint8_t line) {

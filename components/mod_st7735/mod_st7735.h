@@ -7,7 +7,6 @@
 
 #include "mod_spi.h"
 
-
 typedef struct {
     uint8_t x;
     uint8_t y;
@@ -44,4 +43,8 @@ typedef struct {
 } M_Render_State;
 
 esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf);
+esp_err_t st7735_set_address_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, M_Spi_Conf *conf);
+
+esp_err_t st7735_draw_pixel(uint16_t color, M_Spi_Conf *conf);
+
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config);

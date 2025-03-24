@@ -3,6 +3,7 @@
 #include "mod_ssd1306.h"
 #include <mod_utility.h>
 
+//# Draw horizontal line
 void ssd1306_horizontal_line(const M_Line *line, uint8_t thickness, uint8_t flipped) {
     uint8_t start_y = line->pos;
     uint8_t end_y = start_y + thickness - 1; // Calculate the end y-coordinate
@@ -70,6 +71,7 @@ void ssd1306_horizontal_line(const M_Line *line, uint8_t thickness, uint8_t flip
     }
 }
 
+//# Draw vertical line
 void ssd1306_vertical_line(const M_Line *line, uint8_t thickness, uint8_t flipped) {
     uint8_t start_y = flipped ? (SSD1306_HEIGHT - 1 - line->end) : line->start;
     uint8_t end_y = flipped ? (SSD1306_HEIGHT - 1 - line->start) : line->end;
@@ -117,6 +119,8 @@ void ssd1306_vertical_line(const M_Line *line, uint8_t thickness, uint8_t flippe
     }
 }
 
+
+//#  Bresenham's line algorithm 
 void ssd1306_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t thickness) {
     int16_t dx = abs(x1 - x0);
     int16_t dy = abs(y1 - y0);

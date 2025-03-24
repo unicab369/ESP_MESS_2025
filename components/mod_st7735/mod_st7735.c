@@ -27,22 +27,26 @@ static const char *TAG = "MOD_ST7735";
 
 static uint16_t BACKGROUND_COLOR = 0x0000;
 
-void st7735_set_address_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, M_Spi_Conf *conf) {           
+//# Set address window
+esp_err_t st7735_set_address_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, M_Spi_Conf *conf) {           
     uint8_t data[] = {0x00, x0, 0x00, x1};
     //! ST7735_CASET
-    mod_spi_cmd(0x2A, conf);   
-    mod_spi_data(data, 4, conf);
+    esp_err_t ret = mod_spi_cmd(0x2A, conf);   
+    ret = mod_spi_data(data, 4, conf);
 
     data[1] = y0;
     data[3] = y1;
     //! ST7735_RASET
-    mod_spi_cmd(0x2B, conf);
-    mod_spi_data(data, 4, conf);
+    ret = mod_spi_cmd(0x2B, conf);
+    ret = mod_spi_data(data, 4, conf);
 
     //! ST7735_RAMWR
-    mod_spi_cmd(0x2C, conf);
+    ret = mod_spi_cmd(0x2C, conf);
+
+    return ret;
 }
 
+//# Fill screen
 void st7735_fill_screen(uint16_t color, M_Spi_Conf *conf) {
     //! Set the address window to cover the entire screen
     st7735_set_address_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1, conf);
@@ -133,6 +137,13 @@ static void map_char_buffer(M_TFT_Text *model, uint16_t *my_buff, char c, uint8_
             }
         }
     }
+}
+
+
+//# Draw Pixel
+esp_err_t st7735_draw_pixel(uint16_t color, M_Spi_Conf *conf) {
+    uint8_t data[] = { color >> 8, color & 0xFF };
+    return mod_spi_data(data, 2, conf);
 }
 
 

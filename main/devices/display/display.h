@@ -3,8 +3,7 @@
 #include <stdint.h>
 #include "esp_err.h"
 
-#include "mod_st7735.h"
-// #include "mod_spi.h"
+#include "st7735_shape.h"
 
 void display_setup(uint8_t scl_pin, uint8_t sda_pin);
 void display_print_str(const char *str, uint8_t line);
