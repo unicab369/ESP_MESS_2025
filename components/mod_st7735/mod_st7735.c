@@ -8,6 +8,9 @@
 
 #include "mod_bitmap.h"
 
+#include "esp_log.h"
+#include "esp_err.h"
+
 #define ST7735_SIZE_1p8IN 1
 
 #ifdef ST7735_SIZE_1p8IN
@@ -17,6 +20,8 @@
     #define ST7735_WIDTH 80
     #define ST7735_HEIGHT 160
 #endif
+
+static const char *TAG = "MOD_ST7735";
 
 #define DISPLAY_NUM_PIXELS (ST7735_WIDTH * ST7735_HEIGHT)
 
@@ -134,40 +139,26 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
     if (render_state.char_count <= 0) return;
 
     uint16_t spacing = model->char_spacing;
-    uint8_t x1 = render_state.x0 + (render_state.char_count * model->font_width) + (render_state.char_count - 1) * spacing;
-    uint8_t y1 = render_state.current_y + model->font_height - 1;
+    uint8_t char_width = model->font_width + spacing;
 
-    //# Print the buffer details
-    printf("L%d: %d char,\t [x=%d, y=%d] to [x=%d, y=%d]", render_state.line_idx, render_state.char_count,
-        // start position
-        render_state.x0, render_state.current_y, 
-        // end position
-        x1, y1
-    );
-
-    // Print the accumulated characters
-    printf("\t\t");
-    for (uint8_t i = 0; i < render_state.char_count; i++) {
-        printf("%c", render_state.char_buff[i]);
-    }
-    printf("\n");
-
-    // Calculate the total width of the buffer (including spacing)
-    uint16_t arr_width = (model->font_width + spacing) * render_state.char_count;
+    uint16_t arr_width = char_width * render_state.char_count;
     uint16_t buff_len = arr_width * model->font_height;
     uint16_t frame_buff[buff_len];
-    memset(frame_buff, 0, sizeof(frame_buff)); // Initialize buffer to 0 (background color)
 
-    //# Render each character into the buffer
+    //! Initialize buffer to 0 (background color)
+    memset(frame_buff, 0, sizeof(frame_buff));
+
+    //! Render each character into the buffer
     for (uint8_t i = 0; i < render_state.char_count; i++) {
         // Calculate the starting column for the current character
-        uint8_t start_col = i * (model->font_width + spacing);
+        uint8_t start_col = i * char_width;
         map_char_buffer(model, frame_buff, render_state.char_buff[i], start_col, arr_width);
     }
 
     #ifdef LOG_BUFFER_CONTENT
         //# Print the buffer
-        printf("\nFrame Buffer Contents:\n");
+        ESP_LOGI(TAG, "Frame Buffer Contents:");
+        printf("\n");
 
         for (int j = 0; j < model->font_height; j++) {
             for (int i = 0; i < arr_width; i++) {
@@ -184,12 +175,25 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
         }
     #endif
 
-    //! Send the buffer to the display
-    printf("\nSpacing: %u, char_count: %u, Render [%u, %u, %u, %u]\n", 
-        spacing, render_state.char_count,
-        render_state.x0, render_state.current_y, x1, y1);
-    
-    //# Send the buffer to the display
+    uint8_t x1 = render_state.x0 + (render_state.char_count * model->font_width) + (render_state.char_count - 1) * spacing;
+    uint8_t y1 = render_state.current_y + model->font_height - 1;
+
+    //# Print the buffer details
+    printf("\nL%d: %d char, spacing: %u,\t [x=%d, y=%d] to [x=%d, y=%d]",
+        render_state.line_idx, render_state.char_count, spacing,
+        // start position
+        render_state.x0, render_state.current_y, 
+        // end position
+        x1, y1
+    );
+
+    // Print the accumulated characters
+    printf("\t\t");
+    for (uint8_t i = 0; i < render_state.char_count; i++) {
+        printf("%c", render_state.char_buff[i]);
+    }
+
+    //! Send the buffer to the display    
     st7735_set_address_window(render_state.x0, render_state.current_y, x1, y1, config);
     mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
 
@@ -215,11 +219,9 @@ bool flush_buffer_and_reset() {
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
 
-    uint8_t font_width = model->font_width;     // Font width
-    uint8_t char_spacing = model->char_spacing; // Spacing between characters
-    const char *text = model->text;             // Pointer to the text
-
-    uint8_t char_width = font_width + char_spacing;
+    // Pointer to the text
+    const char *text = model->text;
+    uint8_t char_width = model->font_width + model->char_spacing;
 
     //# Initialize rendering state
     render_state.current_x = model->x;
@@ -232,9 +234,10 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     while (*text) {
         //# Find the end of the current word and calculate its width
         uint8_t word_width = 0;
+
         const char *word_end = text;
         while (*word_end && *word_end != ' ' && *word_end != '\n') {
-            word_width += font_width + char_spacing; // Add character width + spacing
+            word_width += char_width;
             word_end++;
         }
 
@@ -246,16 +249,29 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             continue;
         }
 
-        //# Handle word wrapping
+        //# Handle page word wrapping
         if (render_state.current_x + word_width > ST7735_WIDTH) {
-            if (model->word_wrap) {
+            if (model->page_wrap == 0) {
+                //! Stop printing and move to the next line
                 send_text_buffer(model, config);
                 if (flush_buffer_and_reset()) break;
 
-            } else {
+                //! Skip all remaining characters on the same line
+                while (*text && *text != '\n') text++;
+
+                //! If the current character is a newline, move to the next character
+                if (*text == '\n') text++;
+
+                continue; // Skip the rest of the loop and start processing the next line
+            }
+            else if (model->word_wrap) {
+                //! Stop printing and move to the next line
+                send_text_buffer(model, config);
+                if (flush_buffer_and_reset()) break;
+            }
+            else {
                 // Break the word and print the part that fits
                 while (text < word_end) {
-
                     // Handle wrapping for individual characters
                     if (render_state.current_x + char_width > ST7735_WIDTH) {
                         send_text_buffer(model, config);

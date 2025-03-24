@@ -26,7 +26,7 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
         .x = 0,
         .y = 0,
         .color = 0x00AA,
-        .page_wrap = 1,
+        .page_wrap = 0,
         .word_wrap = 1,
 
         .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
