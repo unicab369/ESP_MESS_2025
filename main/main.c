@@ -220,7 +220,7 @@ void app_main(void) {
 
     ret = mod_spi_init(&spi3_conf);
     if (ret == ESP_OK) {
-        display_spi_setup(SPI2_RES, &spi3_conf);
+        display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
     }
     
 

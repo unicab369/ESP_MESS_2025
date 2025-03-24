@@ -51,7 +51,8 @@
         #define SPI_CLK 18
         #define SPI_CS 26
 
-        // #define SPI2_MISO 4
+        #define SPI2_BUSY 4         //# new
+        
         #define SPI2_MOSI 12        // SDA
         #define SPI2_SCLK 14
         #define SPI2_DC 17          // DC - AO

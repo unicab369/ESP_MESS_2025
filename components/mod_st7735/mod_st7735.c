@@ -1,15 +1,13 @@
 #include "mod_st7735.h"
 
-#include "driver/spi_master.h"
+#include "esp_log.h"
+#include "esp_err.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "mod_bitmap.h"
-
-#include "esp_log.h"
-#include "esp_err.h"
 
 #define ST7735_SIZE_1p8IN 1
 

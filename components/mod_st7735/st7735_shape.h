@@ -18,3 +18,8 @@ void st7735_draw_verLine(
     uint16_t color, uint8_t thickness,
     M_Spi_Conf *config
 );
+
+void st7735_draw_rectangle(
+    uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, 
+    uint16_t color, uint8_t thickness, M_Spi_Conf *config
+);

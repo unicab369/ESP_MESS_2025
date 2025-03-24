@@ -170,3 +170,14 @@ void st7735_draw_verLine(
         mod_spi_data((uint8_t*)chunk_buffer, chunk_height * thickness * 2, config);
     }
 }
+
+//# Draw Rectangle
+void st7735_draw_rectangle(
+    uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, 
+    uint16_t color, uint8_t thickness, M_Spi_Conf *config
+) {
+    st7735_draw_horLine(y0, x0, x1, color, thickness, config);
+    st7735_draw_horLine(y1, x0, x1, color, thickness, config);
+    st7735_draw_verLine(x0, y0, y1, color, thickness, config);
+    st7735_draw_verLine(x1, y0, y1, color, thickness, config);
+}

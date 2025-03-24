@@ -67,3 +67,25 @@ esp_err_t mod_spi_data(uint8_t *data, uint16_t len, M_Spi_Conf *conf) {
 
     return ret;
 }
+
+esp_err_t mod_spi_write_command(uint8_t cmd, const uint8_t *data, size_t len, M_Spi_Conf *conf) {
+    spi_transaction_ext_t t = {
+        .base = {
+            .flags = 0,
+            .cmd = cmd,
+            .addr = 0,
+            .length = len * 8, // Only data bits
+            .tx_buffer = data,
+        },
+        .command_bits = 8,
+        .address_bits = 0,
+        .dummy_bits = 0,
+    };
+    
+    // Set DC low for command, then high for data automatically
+    gpio_set_level(conf->dc, 0);
+    esp_err_t ret = spi_device_polling_transmit(conf->spi_handle, &t.base);
+    gpio_set_level(conf->dc, 1);
+    
+    return ret;
+}

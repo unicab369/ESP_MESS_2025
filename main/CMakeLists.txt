@@ -32,6 +32,7 @@ idf_component_register(SRCS "main.c"
                         mod_utility
                         mod_i2c
                         mod_st7735
+                        mod_epaper
                         mod_spi
                     REQUIRES
                         driver

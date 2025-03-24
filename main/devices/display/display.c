@@ -7,6 +7,7 @@
 #include "esp_err.h"
 #include "mod_i2c.h"
 #include "mod_bitmap.h"
+#include "mod_epaper.h"
 
 static const char *TAG = "I2C_DEVICE";
 
@@ -19,7 +20,7 @@ void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
 }
 
 //# TODO: char_spacing crash above value 1
-void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
+void display_spi_setup(uint8_t rst, uint8_t busy, M_Spi_Conf *conf) {
     st7735_init(rst, conf);
 
     M_TFT_Text tft_text = {
@@ -38,12 +39,14 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
                 "\n\nThis is a new line. Continue with this line."
     };
 
-    // st7735_draw_text(&tft_text, conf);
-
     // st7735_draw_line(0, 0, 80, 150, 0x00CC, conf);
 
+    // st7735_draw_text(&tft_text, conf);
     st7735_draw_horLine(80, 10, 100, 0xF800, 3, conf);
     st7735_draw_verLine(80, 10, 100, 0xF800, 3, conf);
+    st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, conf);
+
+    ssd1683_setup(rst, busy, conf);
 }
 
 void display_print_str(const char *str, uint8_t line) {
