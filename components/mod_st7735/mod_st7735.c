@@ -103,6 +103,9 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
     mod_spi_cmd(0x3A, conf);
     mod_spi_data((uint8_t[]){0x05}, 1, conf); // 16-bit color
 
+    //! INVOFF: Disable display inversion
+    mod_spi_cmd(0x20, conf); // 0x20 OFF | 0x21 ON
+    
     //! Start display
     mod_spi_cmd(0x29, conf); // Display on
 

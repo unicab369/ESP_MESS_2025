@@ -38,9 +38,9 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
                 "\n\nThis is a new line. Continue with this line."
     };
 
-    st7735_draw_text(&tft_text, conf);
+    // st7735_draw_text(&tft_text, conf);
 
-    st7735_draw_line(0, 0, 100, 100, 0xBB00, conf);
+    st7735_draw_line(0, 0, 40, 70, 0x00CC, conf);
 }
 
 void display_print_str(const char *str, uint8_t line) {

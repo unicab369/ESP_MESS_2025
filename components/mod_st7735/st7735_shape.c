@@ -1,6 +1,7 @@
 #include "st7735_shape.h"
+#include "mod_utility.h"
 
-#define MAX_LINE_WIDTH 128  // Maximum expected line width for buffer sizing
+#define LINE_BUFFER_SIZE 500  // Number of pixels to buffer before sending
 
 void st7735_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
                      uint16_t color, M_Spi_Conf *config) {
@@ -12,47 +13,47 @@ void st7735_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
     int err = (dx > dy ? dx : -dy) / 2;
     int e2;
 
-    // Calculate required buffer size for this line
-    int buffer_size = dx + 1;  // Maximum possible pixels in a line segment
-    uint16_t color_buffer[buffer_size];
     uint16_t buffer_count = 0;
-    
-    // Track current and previous positions
+    uint16_t color_buffer[LINE_BUFFER_SIZE];
+    memset(color_buffer, 0, sizeof(color_buffer));
+
+    // Track current position and window bounds
     int16_t current_x = x0;
     int16_t current_y = y0;
-    int16_t prev_y = y0;
-    
-    // Set initial window (will update as we draw)
-    int16_t window_x0 = x0;
-    int16_t window_x1 = x0;
-    int16_t window_y0 = y0;
-    int16_t window_y1 = y0;
+    int16_t min_x = x0, max_x = x0;
+    int16_t min_y = y0, max_y = y0;
 
     while (1) {
-        // Add pixel to buffer
+        if (current_x == x1 && current_y == y1) break;
         color_buffer[buffer_count++] = color;
-        
-        // Update window boundaries
-        if (current_x < window_x0) window_x0 = current_x;
-        if (current_x > window_x1) window_x1 = current_x;
-        if (current_y < window_y0) window_y0 = current_y;
-        if (current_y > window_y1) window_y1 = current_y;
 
-        // Check for Y change or buffer full
-        if (current_y != prev_y || buffer_count >= buffer_size) {
-            // Flush the buffer
-            st7735_set_address_window(window_x0, window_y0, window_x1, window_y1, config);
+        // When buffer is full, send all pixels
+        if (buffer_count >= LINE_BUFFER_SIZE) {
+            // Update window bounds
+            if (current_x < min_x) min_x = current_x;
+            if (current_x > max_x) max_x = current_x;
+            if (current_y < min_y) min_y = current_y;
+            if (current_y > max_y) max_y = current_y;
+
+            printf("window [%d, %d, %d, %d]\n", min_x, min_y, max_x, max_y);
+            printf("New dx segment (Y change):\n");
+            for (int i = 0; i < buffer_count; i++) {
+                print_hex_debug(color_buffer[i]);
+                if ((i+1) % dx == 0) printf(".\n");
+            }
+            printf("\n\n");
+
+            st7735_set_address_window(min_x, min_y, max_x, max_y, config);
             mod_spi_data((uint8_t*)color_buffer, buffer_count * 2, config);
             
             // Reset for next segment
             buffer_count = 0;
-            window_x0 = window_x1 = current_x;
-            window_y0 = window_y1 = current_y;
-            prev_y = current_y;
+            min_x = current_x;
+            max_x = current_x;
+            min_y = current_y;
+            max_y = current_y;
         }
 
-        if (current_x == x1 && current_y == y1) break;
-        
         e2 = err;
         if (e2 > -dx) {
             err -= dy;
@@ -64,9 +65,9 @@ void st7735_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1,
         }
     }
 
-    // Send any remaining pixels
+    // Send remaining pixels
     if (buffer_count > 0) {
-        st7735_set_address_window(window_x0, window_y0, window_x1, window_y1, config);
+        st7735_set_address_window(min_x, min_y, max_x, max_y, config);
         mod_spi_data((uint8_t*)color_buffer, buffer_count * 2, config);
     }
 }
