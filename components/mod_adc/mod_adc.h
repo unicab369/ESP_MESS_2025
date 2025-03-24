@@ -13,6 +13,8 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_continuous.h"
 
+#define FLAG_MOD_ADC 0
+
 #define EXAMPLE_READ_LEN                    256
 
 typedef enum __attribute__((packed)) {

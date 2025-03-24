@@ -144,7 +144,8 @@
         "mod_spi.h": "c",
         "mod_st7735.h": "c",
         "mod_bitmap.h": "c",
-        "st7735_shape.h": "c"
+        "st7735_shape.h": "c",
+        "sensors.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

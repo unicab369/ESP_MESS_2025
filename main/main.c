@@ -16,7 +16,7 @@
 
 // #include "mod_spi.h"
 
-#define WIFI_ENABLED true
+#define WIFI_ENABLED 0
 
 #if WIFI_ENABLED
     #include "app_network/app_network.h"
@@ -26,6 +26,8 @@
 static const char *TAG = "MAIN";
 static uint8_t esp_mac[6];
 
+#define MAX_ADC_SAMPLE 100
+uint16_t adc_read_arr[MAX_ADC_SAMPLE];
 
 // Button event callback
 void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_time) {
@@ -86,8 +88,6 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
-#define MAX_ADC_SAMPLE 100
-uint16_t adc_read_arr[MAX_ADC_SAMPLE];
 
 static void http_request_handler(uint16_t **data, size_t *size) {
     *data = adc_read_arr;
@@ -311,10 +311,10 @@ void app_main(void) {
 
     // mod_mbedtls_setup();
     
-    data_output_t data_output = {
-        .type = DATA_OUTPUT_ANALOG,
-        .len = 100
-    };
+    // data_output_t data_output = {
+    //     .type = DATA_OUTPUT_ANALOG,
+    //     .len = 100
+    // };
 
     uint16_t adc_read_index = 0;
 
