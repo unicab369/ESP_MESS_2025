@@ -202,18 +202,17 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
     render_state.x0 = x1;
 }
 
-bool flush_buffer_and_reset() {
-    // Reset state for the next line 
-    render_state.char_count = 0;                            // Clear the accumulated characters
-    render_state.current_x = 0;                             // Reset x to the start position
-    render_state.x0 = 0;                                    // Reset render_start_x to the start position
-    render_state.current_y += render_state.font_height + 1; // Move y to the next line
-
-    // Move to the next line
+bool flush_buffer_and_reset(uint8_t font_height) {
+    //! Move to the next line
     render_state.line_idx++;
 
+    //! Reset state for the next line
+    render_state.char_count = 0;                            // Clear the accumulated characters
+    render_state.x0 = 0;                                    // Reset render_start_x to the start position
+    render_state.current_y += font_height + 1; // Move y to the next line
+
     //! Check if current_y is out of bounds
-    return render_state.current_y + render_state.font_height > ST7735_HEIGHT;
+    return render_state.current_y + font_height > ST7735_HEIGHT;
 }
 
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
@@ -222,13 +221,12 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     // Pointer to the text
     const char *text = model->text;
     uint8_t char_width = model->font_width + model->char_spacing;
+    uint8_t font_height = model->font_height;
 
     //# Initialize rendering state
-    render_state.current_x = model->x;
+    uint8_t current_x = model->x;
+
     render_state.current_y = model->y;
-    render_state.font_width = model->font_width;
-    render_state.font_height = model->font_height;
-    render_state.font_spacing = model->char_spacing;
     render_state.x0 = model->x;
 
     while (*text) {
@@ -243,55 +241,35 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
         //# Handle newline character
         if (*text == '\n') {
-            send_text_buffer(model, config);;
-            if (flush_buffer_and_reset()) break;
+            current_x = 0;
+
+            send_text_buffer(model, config);
+            if (flush_buffer_and_reset(font_height)) break;        //! Exit the outerloop if break
             text++;     // Move to the next character
-            continue;
+            continue;   // continue next iteration
         }
 
-        //# Handle page word wrapping
-        if (render_state.current_x + word_width > ST7735_WIDTH) {
+        if (current_x + word_width > ST7735_WIDTH) {
+            //# Handle page wrapping
             if (model->page_wrap == 0) {
                 //! Stop printing and move to the next line
+                current_x = 0;
+
                 send_text_buffer(model, config);
-                if (flush_buffer_and_reset()) break;
+                if (flush_buffer_and_reset(font_height)) break;
 
                 //! Skip all remaining characters on the same line
                 while (*text && *text != '\n') text++;
 
-                //! If the current character is a newline, move to the next character
-                if (*text == '\n') text++;
-
                 continue; // Skip the rest of the loop and start processing the next line
             }
+            //# Handle word wrapping
             else if (model->word_wrap) {
                 //! Stop printing and move to the next line
+                current_x = 0;
+
                 send_text_buffer(model, config);
-                if (flush_buffer_and_reset()) break;
-            }
-            else {
-                // Break the word and print the part that fits
-                while (text < word_end) {
-                    // Handle wrapping for individual characters
-                    if (render_state.current_x + char_width > ST7735_WIDTH) {
-                        send_text_buffer(model, config);
-                        if (flush_buffer_and_reset()) break;
-                    }
-
-                    // Accumulate the current character
-                    render_state.char_buff[render_state.char_count++] = *text;
-
-                    //! Check if the buffer is full
-                    if (render_state.char_count >= MAX_CHAR_COUNT) {
-                        send_text_buffer(model, config);
-                    }
-
-                    // Move to the next character position
-                    render_state.current_x += char_width;               // Move x by character width + spacing
-                    text++;                                             // Move to the next character
-                }
-
-                continue; // Skip the space handling below
+                if (flush_buffer_and_reset(font_height)) break;
             }
         }
 
@@ -299,6 +277,14 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         //# the end of a word (word_end) or encounters a space character (' ')
         
         while (text < word_end || (*text == ' ' && text < word_end + 1)) {
+            //# Handle word breaking when word_wrap is disabled
+            if (!model->word_wrap && current_x + char_width > ST7735_WIDTH) {
+                current_x = 0;
+
+                send_text_buffer(model, config);
+                if (flush_buffer_and_reset(font_height)) break;
+            }
+
             // Accumulate the current character
             render_state.char_buff[render_state.char_count++] = *text;
 
@@ -308,7 +294,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
             }
 
             // Move to the next character position
-            render_state.current_x += char_width;     // Move x by character width + spacing
+            current_x += char_width;     // Move x by character width + spacing
             text++;                                                 // Move to the next character
         }
     }

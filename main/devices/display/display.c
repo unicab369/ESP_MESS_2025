@@ -26,16 +26,16 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
         .x = 0,
         .y = 0,
         .color = 0x00AA,
-        .page_wrap = 0,
-        .word_wrap = 1,
+        .page_wrap = 1,
+        .word_wrap = 0,
 
         .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
         .font_width = 5,                        // Font width
         .font_height = 7,                       // Font height
         .char_spacing = 1,                      // Spacing between characters
-        .text = "Hello Bee! What is Thy bidding, my master? Tell me!"
+        .text = "What is Thy bidding, my master? Tell me!"
                 "\nTomorrow is another day!"
-                "\n\nThis is a new line. Making a new line."
+                "\n\nThis is a new line. Continue with this line."
     };
 
     st7735_draw_text(&tft_text, conf);

@@ -12,7 +12,15 @@ typedef struct {
     uint8_t x;
     uint8_t y;
     uint16_t color;
+
+    //! page_wrap == 0 will neglect all character (if get outside of the window)
+    //! and stop printing them out
     uint8_t page_wrap;
+
+    //! word_wrap == 0 will wrap the cutoff characters (if get outside of the window)
+    //! to the next line 
+    //# word_wrap == 1 will wrap the whole word (if get outside of the window)
+    //# to the next line
     uint8_t word_wrap;
 
     const uint8_t *font;    // Pointer to the font data
@@ -28,12 +36,7 @@ typedef struct {
 
 typedef struct {
     uint16_t line_idx;          // Current line index
-    uint8_t current_x;          // Current x position
     uint8_t current_y;          // Current y position
-    
-    uint8_t font_width;         // Font width
-    uint8_t font_height;        // Font height
-    uint8_t font_spacing;       // Font spacing
 
     uint8_t char_buff[MAX_CHAR_COUNT]; // Buffer to store accumulated character data
     uint8_t char_count;    // Number of characters accumulated
