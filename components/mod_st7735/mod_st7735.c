@@ -168,10 +168,9 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
         map_char_buffer(model, frame_buff, render_state.char_buff[i], start_col, arr_width);
     }
 
-    #ifdef LOG_BUFFER_CONTENT
+    #if LOG_BUFFER_CONTENT
         //# Print the buffer
         ESP_LOGI(TAG, "Frame Buffer Contents:");
-        printf("\n");
 
         for (int j = 0; j < font_height; j++) {
             for (int i = 0; i < arr_width; i++) {
@@ -312,4 +311,5 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
     //! Print the remaining buffer if it has data
     send_text_buffer(model, config);
+    ESP_LOGI(TAG, "Finish drawing text");
 }

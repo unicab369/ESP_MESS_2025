@@ -7,6 +7,9 @@
 
 #include "mod_spi.h"
 
+#define LOG_BUFFER_CONTENT 0
+#define MAX_CHAR_COUNT 10
+
 typedef struct {
     uint8_t x;
     uint8_t y;
@@ -29,9 +32,6 @@ typedef struct {
     const char* text;
 } M_TFT_Text;
 
-
-#define LOG_BUFFER_CONTENT 1
-#define MAX_CHAR_COUNT 10
 
 typedef struct {
     uint16_t line_idx;          // Current line index
