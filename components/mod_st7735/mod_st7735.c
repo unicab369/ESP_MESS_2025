@@ -133,10 +133,10 @@ static void map_char_buffer(M_TFT_Text *model, uint16_t *my_buff, char c, uint8_
 
             if (char_data[(i + (j / 8) * model->font_width)] & (1 << (j % 8))) {
                 //! Pixel is part of the character (foreground color)
-                my_buff[index] = model->color; // RGB565 color
+                my_buff[index] |= model->color; // RGB565 color
             } else {
                 //! Pixel is not part of the character (background color)
-                my_buff[index] = BACKGROUND_COLOR; // RGB565 background color
+                my_buff[index] |= BACKGROUND_COLOR; // RGB565 background color
             }
         }
     }
