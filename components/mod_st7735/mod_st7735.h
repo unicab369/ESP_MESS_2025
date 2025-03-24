@@ -34,9 +34,9 @@ typedef struct {
     uint8_t font_height;        // Font height
     uint8_t font_spacing;       // Font spacing
 
-    uint8_t char_buff_data[MAX_CHAR_COUNT]; // Buffer to store accumulated character data
-    uint8_t char_buff_count;    // Number of characters accumulated
-    uint8_t render_start_x;     // Starting x position of the current buffer
+    uint8_t char_buff[MAX_CHAR_COUNT]; // Buffer to store accumulated character data
+    uint8_t char_count;    // Number of characters accumulated
+    uint8_t x0;     // Starting x position of the current buffer
 } M_Render_State;
 
 esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf);

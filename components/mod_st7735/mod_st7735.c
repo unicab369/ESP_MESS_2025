@@ -103,8 +103,6 @@ esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
     return ret;
 }
 
-
-
 void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
     //! Get the font data for the current character
     const uint8_t *char_data = &model->font[(c - 32) * model->font_width * ((model->font_height + 7) / 8)];
@@ -125,55 +123,92 @@ void draw_char(M_TFT_Text *model, uint16_t *buff, char c) {
 }
 
 
-static void handle_buffer(M_Render_State *state, M_Spi_Conf *config) {
-    if (state->char_buff_count <= 0) return;
 
-    //! Calculate render_end_x
-    uint8_t width_offset = state->char_buff_count * state->font_width;
-    uint8_t spacing_offset = state->char_buff_count * state->font_spacing;
-    uint8_t render_end_x = state->render_start_x + width_offset + spacing_offset;
-    uint8_t render_end_y = state->current_y + state->font_height - 1;
+void draw_char2(M_TFT_Text *model, uint16_t *my_buff, char c, uint8_t start_col, uint8_t total_cols) {
+    //! Get the font data for the current character
+    const uint8_t *char_data = &model->font[(c - 32) * model->font_width * ((model->font_height + 7) / 8)];
+
+    //! Render the character into the frame buffer
+    for (int j = 0; j < model->font_height; j++) { // Rows
+        for (int i = 0; i < model->font_width; i++) { // Columns
+            // Calculate the index in the flat buffer
+            int index = (start_col + i) + j * total_cols;
+
+            if (char_data[(i + (j / 8) * model->font_width)] & (1 << (j % 8))) {
+                //! Pixel is part of the character (foreground color)
+                my_buff[index] = model->color; // RGB565 color
+            } else {
+                //! Pixel is not part of the character (background color)
+                my_buff[index] = BACKGROUND_COLOR; // RGB565 background color
+            }
+        }
+    }
+}
+
+
+static void handle_buffer(M_Render_State *state, M_TFT_Text *model, M_Spi_Conf *config) {
+    if (state->char_count <= 0) return;
+
+    //! Calculate render_end_x (including spacing)
+    uint16_t spacing = 1; // Fixed 1-pixel spacing between characters
+    uint8_t x1 = state->x0 + (state->char_count * model->font_width) + ((state->char_count - 1) * spacing) - 1;
+    uint8_t y1 = state->current_y + model->font_height - 1;
 
     //! Print the buffer details
-    printf("L%d: %d char,\t [x=%d, y=%d] to [x=%d, y=%d]", 
-        state->line_idx, state->char_buff_count,
+    printf("L%d: %d char,\t [x=%d, y=%d] to [x=%d, y=%d]\n", state->line_idx, state->char_count,
         // start position
-        state->render_start_x, state->current_y, 
+        state->x0, state->current_y, 
         // end position
-        render_end_x, render_end_y
+        x1, y1
     );
 
     //! Print the accumulated characters
     printf("\t\t");
-    for (uint8_t i = 0; i < state->char_buff_count; i++) {
-        printf("%c", state->char_buff_data[i]);
+    for (uint8_t i = 0; i < state->char_count; i++) {
+        printf("%c", state->char_buff[i]);
     }
     printf("\n");
 
-    // //! Render the
-    // uint16_t buff_len = state->char_buff_count * state->font_width * state->font_height;
-    // uint16_t frame_buff[buff_len];
+    //! Calculate the total width of the buffer (including spacing)
+    uint16_t arr_width = (model->font_width + spacing) * state->char_count;
+    uint16_t buff_len = arr_width * model->font_height;
+    uint16_t frame_buff[buff_len];
+    memset(frame_buff, 0, sizeof(frame_buff)); // Initialize buffer to 0 (background color)
 
-    // for (int i=0; i<state->char_buff_count; i++) {
-        
-    // }
+    //! Render each character into the buffer
+    for (uint8_t i = 0; i < state->char_count; i++) {
+        // Calculate the starting column for the current character
+        uint8_t start_col = i * (model->font_width + spacing);
+        draw_char2(model, frame_buff, state->char_buff[i], start_col, arr_width);
+    }
 
-    // st7735_set_address_window(state->render_start_x, state->current_y, render_end_x, render_end_y, config);
-    // mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config);
+    //! Print the buffer
+    printf("Frame Buffer Contents:\n");
+    for (int j = 0; j < model->font_height; j++) {
+        for (int i = 0; i < arr_width; i++) {
+            printf("%04X ", frame_buff[i + j * arr_width]);
+        }
+        printf("\n");
+    }
+
+    //! Send the buffer to the display
+    printf("\nSpacing: %u, char_count: %u\n", spacing, state->char_count);
+    printf("Render2. %u, %u, %u, %u\n", state->x0, state->current_y, x1, y1);
+    st7735_set_address_window(state->x0, state->current_y, 11, y1, config);
+    mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
 
     //! Reset the accumulated character count and update render_start_x
-    state->char_buff_count = 0;
-
-    // printf("current_x: %d, spaccing_offset: %d\n", state->current_x, spacing_offset);
-    state->render_start_x = render_end_x;
+    state->char_count = 0;
+    state->x0 = x1;
 }
 
 
+
 static bool reset_render_state(M_Render_State *state) {
-    //! Reset state for the next line
-    state->char_buff_count = 0;                 // Clear the accumulated characters
+    //! Reset state for the next line 
+    state->char_count = 0;                 // Clear the accumulated characters
     state->current_x = 0;                       // Reset x to the start position
-    state->render_start_x = 0;                  // Reset render_start_x to the start position
+    state->x0 = 0;                  // Reset render_start_x to the start position
     state->current_y += state->font_height + 1; // Move y to the next line
 
     //! Move to the next line
@@ -182,7 +217,6 @@ static bool reset_render_state(M_Render_State *state) {
     //! Check if current_y is out of bounds
     return state->current_y + state->font_height > ST7735_HEIGHT;
 }
-
 
 void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     if (!model || !config || !model->text || !model->font) return; // Error handling
@@ -199,15 +233,15 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         .font_width = model->font_width,
         .font_height = model->font_height,
         .font_spacing = model->char_spacing,
-        .char_buff_count = 0,
-        .render_start_x = model->x
+        .char_count = 0,
+        .x0 = model->x
     };
 
     while (*text) {
         //! Handle newline character
         if (*text == '\n') {
             //! Print any remaining buffer before resetting
-            handle_buffer(&state, config);
+            handle_buffer(&state, model, config);
 
             //! Reset state for the next line and check for outbound ST7735_HEIGHT
             bool outbound_height = reset_render_state(&state);
@@ -235,7 +269,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         if (state.current_x + word_width > ST7735_WIDTH) {
             if (model->word_wrap) {
                 //! Print any remaining buffer before resetting
-                handle_buffer(&state, config);
+                handle_buffer(&state, model, config);
 
                 //! Reset state for the next line and check for outbound ST7735_HEIGHT
                 bool outbound_height = reset_render_state(&state);
@@ -249,7 +283,7 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                     //! Handle wrapping for individual characters
                     if (state.current_x + char_width > ST7735_WIDTH) {
                         //! Print any remaining buffer before resetting
-                        handle_buffer(&state, config);
+                        handle_buffer(&state, model, config);
 
                         //! Reset state for the next line and check for outbound ST7735_HEIGHT
                         bool outbound_height = reset_render_state(&state);
@@ -257,20 +291,34 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
                     }
 
                     //! Accumulate the current character
-                    state.char_buff_data[state.char_buff_count++] = *text;
+                    state.char_buff[state.char_count++] = *text;
 
                     //! Check if the buffer is full
-                    if (state.char_buff_count >= MAX_CHAR_COUNT) {
-                        handle_buffer(&state, config);
+                    if (state.char_count >= MAX_CHAR_COUNT) {
+                        handle_buffer(&state, model, config);
                     }
 
                     //! Render the current character
                     uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
                     uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
                     draw_char(model, frame_buff, *text);
-                    st7735_set_address_window(state.current_x, state.current_y, 
-                        state.current_x + model->font_width - 1, state.current_y + model->font_height - 1, config);
+
+                    uint8_t x1 = state.current_x + model->font_width - 1;
+                    uint8_t y1 =  state.current_y + model->font_height - 1; 
+                    st7735_set_address_window(state.current_x, state.current_y, x1, y1, config);
                     mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
+
+                    // printf("Render1. %u, %u, %u, %u\n", state.current_x, state.current_y,
+                    //     state.current_x + model->font_width - 1, state.current_y + model->font_height - 1);
+
+                    // for (int y = 0; y < state.font_height; y++) {
+                    //     for (int x = 0; x < state.font_width; x++) { // Only iterate over font_width
+                    //         uint16_t pixel = frame_buff[y * (state.font_width + 0) + x];
+                    //         printf("%04X ", pixel); // Print RGB565 value as hexadecimal
+                    //     }
+                    //     printf("\n");
+                    // }
+                    // printf("\n");
 
                     //! Move to the next character position
                     state.current_x += char_width + char_spacing;       // Move x by character width + spacing
@@ -284,20 +332,34 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         //! Render the current word
         while (text < word_end) {
             //! Accumulate the current character
-            state.char_buff_data[state.char_buff_count++] = *text;
+            state.char_buff[state.char_count++] = *text;
 
             //! Check if the buffer is full
-            if (state.char_buff_count >= MAX_CHAR_COUNT) {
-                handle_buffer(&state, config);
+            if (state.char_count >= MAX_CHAR_COUNT) {
+                handle_buffer(&state, model, config);
             }
 
             //! Render the current character
             uint16_t buff_len = model->font_width * model->font_height; // Number of pixels
             uint16_t frame_buff[buff_len]; // Frame buffer for the character (uint16_t for RGB565)
             draw_char(model, frame_buff, *text);
-            st7735_set_address_window(state.current_x, state.current_y,
-                state.current_x + model->font_width - 1, state.current_y + model->font_height - 1, config);
+
+            uint8_t x1 = state.current_x + model->font_width - 1;
+            uint8_t y1 =  state.current_y + model->font_height - 1; 
+            st7735_set_address_window(state.current_x, state.current_y, x1, y1, config);
             mod_spi_data((uint8_t *)frame_buff, buff_len * 2, config); // Multiply by 2 for uint16_t size
+
+            // printf("Render2. %u, %u, %u, %u\n", state.current_x, state.current_y,
+            //     state.current_x + model->font_width - 1, state.current_y + model->font_height - 1);
+
+            // for (int y = 0; y < state.font_height; y++) {
+            //     for (int x = 0; x < state.font_width; x++) { // Only iterate over font_width
+            //         uint16_t pixel = frame_buff[y * (state.font_width + 0) + x];
+            //         printf("%04X ", pixel); // Print RGB565 value as hexadecimal
+            //     }
+            //     printf("\n");
+            // }
+            // printf("\n");
 
             //! Move to the next character position
             state.current_x += font_width + char_spacing;     // Move x by character width + spacing
@@ -307,11 +369,11 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
         //! Handle the space character
         if (*text == ' ') {
             //! Accumulate the space character
-            state.char_buff_data[state.char_buff_count++] = *text;
+            state.char_buff[state.char_count++] = *text;
 
             //! Check if the buffer is full
-            if (state.char_buff_count >= MAX_CHAR_COUNT) {
-                handle_buffer(&state, config);
+            if (state.char_count >= MAX_CHAR_COUNT) {
+                handle_buffer(&state, model, config);
             }
 
             //! Move to the next character position
@@ -321,5 +383,5 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
     }
 
     //! Print the remaining buffer if it has data
-    handle_buffer(&state, config);
+    handle_buffer(&state, model, config);
 }

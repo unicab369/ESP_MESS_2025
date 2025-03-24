@@ -32,9 +32,13 @@ void display_spi_setup(uint8_t rst, M_Spi_Conf *conf) {
         .font_width = 5,                        // Font width
         .font_height = 7,                       // Font height
         .char_spacing = 1,                      // Spacing between characters
-        .text = "Hello Bee! What is Thy bidding, my master? Tell me!"
-                "\nTomorrow is another day!"
-                "\n\nThis is a new line. Making a new line.",
+        // .text = "Hello Bee! What is Thy bidding, my master? Tell me!"
+        //         "\nTomorrow is another day!"
+        //         "\n\nThis is a new line. Making a new line."
+
+        .text = "HH"
+        // "\nTomorrow is another day!"
+        // "\n\nThis is a new line. Making a new line."
     };
 
     st7735_draw_text(&tft_text, conf);
