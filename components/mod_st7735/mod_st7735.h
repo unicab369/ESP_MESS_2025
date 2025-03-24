@@ -23,7 +23,7 @@ typedef struct {
 } M_TFT_Text;
 
 
-#define MAX_CHAR_COUNT 10
+#define MAX_CHAR_COUNT 20
 
 typedef struct {
     uint16_t line_idx;          // Current line index
