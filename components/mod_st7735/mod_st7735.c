@@ -135,14 +135,16 @@ static void map_char_buffer(M_TFT_Text *model, uint16_t *my_buff, char c, uint8_
     }
 }
 
+
 static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
     if (render_state.char_count <= 0) return;
 
     uint16_t spacing = model->char_spacing;
     uint8_t char_width = model->font_width + spacing;
+    uint8_t font_height = model->font_height;
 
     uint16_t arr_width = char_width * render_state.char_count;
-    uint16_t buff_len = arr_width * model->font_height;
+    uint16_t buff_len = arr_width * font_height;
     uint16_t frame_buff[buff_len];
 
     //! Initialize buffer to 0 (background color)
@@ -160,7 +162,7 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
         ESP_LOGI(TAG, "Frame Buffer Contents:");
         printf("\n");
 
-        for (int j = 0; j < model->font_height; j++) {
+        for (int j = 0; j < font_height; j++) {
             for (int i = 0; i < arr_width; i++) {
                 uint16_t value = frame_buff[i + j * arr_width];
                 
@@ -176,7 +178,7 @@ static void send_text_buffer(M_TFT_Text *model, M_Spi_Conf *config) {
     #endif
 
     uint8_t x1 = render_state.x0 + (render_state.char_count * model->font_width) + (render_state.char_count - 1) * spacing;
-    uint8_t y1 = render_state.current_y + model->font_height - 1;
+    uint8_t y1 = render_state.current_y + font_height - 1;
 
     //# Print the buffer details
     printf("\nL%d: %d char, spacing: %u,\t [x=%d, y=%d] to [x=%d, y=%d]",
@@ -207,7 +209,6 @@ bool flush_buffer_and_reset(uint8_t font_height) {
     render_state.line_idx++;
 
     //! Reset state for the next line
-    render_state.char_count = 0;                            // Clear the accumulated characters
     render_state.x0 = 0;                                    // Reset render_start_x to the start position
     render_state.current_y += font_height + 1; // Move y to the next line
 
@@ -260,7 +261,6 @@ void st7735_draw_text(M_TFT_Text *model, M_Spi_Conf *config) {
 
                 //! Skip all remaining characters on the same line
                 while (*text && *text != '\n') text++;
-
                 continue; // Skip the rest of the loop and start processing the next line
             }
             //# Handle word wrapping
