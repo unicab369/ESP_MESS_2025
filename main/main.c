@@ -13,6 +13,7 @@
 #include "ssd1306_bitmap.h"
 
 #include "devices/i2c/sensors.h"
+#include "mod_i2s.h"
 
 // #include "mod_spi.h"
 
@@ -224,6 +225,9 @@ void app_main(void) {
     }
     
 
+    //! Audio test
+    mod_audio_setup(SPI2_BUSY);
+
     app_console_setup();
 
     gpio_digital_setup(LED_FADE_PIN);
@@ -344,6 +348,9 @@ void app_main(void) {
 
     // mod_adc_continous_setup(&continous_read);
     
+    // mod_i2s_setup();
+    // mod_i2s_send();
+
 
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
@@ -351,12 +358,14 @@ void app_main(void) {
     while (1) {
         uint64_t current_time = esp_timer_get_time();
 
+        mod_audio_test();
+
         i2c_sensor_readings(current_time);
 
         if (current_time - interval_ref2 > 200000) {
             interval_ref2 = current_time;
-            mod_adc_1read(&mic_adc);
-            mod_adc_1read(&pir_adc);
+            // mod_adc_1read(&mic_adc);
+            // mod_adc_1read(&pir_adc);
             // printf("value = %u\n", pir_adc.value);
 
             uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);

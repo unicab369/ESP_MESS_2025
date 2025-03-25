@@ -34,7 +34,7 @@ void led_fade_setup(gpio_num_t gpio) {
         .hpoint = 0
     };
     ledc_channel_config(&channel_conf);
-}
+} 
 
 void led_fade_restart(uint32_t threshold, uint32_t duration_ms) {
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);

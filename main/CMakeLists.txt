@@ -34,6 +34,8 @@ idf_component_register(SRCS "main.c"
                         mod_st7735
                         mod_epaper
                         mod_spi
+                        mod_i2s
+                        mod_audio
                     REQUIRES
                         driver
                         uart_driver

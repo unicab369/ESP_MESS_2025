@@ -25,6 +25,7 @@
 #include "devices/display/display.h"
 #include "sdkconfig.h"
 
+#include "mod_audio.h"
 
 #define ESP32_BOARD_V3 true
 

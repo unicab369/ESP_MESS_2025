@@ -46,7 +46,7 @@ void display_spi_setup(uint8_t rst, uint8_t busy, M_Spi_Conf *conf) {
     st7735_draw_verLine(80, 10, 100, 0xF800, 3, conf);
     st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, conf);
 
-    ssd1683_setup(rst, busy, conf);
+    // ssd1683_setup(rst, busy, conf);
 }
 
 void display_print_str(const char *str, uint8_t line) {
