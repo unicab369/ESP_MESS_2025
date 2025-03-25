@@ -18,7 +18,7 @@ static uint8_t own_addr_type;
 static uint8_t addr_val[6] = {0};
 static uint8_t esp_uri[] = {BLE_GAP_URI_PREFIX_HTTPS, '/', '/', 'e', 's', 'p', 'r', 'e', 's', 's', 'i', 'f', '.', 'c', 'o', 'm'};
 
-static void start_advertising();
+static void on_sync_advertising();
 
 
 static void on_stack_reset(int reason) {
@@ -103,7 +103,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         }
         /* Connection failed, restart advertising */
         else {
-            start_advertising();
+            on_sync_advertising();
         }
         return rc;
 
@@ -117,7 +117,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         //# led_off();
 
         /* Restart advertising */
-        start_advertising();
+        on_sync_advertising();
         return rc;
 
     /* Connection parameters update event */
@@ -140,26 +140,25 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 }
 
 
-static void start_advertising(void) {
-    /* Local variables */
+static void on_sync_advertising(void) {
     int rc = 0;
     char addr_str[18] = {0};
 
-    /* Make sure we have proper BT identity address set */
+    //# Make sure we have proper BT identity address set
     rc = ble_hs_util_ensure_addr(0);
     if (rc != 0) {
         ESP_LOGE(TAG, "device does not have any available bt address!");
         return;
     }
 
-    /* Figure out BT address to use while advertising */
+    //# Figure out BT address to use while advertising
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to infer address type, error code: %d", rc);
         return;
     }
 
-    /* Copy device address to addr_val */
+    //# Copy device address to addr_val
     rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to copy device address, error code: %d", rc);
@@ -168,16 +167,13 @@ static void start_advertising(void) {
     format_addr(addr_str, addr_val);
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
-    const char *name;
-    struct ble_hs_adv_fields adv_fields = {0};
-    struct ble_hs_adv_fields rsp_fields = {0};
-    struct ble_gap_adv_params adv_params = {0};
 
     /* Set advertising flags */
+    struct ble_hs_adv_fields adv_fields = {0};
     adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
 
-    /* Set device name */
-    name = ble_svc_gap_device_name();
+    //# Set device name
+    const char *name = ble_svc_gap_device_name();
     adv_fields.name = (uint8_t *)name;
     adv_fields.name_len = strlen(name);
     adv_fields.name_is_complete = 1;
@@ -194,7 +190,7 @@ static void start_advertising(void) {
     adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
     adv_fields.le_role_is_present = 1;
 
-    /* Set advertiement fields */
+    //# Set advertiement fields
     rc = ble_gap_adv_set_fields(&adv_fields);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
@@ -202,6 +198,7 @@ static void start_advertising(void) {
     }
 
     /* Set device address */
+    struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
     rsp_fields.device_addr_type = own_addr_type;
     rsp_fields.device_addr_is_present = 1;
@@ -214,14 +211,15 @@ static void start_advertising(void) {
     rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
     rsp_fields.adv_itvl_is_present = 1;
 
-    /* Set scan response fields */
+    //# Set scan response fields
     rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set scan response data, error code: %d", rc);
         return;
     }
 
-    /* Set non-connetable and general discoverable mode to be a beacon */
+    // Set non-connetable and general discoverable mode to be a beacon
+    struct ble_gap_adv_params adv_params = {0};
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
 
@@ -229,7 +227,7 @@ static void start_advertising(void) {
     adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
     adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
 
-    /* Start advertising */
+    //# Start advertising
     rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params,
                             gap_event_handler, NULL);
     if (rc != 0) {
@@ -243,24 +241,21 @@ void mod_nimbleBLE_setup2() {
     int rc = 0;
     esp_err_t ret = ESP_OK;
 
-    /* NimBLE stack initialization */
+    //# NimBLE stack initialization
     ret = nimble_port_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to initialize nimble stack, error code: %d ", ret);
         return;
     }
 
-    /* GAP service initialization */
-    ble_svc_gap_init();
-
-    /* Set GAP device name */
+    //# Set GAP device name
     rc = ble_svc_gap_device_name_set(DEVICE_NAME);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set device name to %s, error code: %d", DEVICE_NAME, rc);
         return;
     }
 
-    /* Set GAP device appearance */
+    //# Set GAP device appearance
     rc = ble_svc_gap_device_appearance_set(BLE_GAP_APPEARANCE_GENERIC_TAG);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set device appearance, error code: %d", rc);
@@ -270,8 +265,11 @@ void mod_nimbleBLE_setup2() {
     /* NimBLE host configuration initialization */
     /* Set host callbacks */
     ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = start_advertising;
+    ble_hs_cfg.sync_cb = on_sync_advertising;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+
+    //# GAP service initialization
+    ble_svc_gap_init();
 
     /* Store host configuration */
     // ble_store_config_init();

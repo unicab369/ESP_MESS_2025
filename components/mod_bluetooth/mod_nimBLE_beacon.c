@@ -17,7 +17,7 @@ inline static void format_addr(char *addr_str, uint8_t addr[]) {
             addr[2], addr[3], addr[4], addr[5]);
 }
 
-static void start_advertising(void) {
+static void on_sync_handler(void) {
     /* Local variables */
     int rc = 0;
     char addr_str[18] = {0};
@@ -45,17 +45,13 @@ static void start_advertising(void) {
     format_addr(addr_str, addr_val);
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
-    /* Local variables */
-    const char *name;
-    struct ble_hs_adv_fields adv_fields = {0};
-    struct ble_hs_adv_fields rsp_fields = {0};
-    struct ble_gap_adv_params adv_params = {0};
 
     /* Set advertising flags */
+    struct ble_hs_adv_fields adv_fields = {0};
     adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
 
     /* Set device name */
-    name = ble_svc_gap_device_name();
+    const char *name = ble_svc_gap_device_name();
     adv_fields.name = (uint8_t *)name;
     adv_fields.name_len = strlen(name);
     adv_fields.name_is_complete = 1;
@@ -80,6 +76,7 @@ static void start_advertising(void) {
     }
 
     /* Set device address */
+    struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
     rsp_fields.device_addr_type = own_addr_type;
     rsp_fields.device_addr_is_present = 1;
@@ -96,6 +93,7 @@ static void start_advertising(void) {
     }
 
     /* Set non-connetable and general discoverable mode to be a beacon */
+    struct ble_gap_adv_params adv_params = {0};
     adv_params.conn_mode = BLE_GAP_CONN_MODE_NON;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
 
@@ -143,7 +141,7 @@ void mod_nimbleBLE_setup(void) {
 
     /* Set host callbacks */
     ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = start_advertising;
+    ble_hs_cfg.sync_cb = on_sync_handler;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 }
 

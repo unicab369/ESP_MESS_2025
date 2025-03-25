@@ -358,8 +358,8 @@ void app_main(void) {
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
 
-    // mod_nimbleBLE_setup();
-    mod_nimbleBLE_setup2();
+    mod_nimbleBLE_setup();
+    // mod_nimbleBLE_setup2();
 
     xTaskCreate(mod_nimbleBLE_beacon_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
 
