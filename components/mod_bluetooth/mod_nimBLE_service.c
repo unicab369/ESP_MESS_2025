@@ -17,6 +17,7 @@ static const char* DEVICE_NAME = "NimBLE_Service";
 static uint8_t own_addr_type;
 static uint8_t addr_val[6] = {0};
 static uint8_t esp_uri[] = {BLE_GAP_URI_PREFIX_HTTPS, '/', '/', 'e', 's', 'p', 'r', 'e', 's', 's', 'i', 'f', '.', 'c', 'o', 'm'};
+static bool beacon_only = true;
 
 static int start_service_advertising();
 
@@ -135,35 +136,6 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 
 
 static int start_service_advertising() {
-    /* Set device address */
-    struct ble_hs_adv_fields rsp_fields = {0};
-    rsp_fields.device_addr = addr_val;
-    rsp_fields.device_addr_type = own_addr_type;
-    rsp_fields.device_addr_is_present = 1;
-
-    /* Set URI */
-    rsp_fields.uri = esp_uri;
-    rsp_fields.uri_len = sizeof(esp_uri);
-
-    /* Set advertising interval */
-    rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
-    rsp_fields.adv_itvl_is_present = 1;
-
-    //# Set scan response fields
-    int rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "failed to set scan response data, error code: %d", rc);
-        return rc;
-    }
-
-    // Set non-connetable and general discoverable mode to be a beacon
-    struct ble_gap_adv_params adv_params = {0};
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-
-    /* Set advertising interval */
-    adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
-    adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
 
     /* Set advertising flags */
     struct ble_hs_adv_fields adv_fields = {0};
@@ -188,11 +160,44 @@ static int start_service_advertising() {
     adv_fields.le_role_is_present = 1;
 
     //# Set dvertisement fields
-    rc = ble_gap_adv_set_fields(&adv_fields);
+    int rc = ble_gap_adv_set_fields(&adv_fields);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
         return rc;
     }
+
+
+
+    //# Set device address */
+    struct ble_hs_adv_fields rsp_fields = {0};
+    rsp_fields.device_addr = addr_val;
+    rsp_fields.device_addr_type = own_addr_type;
+    rsp_fields.device_addr_is_present = 1;
+
+    /* Set URI */
+    rsp_fields.uri = esp_uri;
+    rsp_fields.uri_len = sizeof(esp_uri);
+
+    /* Set advertising interval */
+    rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
+    rsp_fields.adv_itvl_is_present = 1;
+
+    //# Set scan response fields
+    rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "failed to set scan response data, error code: %d", rc);
+        return rc;
+    }
+
+        
+    //! Set non-connetable and general discoverable mode to be a beacon
+    struct ble_gap_adv_params adv_params = {0};
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+
+    /* Set advertising interval */
+    adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
+    adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
 
     //# Start advertising
     return rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params,
@@ -226,6 +231,11 @@ static void on_sync_change() {
     format_addr(addr_str, addr_val);
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
+
+
+
+
+
     //# Start advertising
     rc = start_service_advertising();
     if (rc != 0) {
@@ -240,19 +250,16 @@ static void on_stack_reset(int reason) {
     ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
 }
 
-void mod_nimbleBLE_setup2(bool beacon_only) {
-    int rc = 0;
-    esp_err_t ret = ESP_OK;
-
+void mod_nimbleBLE_setup2(bool beacon) {
     //# NimBLE stack initialization
-    ret = nimble_port_init();
+    esp_err_t ret = nimble_port_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to initialize nimble stack, error code: %d ", ret);
         return;
     }
 
     //# Set GAP device name
-    rc = ble_svc_gap_device_name_set(DEVICE_NAME);
+    int rc = ble_svc_gap_device_name_set(DEVICE_NAME);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set device name to %s, error code: %d", DEVICE_NAME, rc);
         return;
@@ -270,8 +277,8 @@ void mod_nimbleBLE_setup2(bool beacon_only) {
     ble_hs_cfg.sync_cb = on_sync_change;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
-    if (beacon_only) {
-
+    if (beacon) {
+        beacon_only = true;
     } else {
         //# GAP service initialization
         ble_svc_gap_init();

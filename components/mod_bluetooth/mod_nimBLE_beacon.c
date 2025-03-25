@@ -46,11 +46,13 @@ static void on_sync_advertising(void) {
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
 
+
+
     /* Set advertising flags */
     struct ble_hs_adv_fields adv_fields = {0};
     adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
 
-    /* Set device name */
+    //# Set device name */
     const char *name = ble_svc_gap_device_name();
     adv_fields.name = (uint8_t *)name;
     adv_fields.name_len = strlen(name);
@@ -68,7 +70,7 @@ static void on_sync_advertising(void) {
     adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
     adv_fields.le_role_is_present = 1;
 
-    /* Set advertiement fields */
+    //# Set advertiement fields */
     rc = ble_gap_adv_set_fields(&adv_fields);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
@@ -77,8 +79,7 @@ static void on_sync_advertising(void) {
 
 
 
-    
-    /* Set device address */
+    //# Set device address */
     struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
     rsp_fields.device_addr_type = own_addr_type;
@@ -93,9 +94,11 @@ static void on_sync_advertising(void) {
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set scan response data, error code: %d", rc);
         return;
+
     }
 
-    /* Set non-connetable and general discoverable mode to be a beacon */
+
+    //! Set non-connetable and general discoverable mode to be a beacon */
     struct ble_gap_adv_params adv_params = {0};
     adv_params.conn_mode = BLE_GAP_CONN_MODE_NON;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
@@ -116,11 +119,8 @@ static void on_stack_reset(int reason) {
 }
 
 void mod_nimbleBLE_setup(void) {
-    int rc = 0;
-    esp_err_t ret = ESP_OK;
-
     /* NimBLE host stack initialization */
-    ret = nimble_port_init();
+    esp_err_t ret = nimble_port_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "failed to initialize nimble stack, error code: %d ",
                     ret);
@@ -128,7 +128,7 @@ void mod_nimbleBLE_setup(void) {
     }
 
     /* Set GAP device name */
-    rc = ble_svc_gap_device_name_set(DEVICE_NAME);
+    int rc = ble_svc_gap_device_name_set(DEVICE_NAME);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set device name to %s, error code: %d",
                     DEVICE_NAME, rc);
