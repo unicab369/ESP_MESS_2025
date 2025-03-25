@@ -91,7 +91,7 @@ idf.py set-target esp32x
 ## ESP32 ADC Channels
 
 **ADC1 Channels**
-| ADC1 Channel	G |   PIO Pin
+| ADC1 Channel	G |   PIO Pin  |
 |----------------|------------|
 | ADC1_CHANNEL_0 |   GPIO 36  |  
 | ADC1_CHANNEL_1 |   GPIO 37  |
@@ -127,3 +127,15 @@ ADC Calibration:
 
 Noise Reduction:
    To reduce noise, you can average multiple ADC readings or use a capacitor on the ADC pin.
+
+
+
+   
+|Feature	         | NimBLE	      | Bluedroid       |
+|-----------------|--------------|-----------------|
+|Memory Usage	   | ~25KB RAM 	| ~100KB RAM      |
+|BLE 5.0 Support	| Full      	| Partial         |
+|API Complexity	| Simpler	   | More complex    |
+|Throughput	Good	| Excellent|   |                 |
+|Dual Mode        | (BT+BLE)	   | BLE only	Both BT Classic and BLE |
+|Configuration	   | Menuconfig   | option	Default in ESP-ID |

@@ -243,8 +243,6 @@ void mod_sd_test(void) {
 // #endif
 }
 
-
-
 #define EXAMPLE_IS_UHS1    (CONFIG_EXAMPLE_SDMMC_SPEED_UHS_I_SDR50 || CONFIG_EXAMPLE_SDMMC_SPEED_UHS_I_DDR50)
 
 #include "sdmmc_cmd.h"

@@ -36,6 +36,7 @@ idf_component_register(SRCS "main.c"
                         mod_spi
                         mod_i2s
                         mod_audio
+                        mod_bluetooth
                     REQUIRES
                         driver
                         uart_driver
