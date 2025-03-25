@@ -16,10 +16,6 @@
 #include "mod_i2s.h"
 
 
-#include "mod_nimBLE_beacon.h"
-#include "mod_nimBLE_service.h"
-
-
 #define WIFI_ENABLED 0
 
 #if WIFI_ENABLED
@@ -358,10 +354,9 @@ void app_main(void) {
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
 
-    // mod_nimbleBLE_setup();
-    mod_nimbleBLE_setup2(false);
-
-    xTaskCreate(mod_nimbleBLE_beacon_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
+    #include "mod_nimBLE.h"
+    mod_nimbleBLE_setup(false);
+    xTaskCreate(mod_nimbleBLE_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();

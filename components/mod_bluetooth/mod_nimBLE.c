@@ -6,9 +6,8 @@
 /* Includes */
 #include "common.h"
 
+#include "mod_nimBLE.h"
 #include "services/gap/ble_svc_gap.h"
-#include "mod_nimBLE_beacon.h"
-
 
 static const char *TAG = "MOD_NIMBLE_SERVICE";
 static const char* DEVICE_NAME = "NimBLE_Service";
@@ -136,7 +135,6 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 
 
 static int start_service_advertising() {
-
     /* Set advertising flags */
     struct ble_hs_adv_fields adv_fields = {0};
     adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
@@ -166,8 +164,6 @@ static int start_service_advertising() {
         return rc;
     }
 
-
-
     //# Set device address */
     struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
@@ -178,9 +174,12 @@ static int start_service_advertising() {
     rsp_fields.uri = esp_uri;
     rsp_fields.uri_len = sizeof(esp_uri);
 
-    /* Set advertising interval */
-    rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
-    rsp_fields.adv_itvl_is_present = 1;
+    //! NOTE: Beacon doesn't set response field adv interval
+    if (!beacon_only) {
+        /* Set advertising interval */
+        rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
+        rsp_fields.adv_itvl_is_present = 1;
+    }
 
     //# Set scan response fields
     rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
@@ -189,19 +188,31 @@ static int start_service_advertising() {
         return rc;
     }
 
-        
-    //! Set non-connetable and general discoverable mode to be a beacon
-    struct ble_gap_adv_params adv_params = {0};
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+    //! Set non-connetable and general discoverable mode to be a beacon */
+    if (beacon_only) {
+        printf("BLE Mode: Beacon\n");
+        struct ble_gap_adv_params adv_params = {0};
+        adv_params.conn_mode = BLE_GAP_CONN_MODE_NON;
+        adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
 
-    /* Set advertising interval */
-    adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
-    adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
+        //# Start advertising
+        return ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, 
+                                &adv_params, NULL, NULL);
+    } else {
+        printf("BLE Mode: Connection\n");
+        struct ble_gap_adv_params adv_params = {0};
+        adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+        adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
 
-    //# Start advertising
-    return rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params,
-                            gap_event_handler, NULL);
+        /* Set advertising interval */
+        adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
+        adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
+
+        //# Start advertising
+        return ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER,
+                                &adv_params, gap_event_handler, NULL);
+    }
+    
 }
 
 static void on_sync_change() {
@@ -231,11 +242,6 @@ static void on_sync_change() {
     format_addr(addr_str, addr_val);
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
-
-
-
-
-
     //# Start advertising
     rc = start_service_advertising();
     if (rc != 0) {
@@ -250,7 +256,7 @@ static void on_stack_reset(int reason) {
     ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
 }
 
-void mod_nimbleBLE_setup2(bool beacon) {
+void mod_nimbleBLE_setup(bool beacon) {
     //# NimBLE stack initialization
     esp_err_t ret = nimble_port_init();
     if (ret != ESP_OK) {
@@ -277,13 +283,27 @@ void mod_nimbleBLE_setup2(bool beacon) {
     ble_hs_cfg.sync_cb = on_sync_change;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
-    if (beacon) {
-        beacon_only = true;
+    beacon_only = beacon;
+
+    if (beacon_only) {
+        
     } else {
         //# GAP service initialization
         ble_svc_gap_init();
     }
 
+
     /* Store host configuration */
     // ble_store_config_init();
+}
+
+void mod_nimbleBLE_task(void *param) {
+    /* Task entry log */
+    ESP_LOGI(TAG, "nimble host task has been started!");
+
+    /* This function won't return until nimble_port_stop() is executed */
+    nimble_port_run();
+
+    /* Clean up at exit */
+    vTaskDelete(NULL);
 }

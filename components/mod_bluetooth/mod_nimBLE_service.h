@@ -1,1 +1,0 @@
-void mod_nimbleBLE_setup2(bool beacon_only);
