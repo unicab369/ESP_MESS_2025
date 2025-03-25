@@ -150,7 +150,13 @@
         "ble_svc_gap.h": "c",
         "mod_nimble.h": "c",
         "esp_random.h": "c",
-        "ble_svc_cts.h": "c"
+        "ble_svc_cts.h": "c",
+        "console.h": "c",
+        "nimble_port.h": "c",
+        "ble_hs.h": "c",
+        "nimble_port_freertos.h": "c",
+        "modlog.h": "c",
+        "esp_central.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

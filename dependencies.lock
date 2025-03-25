@@ -13,6 +13,12 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 1.18.1
+  nimble_central_utils:
+    dependencies: []
+    source:
+      path: C:\Users\uni\esp\v5.4\esp-idf\examples\bluetooth\nimble\common\nimble_central_utils
+      type: local
+    version: '*'
   sd_card:
     dependencies: []
     source:
@@ -22,7 +28,8 @@ dependencies:
 direct_dependencies:
 - idf
 - joltwallet/littlefs
+- nimble_central_utils
 - sd_card
-manifest_hash: 2a2a3d2d4087adfb74d752d1a2adc828b9581b50cb66b7ef71be06e308264bd3
+manifest_hash: d9b8346c1aa7907c83d3112919e5b747ae3e805d0c06e12e27300ae916a6a784
 target: esp32
 version: 2.0.0

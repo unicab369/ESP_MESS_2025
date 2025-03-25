@@ -27,7 +27,7 @@ static uint8_t behaviors_index = 0;
 static uint8_t device_mac[6];
 static behavior_output_interface behavior_interface;
 
-void print_bytes(uint8_t* data, size_t len) {
+void print_bytes2(uint8_t* data, size_t len) {
     // Print all bytes in hexadecimal format
     printf("Print Bytes:\n");
     for (size_t i = 0; i < len; i++) {
@@ -119,7 +119,7 @@ void littlefs_readLine_handler(char* file_name, char* str_buff, size_t len) {
     
     if (validate_code && check_config_cmd(&config)) {
         ESP_LOGI(TAG, "Behavior Config:");
-        print_bytes(data_buff, sizeof(behavior_config_t));
+        print_bytes2(data_buff, sizeof(behavior_config_t));
 
         // copy config into device_behaviors[behaviors_index]
         memcpy(&device_behaviors[behaviors_index++], &config, sizeof(behavior_config_t));

@@ -1,0 +1,7 @@
+## IDF Component Manager Manifest File
+dependencies:
+  nimble_central_utils:
+    path: ${IDF_PATH}/examples/bluetooth/nimble/common/nimble_central_utils
+  
+  # espressif/esp-modbus:
+  #   version: "^1.0"

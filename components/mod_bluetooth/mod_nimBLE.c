@@ -13,11 +13,6 @@
 
 static const char *TAG = "MOD_NIMBLE";
 
-static void on_stack_reset(int reason) {
-    /* On reset, print reset reason to console */
-    ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
-}
-
 void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg) {
     char buf[BLE_UUID_STR_LEN];
 
@@ -44,6 +39,19 @@ void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg) {
         default:
             assert(0); break;
     }
+}
+
+static void on_stack_reset(int reason) {
+    /* On reset, print reset reason to console */
+    ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
+}
+
+void mod_nimbleBLE_task(void *param) {
+    ESP_LOGI(TAG, "nimble host task has been started!");
+
+    /* This function won't return until nimble_port_stop() is executed */
+    nimble_port_run();
+    vTaskDelete(NULL);      /* Clean up at exit */
 }
 
 void mod_nimbleBLE_setup(bool beacon) {
@@ -83,15 +91,6 @@ void mod_nimbleBLE_setup(bool beacon) {
         }
     }
 
-    /* Store host configuration */
-    // ble_store_config_init();
-}
-
-
-void mod_nimbleBLE_task(void *param) {
-    ESP_LOGI(TAG, "nimble host task has been started!");
-
-    /* This function won't return until nimble_port_stop() is executed */
-    nimble_port_run();
-    vTaskDelete(NULL);      /* Clean up at exit */
+    //# start task
+    xTaskCreate(mod_nimbleBLE_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
 }

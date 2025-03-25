@@ -355,8 +355,10 @@ void app_main(void) {
     uint64_t interval_ref2 = 0;
 
     #include "mod_nimBLE.h"
-    mod_nimbleBLE_setup(false);
-    xTaskCreate(mod_nimbleBLE_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
+    #include "mod_BLEScan.h"
+
+    mod_BLEScan_setup();
+    // mod_nimbleBLE_setup(false);
     // xTaskCreate(mod_heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
 
     while (1) {
