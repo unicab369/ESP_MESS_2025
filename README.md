@@ -68,6 +68,19 @@ idf.py set-target esp32x
 6. `Power Mode`: Unleash your magical typing power.
 
 
+## View memory usages
+
+`idf.py size-components`: identify IRAM consumers
+`heap_caps_print_heap_info(MALLOC_CAP_8BIT);`: Monitor heap fragmentation. (88KB free is healthy for most applications)
+
+## Critical Thresholds
+
+|Memory     | Warning Level	| Emergency Level |
+|-----------|-----------------| --------------- |
+|IRAM	      | >110KB	         | >125KB |
+|DRAM	      | >100KB	         | >120KB |
+|Flash      | >2.5MB	         | >3MB   |
+
 ## Other idf.py commands
 
 `idf.py --version`: Displays the version of ESP-IDF being used in the current environment.<br>
@@ -118,7 +131,7 @@ idf.py set-target esp32x
 | ADC2_CHANNEL_9 |	GPIO 26  |
 
 
-Important Notes
+## Important Notes
 ADC2 and Wi-Fi:
    ADC2 cannot be used when Wi-Fi is enabled because it is shared with the Wi-Fi module.
 
@@ -129,7 +142,7 @@ Noise Reduction:
    To reduce noise, you can average multiple ADC readings or use a capacitor on the ADC pin.
 
 
-
+## NimBLE vs Blueroid
    
 |Feature	         | NimBLE	      | Bluedroid       |
 |-----------------|--------------|-----------------|
@@ -139,3 +152,25 @@ Noise Reduction:
 |Throughput	Good	| Excellent|   |                 |
 |Dual Mode        | (BT+BLE)	   | BLE only	Both BT Classic and BLE |
 |Configuration	   | Menuconfig   | option	Default in ESP-ID |
+
+
+
+## Memory Type Usage Summary
+
+| Memory Type/Section            | Used [bytes] | Used [%] | Remain [bytes] | Total [bytes] |
+|--------------------------------|--------------|----------|----------------|---------------|
+| `Flash Code`                   |       436078 |    13.05 |        2906226 |       3342304 |
+|&nbsp;&nbsp;&nbsp;.text         |       436078 |    13.05 |                |               |
+| `IRAM`                         |       115375 |    88.02 |          15697 |        131072 |
+|&nbsp;&nbsp;&nbsp;.text         |       114347 |    87.24 |                |               |
+|&nbsp;&nbsp;&nbsp;.vectors      |         1027 |     0.78 |                |               |
+| `Flash Data`                   |        99656 |     2.38 |        4094616 |       4194272 |
+|&nbsp;&nbsp;&nbsp;.rodata       |        99400 |     2.37 |                |               |
+|&nbsp;&nbsp;&nbsp;.appdesc      |          256 |     0.01 |                |               |
+| `DRAM`                         |        36188 |    29.05 |          88392 |        124580 |
+|&nbsp;&nbsp;&nbsp;.data         |        21116 |    16.95 |                |               |
+|&nbsp;&nbsp;&nbsp;.bss          |        15072 |     12.1 |                |               |
+| `RTC FAST`                     |           28 |     0.34 |           8164 |          8192 |
+|&nbsp;&nbsp;&nbsp;.force_fast   |           28 |     0.34 |                |               |
+| `RTC SLOW`                     |           24 |     0.31 |           7656 |          7680 |
+|&nbsp;&nbsp;&nbsp;.rtc_slow     |           24 |     0.31 |                |               |
