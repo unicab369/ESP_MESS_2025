@@ -10,6 +10,7 @@
 
 #include "BLEGap/mod_BLEGap.h"
 #include "BLEGatt/mod_BLEGatt.h"
+#include "GattHtp/mod_GattHtp.h"
 
 static const char *TAG = "MOD_NIMBLE";
 
@@ -54,6 +55,9 @@ void mod_nimbleBLE_task(void *param) {
     vTaskDelete(NULL);      /* Clean up at exit */
 }
 
+static ble_uuid16_t time_service[] =   { BLE_UUID16_INIT(0x1805) };    // Time Service profile
+static ble_uuid16_t health_service[] = { BLE_UUID16_INIT(0x1809) };    // Heal Thernometer profile
+
 void mod_nimbleBLE_setup(bool beacon) {
     //# NimBLE stack initialization
     esp_err_t ret = nimble_port_init();
@@ -64,12 +68,12 @@ void mod_nimbleBLE_setup(bool beacon) {
 
     //! Set host callbacks
     ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = on_stack_sync;
+    ble_hs_cfg.sync_cb = on_gap_sync;
     ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     //# GAP service init
-    int rc = mod_BLEGap_init(beacon);
+    int rc = mod_BLEGap_init(beacon, time_service);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to initialize GATT server, error code: %d", rc);
         return;
@@ -85,6 +89,8 @@ void mod_nimbleBLE_setup(bool beacon) {
 
         //# GATT service init
         rc = mod_BLEGatt_init();
+
+        // rc = mod_GattHtp_init();
         if (rc != 0) {
             ESP_LOGE(TAG, "failed to initialize GATT server, error code: %d", rc);
             return;

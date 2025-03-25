@@ -156,7 +156,10 @@
         "ble_hs.h": "c",
         "nimble_port_freertos.h": "c",
         "modlog.h": "c",
-        "esp_central.h": "c"
+        "esp_central.h": "c",
+        "ble_svc_gatt.h": "c",
+        "common.h": "c",
+        "ble.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

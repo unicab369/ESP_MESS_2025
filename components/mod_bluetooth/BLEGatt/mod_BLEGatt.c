@@ -140,18 +140,20 @@ static const char *TAG = "MOD_BLEGatt";
 #include <time.h>
 #include "sys/time.h"
 
-
 static struct ble_svc_cts_local_time_info local_info = { .timezone = 0, .dst_offset = TIME_STANDARD };
 static struct timeval last_updated;
 uint8_t adjust_reason;
+
 int fetch_current_time(struct ble_svc_cts_curr_time *ctime) {
     time_t now;
     struct tm timeinfo;
     struct timeval tv_now;
+
     /* time given by 'time()' api does not persist after reboots */
     time(&now);
     localtime_r(&now, &timeinfo);
     gettimeofday(&tv_now, NULL);
+
     if(ctime != NULL) {
         /* fill date_time */
         ctime->et_256.d_d_t.d_t.year = timeinfo.tm_year + 1900;
@@ -161,20 +163,17 @@ int fetch_current_time(struct ble_svc_cts_curr_time *ctime) {
         ctime->et_256.d_d_t.d_t.minutes = timeinfo.tm_min;
         ctime->et_256.d_d_t.d_t.seconds = timeinfo.tm_sec;
 
-        /* day of week */
-        /* time gives day range of [0, 6], current_time_sevice
-           has day range of [1,7] */
+        /* day of week. time gives day range of [0, 6], current_time_sevice has day range of [1,7] */
         ctime->et_256.d_d_t.day_of_week = timeinfo.tm_wday + 1;
 
         /* fractions_256 */
         ctime->et_256.fractions_256 = (((uint64_t)tv_now.tv_usec * 256L )/ 1000000L);
-
         ctime->adjust_reason = adjust_reason;
     }
     return 0;
 }
 
-int set_current_time(struct ble_svc_cts_curr_time ctime) {
+static int set_current_time(struct ble_svc_cts_curr_time ctime) {
     time_t now;
     struct tm timeinfo;
     struct timeval tv_now;
@@ -186,6 +185,7 @@ int set_current_time(struct ble_svc_cts_curr_time ctime) {
     timeinfo.tm_min = ctime.et_256.d_d_t.d_t.minutes;
     timeinfo.tm_sec = ctime.et_256.d_d_t.d_t.seconds;
     timeinfo.tm_wday = ctime.et_256.d_d_t.day_of_week - 1;
+
     now = mktime(&timeinfo);
     tv_now.tv_sec = now;
     settimeofday(&tv_now, NULL);
@@ -195,15 +195,14 @@ int set_current_time(struct ble_svc_cts_curr_time ctime) {
     return 0;
 }
 
-int fetch_local_time_info(struct ble_svc_cts_local_time_info *info) {
-
+static  int fetch_local_time_info(struct ble_svc_cts_local_time_info *info) {
     if(info != NULL) {
         memcpy(info, &local_info, sizeof local_info);
     }
     return 0;
 }
 
-int set_local_time_info(struct ble_svc_cts_local_time_info info) {
+static int set_local_time_info(struct ble_svc_cts_local_time_info info) {
     /* just store the dst offset and timezone locally
         as we don't have the access to time using ntp server */
     local_info.timezone = info.timezone;
@@ -212,7 +211,7 @@ int set_local_time_info(struct ble_svc_cts_local_time_info info) {
     return 0;
 }
 
-int fetch_reference_time_info(struct ble_svc_cts_reference_time_info *info) {
+static int fetch_reference_time_info(struct ble_svc_cts_reference_time_info *info) {
     struct timeval tv_now;
     uint64_t days_since_update;
     uint64_t hours_since_update;
@@ -228,13 +227,12 @@ int fetch_reference_time_info(struct ble_svc_cts_reference_time_info *info) {
 
     if(days_since_update > 254) {
         info->hours_since_update = 255;
-    }
-    else {
+    } else {
         hours_since_update = (tv_now.tv_sec % 86400L) / 3600;
         info->hours_since_update = hours_since_update;
     }
-    adjust_reason = (CHANGE_OF_DST_MASK | CHANGE_OF_TIME_ZONE_MASK);
 
+    adjust_reason = (CHANGE_OF_DST_MASK | CHANGE_OF_TIME_ZONE_MASK);
     return 0;
 }
 

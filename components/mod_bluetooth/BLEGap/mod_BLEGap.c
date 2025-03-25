@@ -72,9 +72,8 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 
     /* Connect event */
     case BLE_GAP_EVENT_CONNECT:
-        ESP_LOGI(TAG, "connection %s; status=%d",
-                    event->connect.status == 0 ? "established" : "failed",
-                    event->connect.status);
+        const char *status_str = event->connect.status == 0 ? "established" : "failed";
+        ESP_LOGI(TAG, "connection %s; status=%d", status_str, event->connect.status);
 
         /* Connection succeeded */
         if (event->connect.status == 0) {
@@ -165,48 +164,37 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 
 
 //! Current Time Service: extended adv
-#if CONFIG_EXAMPLE_EXTENDED_ADV
+#if BLE_EXTENDED_ADV
     static void ext_ble_cts_prph_advertise(void) {
-        struct ble_gap_ext_adv_params params;
-        struct os_mbuf *data;
-        uint8_t instance = 0;
         int rc;
 
         /* First check if any instance is already active */
-        if (ble_gap_ext_adv_active(instance)) {
-            return;
-        }
+        uint8_t instance = 0;
+        if (ble_gap_ext_adv_active(instance)) return;
 
-        /* use defaults for non-set params */
-        memset (&params, 0, sizeof(params));
+        struct ble_gap_ext_adv_params adv_params = {0};
 
-        /* enable connectable advertising */
-        params.connectable = 1;
+        adv_params.own_addr_type = BLE_OWN_ADDR_PUBLIC;
+        adv_params.connectable = 1;
 
-        /* advertise using random addr */
-        params.own_addr_type = BLE_OWN_ADDR_PUBLIC;
+        adv_params.primary_phy = BLE_HCI_LE_PHY_1M;
+        adv_params.secondary_phy = BLE_HCI_LE_PHY_2M;
+        adv_params.sid = 1;
 
-        params.primary_phy = BLE_HCI_LE_PHY_1M;
-        params.secondary_phy = BLE_HCI_LE_PHY_2M;
-        params.sid = 1;
-
-        params.itvl_min = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
-        params.itvl_max = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
+        adv_params.itvl_min = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
+        adv_params.itvl_max = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
 
         /* configure instance 0 */
-        rc = ble_gap_ext_adv_configure(instance, &params, NULL, ble_cts_prph_gap_event, NULL);
+        rc = ble_gap_ext_adv_configure(instance, &adv_params, NULL, ble_cts_prph_gap_event, NULL);
         assert (rc == 0);
 
-        /* in this case only scan response is allowed */
-
         /* get mbuf for scan rsp data */
-        data = os_msys_get_pkthdr(sizeof(ext_adv_pattern_1), 0);
+        struct os_mbuf *data = os_msys_get_pkthdr(sizeof(ext_adv_pattern_1), 0);
         assert(data);
 
         /* fill mbuf with scan rsp data */
         rc = os_mbuf_append(data, ext_adv_pattern_1, sizeof(ext_adv_pattern_1));
         assert(rc == 0);
-
         rc = ble_gap_ext_adv_set_data(instance, data);
         assert (rc == 0);
 
@@ -221,9 +209,10 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 #endif
 
 
+ble_uuid16_t *service_profile;
 
 static int start_advertising() {
-    //# Set device name
+    //# advertisement fields
     const char *name = ble_svc_gap_device_name();
     struct ble_hs_adv_fields adv_fields = {0};
     adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
@@ -247,21 +236,20 @@ static int start_advertising() {
     /* 16 Bit Current Time Service UUID */
     #define BLE_SVC_CTS_UUID16                      0x1805
 
-    adv_fields.uuids16 = (ble_uuid16_t[]) {
-        BLE_UUID16_INIT(BLE_SVC_CTS_UUID16)
-    };
+    // adv_fields.uuids16 = (ble_uuid16_t[]) { BLE_UUID16_INIT(BLE_SVC_CTS_UUID16) };
+    adv_fields.uuids16 = service_profile;
     adv_fields.num_uuids16 = 1;
     adv_fields.uuids16_is_complete = 1;
 
-    //# Set dvertisement fields
+    //# Set advertisement fields
     int rc = ble_gap_adv_set_fields(&adv_fields);
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
         return rc;
     }
 
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DIFF
-    //# Set device address */
+
+    //# response fields
     struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
     rsp_fields.device_addr_type = own_addr_type;
@@ -311,16 +299,16 @@ static int start_advertising() {
     }
 }
 
-void on_stack_sync() {
+void on_gap_sync() {
     int rc = 0;
     char addr_str[18] = {0};
 
-    //# Make sure we have proper BT identity address set
-    rc = ble_hs_util_ensure_addr(0);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "device does not have any available bt address!");
-        return;
-    }
+    // //# Make sure we have proper BT identity address set
+    // rc = ble_hs_util_ensure_addr(0);
+    // if (rc != 0) {
+    //     ESP_LOGE(TAG, "device does not have any available bt address!");
+    //     return;
+    // }
 
     //# Figure out BT address to use while advertising
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
@@ -348,8 +336,9 @@ void on_stack_sync() {
 }
 
 
-int mod_BLEGap_init(bool beacon) {
+int mod_BLEGap_init(bool beacon, ble_uuid16_t *profile) {
     beacon_only = beacon;
+    service_profile = profile;
 
     //# GAP service init
     ble_svc_gap_init();

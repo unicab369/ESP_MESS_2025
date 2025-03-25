@@ -10,7 +10,8 @@
 
 static const char *TAG = "NimBLE_CTS_CENT";
 
-static int ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg);
+static void start_scan(void);
+static int handle_gap_event(struct ble_gap_event *event, void *arg);
 
 static uint8_t peer_addr[6];
 
@@ -53,37 +54,9 @@ static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_erro
         return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
 }
 
-static int ble_cts_cent_read_time(const struct peer *peer) {
-    /* Subscribe to notifications for the Current Time Characteristic.
-     * A central enables notifications by writing two bytes (1, 0) to the
-     * characteristic's client-characteristic-configuration-descriptor (CCCD). */
-    const struct peer_chr *chr;
-    int rc;
 
-    chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_CTS_UUID16),
-                                    BLE_UUID16_DECLARE(BLE_SVC_CTS_CHR_UUID16_CURRENT_TIME));
-    if (chr == NULL) {
-        MODLOG_DFLT(ERROR, "Error: Peer doesn't support the CTS "
-                    " characteristic\n");
-        goto err;
-    }
-    rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, ble_cts_cent_on_read, NULL);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "Error: Failed to read characteristic; rc=%d\n",
-                    rc);
-        goto err;
-    }
-
-    return 0;
-
-    err:
-        /* Terminate the connection. */
-        return ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-}
-
-
-static void
-ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
+//! SAME (adjust)
+static void on_connect_handler(const struct peer *peer, int status, void *arg) {
     if (status != 0) {
         /* Service discovery failed.  Terminate the connection. */
         MODLOG_DFLT(ERROR, "Error: Service discovery failed; status=%d "
@@ -93,23 +66,31 @@ ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
     }
 
     /* Service discovery has completed successfully.  Now we have a complete
-     * list of services, characteristics, and descriptors that the peer
-     * supports.
-     */
-    MODLOG_DFLT(INFO, "Service discovery complete; status=%d "
-                "conn_handle=%d\n", status, peer->conn_handle);
-    // Now perform GATT procedure against the peer: read for the cts service.
-    ble_cts_cent_read_time(peer);
+     list of services, characteristics, and descriptors that the peer supports. */
+    MODLOG_DFLT(INFO, "Service discovery complete; status=%d conn_handle=%d\n", status, peer->conn_handle);
+
+    const struct peer_chr *chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_CTS_UUID16),
+                                    BLE_UUID16_DECLARE(BLE_SVC_CTS_CHR_UUID16_CURRENT_TIME));
+    if (chr == NULL) {
+        MODLOG_DFLT(ERROR, "Error: Peer doesn't support the CTS characteristic\n");
+        goto err;
+    }
+    int rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, ble_cts_cent_on_read, NULL);
+    if (rc != 0) {
+        MODLOG_DFLT(ERROR, "Error: Failed to read characteristic; rc=%d\n", rc);
+        goto err;
+    }
+
+    err:
+        ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
 }
 
-
-/**
- * Indicates whether we should try to connect to the sender of the specified
- * advertisement.  The function returns a positive result if the device
- * advertises connectability and support for the Current Time Service.
- */
+//! SAME (adjust)
+/* Indicates whether we should try to connect to the sender of the specified
+    advertisement.  The function returns a positive result if the device
+    advertises connectability and support for the matching Service. */
 #if CONFIG_EXAMPLE_EXTENDED_ADV
-    static int ext_ble_cts_cent_should_connect(const struct ble_gap_ext_disc_desc *disc) {
+    static int should_connect(const struct ble_gap_ext_disc_desc *disc) {
         int offset = 0;
         int ad_struct_len = 0;
 
@@ -123,9 +104,7 @@ ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
             sscanf(CONFIG_EXAMPLE_PEER_ADDR, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
                 &peer_addr[5], &peer_addr[4], &peer_addr[3],
                 &peer_addr[2], &peer_addr[1], &peer_addr[0]);
-            if (memcmp(peer_addr, disc->addr.val, sizeof(disc->addr.val)) != 0) {
-                return 0;
-            }
+            if (memcmp(peer_addr, disc->addr.val, sizeof(disc->addr.val)) != 0) return 0;
         }
 
         /* The device has to advertise support for the CTS service (0x1805).*/
@@ -133,25 +112,29 @@ ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
             ad_struct_len = disc->data[offset];
             if (!ad_struct_len) break;
 
-            /* Search if cts UUID is advertised */
+            //! Search if CTS UUID is advertised
             if (disc->data[offset + 1] == 0x03) {
                 int temp = 2;
                 while(temp < disc->data[offset + 1]) {
-                    if(disc->data[offset + temp] == 0x05 &&
-                    disc->data[offset + temp + 1] == 0x18) {
+                    if(disc->data[offset + temp] == 0x05 && disc->data[offset + temp + 1] == 0x18) {
                         return 1;
                     }
                     temp += 2;
                 }
             }
+
+            // //! Search if HTP UUID is advertised
+            // if ((disc->data[offset] == 0x03 && disc->data[offset + 1] == 0x03)
+            //         && (disc->data[offset + 2] == 0x18 && disc->data[offset + 3] == 0x09)) {
+            //     return 1;
+            // }
             offset += ad_struct_len + 1;
         } while ( offset < disc->length_data );
 
         return 0;
     }
 #else
-
-    static int ble_cts_cent_should_connect(const struct ble_gap_disc_desc *disc) {
+    static int should_connect(const struct ble_gap_disc_desc *disc) {
         struct ble_hs_adv_fields fields;
         int rc;
         int i;
@@ -178,7 +161,8 @@ ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
 
         // The device has to advertise support for the Current Time service (0x1805).
         for (i = 0; i < fields.num_uuids16; i++) {
-            if (ble_uuid_u16(&fields.uuids16[i].u) == BLE_SVC_CTS_UUID16) return 1;
+            uint16_t service_id = ble_uuid_u16(&fields.uuids16[i].u);
+            if (service_id == BLE_SVC_CTS_UUID16) return 1;
         }
 
         return 0;
@@ -186,21 +170,18 @@ ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
 #endif
 
 
-/**
- * Connects to the sender of the specified advertisement of it looks
- * interesting.  A device is "interesting" if it advertises connectability and
- * support for the Current Time service.
- */
-static void ble_cts_cent_connect_if_interesting(void *disc) {
+/* Connects to the sender of the specified advertisement of it looks
+ interesting.  A device is "interesting" if it advertises compatible service. */
+static void connect_if_interesting(void *disc) {
     uint8_t own_addr_type;
     int rc;
     ble_addr_t *addr;
 
     /* Don't do anything if we don't care about this advertiser. */
     #if CONFIG_EXAMPLE_EXTENDED_ADV
-        if (!ext_ble_cts_cent_should_connect((struct ble_gap_ext_disc_desc *)disc)) return;
+        if (!should_connect((struct ble_gap_ext_disc_desc *)disc)) return;
     #else
-        if (!ble_cts_cent_should_connect((struct ble_gap_disc_desc *)disc)) return;
+        if (!should_connect((struct ble_gap_disc_desc *)disc)) return;
     #endif
 
     #if !(MYNEWT_VAL(BLE_HOST_ALLOW_CONNECT_WITH_SCAN))
@@ -226,7 +207,7 @@ static void ble_cts_cent_connect_if_interesting(void *disc) {
         addr = &((struct ble_gap_disc_desc *)disc)->addr;
     #endif
 
-    rc = ble_gap_connect(own_addr_type, addr, 30000, NULL, ble_cts_cent_gap_event, NULL);
+    rc = ble_gap_connect(own_addr_type, addr, 30000, NULL, handle_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error: Failed to connect to device; addr_type=%d "
                     "addr=%s; rc=%d\n", addr->type, addr_str(addr->val), rc);
@@ -234,8 +215,144 @@ static void ble_cts_cent_connect_if_interesting(void *disc) {
     }
 }
 
+static int handle_gap_event(struct ble_gap_event *event, void *arg) {
+    struct ble_gap_conn_desc desc;
+    struct ble_hs_adv_fields fields;
+    int rc;
 
-static void ble_cts_cent_scan(void) {
+    switch (event->type) {
+        case BLE_GAP_EVENT_DISC:
+            rc = ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data);
+            if (rc != 0) {
+                return 0;
+            }
+
+            print_adv_fields(&fields);
+            connect_if_interesting(&event->disc);
+            return 0;
+
+        case BLE_GAP_EVENT_CONNECT:
+            /* A new connection was established or a connection attempt failed. */
+            if (event->connect.status == 0) {
+                MODLOG_DFLT(INFO, "Connection established ");
+                rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
+                assert(rc == 0);
+                print_conn_desc(&desc);
+                MODLOG_DFLT(INFO, "\n");
+
+                /* Remember peer. */
+                rc = peer_add(event->connect.conn_handle);
+                if (rc != 0) {
+                    MODLOG_DFLT(ERROR, "Failed to add peer; rc=%d\n", rc);
+                    return 0;
+                }
+
+            #if CONFIG_EXAMPLE_ENCRYPTION
+                /** Initiate security - It will perform
+                 * Pairing (Exchange keys)
+                 * Bonding (Store keys)
+                 * Encryption (Enable encryption)
+                 * Will invoke event BLE_GAP_EVENT_ENC_CHANGE
+                 **/
+                rc = ble_gap_security_initiate(event->connect.conn_handle);
+                if (rc != 0) {
+                    MODLOG_DFLT(INFO, "Security could not be initiated, rc = %d\n", rc);
+                    return ble_gap_terminate(event->connect.conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+                } else {
+                    MODLOG_DFLT(INFO, "Connection secured\n");
+                }
+            #else
+                /* Perform service discovery */
+                rc = peer_disc_all(event->connect.conn_handle, on_connect_handler, NULL);
+                if (rc != 0) {
+                    MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
+                    return 0;
+                }
+            #endif
+
+            } else {
+                /* Connection attempt failed; resume scanning. */
+                MODLOG_DFLT(ERROR, "Error: Connection failed; status=%d\n", event->connect.status);
+                start_scan();
+            }
+
+            return 0;
+
+        case BLE_GAP_EVENT_DISCONNECT:
+            MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
+            print_conn_desc(&event->disconnect.conn);
+            MODLOG_DFLT(INFO, "\n");
+
+            /* Forget about peer. */
+            peer_delete(event->disconnect.conn.conn_handle);
+            start_scan();
+            return 0;
+
+        case BLE_GAP_EVENT_DISC_COMPLETE:
+            MODLOG_DFLT(INFO, "discovery complete; reason=%d\n", event->disc_complete.reason);
+            return 0;
+
+        case BLE_GAP_EVENT_ENC_CHANGE:
+            /* Encryption has been enabled or disabled for this connection. */
+            MODLOG_DFLT(INFO, "encryption change event; status=%d ", event->enc_change.status);
+            rc = ble_gap_conn_find(event->enc_change.conn_handle, &desc);
+            assert(rc == 0);
+            print_conn_desc(&desc);
+            
+    #if CONFIG_EXAMPLE_ENCRYPTION
+            /*** Go for service discovery after encryption has been successfully enabled ***/
+            rc = peer_disc_all(event->connect.conn_handle, on_connect_handler, NULL);
+            if (rc != 0) {
+                MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
+                return 0;
+            }
+    #endif
+            return 0;
+
+        case BLE_GAP_EVENT_NOTIFY_RX:
+            /* Peer sent us a notification or indication. */
+            MODLOG_DFLT(INFO, "received %s; conn_handle=%d attr_handle=%d attr_len=%d\n",
+                        event->notify_rx.indication ? "indication" : "notification",
+                        event->notify_rx.conn_handle,
+                        event->notify_rx.attr_handle,
+                        OS_MBUF_PKTLEN(event->notify_rx.om));
+
+            /* Attribute data is contained in event->notify_rx.om. Use
+             `os_mbuf_copydata` to copy the data received in notification mbuf */
+            return 0;
+
+        case BLE_GAP_EVENT_MTU:
+            MODLOG_DFLT(INFO, "mtu update event; conn_handle=%d cid=%d mtu=%d\n",
+                        event->mtu.conn_handle, event->mtu.channel_id, event->mtu.value);
+            return 0;
+
+        case BLE_GAP_EVENT_REPEAT_PAIRING:
+            /* We already have a bond with the peer, but it is attempting to
+                establish a new secure link.  This app sacrifices security for
+                convenience: just throw away the old bond and accept the new link */
+
+            /* Delete the old bond. */
+            rc = ble_gap_conn_find(event->repeat_pairing.conn_handle, &desc);
+            assert(rc == 0);
+            ble_store_util_delete_peer(&desc.peer_id_addr);
+
+            /* Return BLE_GAP_REPEAT_PAIRING_RETRY to indicate that the host should
+             continue with the pairing operation. */
+            return BLE_GAP_REPEAT_PAIRING_RETRY;
+
+    #if CONFIG_EXAMPLE_EXTENDED_ADV
+        case BLE_GAP_EVENT_EXT_DISC:
+            /* An advertisement report was received during GAP discovery. */
+            ext_print_adv_report(&event->disc);
+            connect_if_interesting(&event->disc);
+            return 0;
+    #endif
+
+        default: return 0;
+    }
+}
+
+static void start_scan(void) {
     uint8_t own_addr_type;
     struct ble_gap_disc_params disc_params;
     int rc;
@@ -259,160 +376,18 @@ static void ble_cts_cent_scan(void) {
     disc_params.filter_policy = 0;
     disc_params.limited = 0;
 
-    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, ble_cts_cent_gap_event, NULL);
+    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error initiating GAP discovery procedure; rc=%d\n", rc);
     }
 }
 
-
-static int ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg) {
-    struct ble_gap_conn_desc desc;
-    struct ble_hs_adv_fields fields;
-    int rc;
-
-    switch (event->type) {
-    case BLE_GAP_EVENT_DISC:
-        rc = ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data);
-        if (rc != 0) {
-            return 0;
-        }
-
-        /* An advertisement report was received during GAP discovery. */
-        print_adv_fields(&fields);
-
-        /* Try to connect to the advertiser if it looks interesting. */
-        ble_cts_cent_connect_if_interesting(&event->disc);
-        return 0;
-
-    case BLE_GAP_EVENT_CONNECT:
-        /* A new connection was established or a connection attempt failed. */
-        if (event->connect.status == 0) {
-            /* Connection successfully established. */
-            MODLOG_DFLT(INFO, "Connection established ");
-
-            rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
-            assert(rc == 0);
-            print_conn_desc(&desc);
-            MODLOG_DFLT(INFO, "\n");
-
-            /* Remember peer. */
-            rc = peer_add(event->connect.conn_handle);
-            if (rc != 0) {
-                MODLOG_DFLT(ERROR, "Failed to add peer; rc=%d\n", rc);
-                return 0;
-            }
-
-#if CONFIG_EXAMPLE_ENCRYPTION
-            /** Initiate security - It will perform
-             * Pairing (Exchange keys)
-             * Bonding (Store keys)
-             * Encryption (Enable encryption)
-             * Will invoke event BLE_GAP_EVENT_ENC_CHANGE
-             **/
-            rc = ble_gap_security_initiate(event->connect.conn_handle);
-            if (rc != 0) {
-                MODLOG_DFLT(INFO, "Security could not be initiated, rc = %d\n", rc);
-                return ble_gap_terminate(event->connect.conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-            } else {
-                MODLOG_DFLT(INFO, "Connection secured\n");
-            }
-#else
-            /* Perform service discovery */
-            rc = peer_disc_all(event->connect.conn_handle, ble_cts_cent_on_disc_complete, NULL);
-            if (rc != 0) {
-                MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
-                return 0;
-            }
-#endif
-        } else {
-            /* Connection attempt failed; resume scanning. */
-            MODLOG_DFLT(ERROR, "Error: Connection failed; status=%d\n",
-                        event->connect.status);
-            ble_cts_cent_scan();
-        }
-
-        return 0;
-
-    case BLE_GAP_EVENT_DISCONNECT:
-        /* Connection terminated. */
-        MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
-        print_conn_desc(&event->disconnect.conn);
-        MODLOG_DFLT(INFO, "\n");
-
-        /* Forget about peer. */
-        peer_delete(event->disconnect.conn.conn_handle);
-
-        /* Resume scanning. */
-        ble_cts_cent_scan();
-        return 0;
-
-    case BLE_GAP_EVENT_DISC_COMPLETE:
-        MODLOG_DFLT(INFO, "discovery complete; reason=%d\n",
-                    event->disc_complete.reason);
-        return 0;
-
-    case BLE_GAP_EVENT_ENC_CHANGE:
-        /* Encryption has been enabled or disabled for this connection. */
-        MODLOG_DFLT(INFO, "encryption change event; status=%d ",
-                    event->enc_change.status);
-        rc = ble_gap_conn_find(event->enc_change.conn_handle, &desc);
-        assert(rc == 0);
-        print_conn_desc(&desc);
-        
-#if CONFIG_EXAMPLE_ENCRYPTION
-        /*** Go for service discovery after encryption has been successfully enabled ***/
-        rc = peer_disc_all(event->connect.conn_handle, ble_cts_cent_on_disc_complete, NULL);
-        if (rc != 0) {
-            MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
-            return 0;
-        }
-#endif
-        return 0;
-
-    case BLE_GAP_EVENT_NOTIFY_RX:
-        /* Peer sent us a notification or indication. */
-        MODLOG_DFLT(INFO, "received %s; conn_handle=%d attr_handle=%d "
-                    "attr_len=%d\n",
-                    event->notify_rx.indication ?
-                    "indication" :
-                    "notification",
-                    event->notify_rx.conn_handle,
-                    event->notify_rx.attr_handle,
-                    OS_MBUF_PKTLEN(event->notify_rx.om));
-
-        /* Attribute data is contained in event->notify_rx.om. Use
-         * `os_mbuf_copydata` to copy the data received in notification mbuf */
-        return 0;
-
-    case BLE_GAP_EVENT_MTU:
-        MODLOG_DFLT(INFO, "mtu update event; conn_handle=%d cid=%d mtu=%d\n",
-                    event->mtu.conn_handle,
-                    event->mtu.channel_id,
-                    event->mtu.value);
-        return 0;
-
-#if CONFIG_EXAMPLE_EXTENDED_ADV
-    case BLE_GAP_EVENT_EXT_DISC:
-        /* An advertisement report was received during GAP discovery. */
-        ext_print_adv_report(&event->disc);
-        ble_cts_cent_connect_if_interesting(&event->disc);
-        return 0;
-#endif
-
-    default:
-        return 0;
-    }
-}
-
-
-static void on_stack_sync() {
-    int rc;
-    rc = ble_hs_util_ensure_addr(0);
+static void on_scan_sync() {
+    int rc = ble_hs_util_ensure_addr(0);
     assert(rc == 0);
 
     //# Begin scanning for a peripheral to connect to
-    ble_cts_cent_scan();
+    start_scan();
 }
 
 static void on_stack_reset(int reason) {
@@ -437,7 +412,7 @@ void mod_BLEScan_setup() {
 
     /* Configure the host. */
     ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = on_stack_sync;
+    ble_hs_cfg.sync_cb = on_scan_sync;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     /* Initialize data structures to track connected peers. */
