@@ -357,6 +357,7 @@ void app_main(void) {
     #include "mod_nimBLE.h"
     mod_nimbleBLE_setup(false);
     xTaskCreate(mod_nimbleBLE_task, "NimBLE Host", 4*1024, NULL, 5, NULL);
+    xTaskCreate(mod_heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
