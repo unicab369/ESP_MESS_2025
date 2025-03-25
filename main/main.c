@@ -354,7 +354,7 @@ void app_main(void) {
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
 
-    #include "mod_nimBLE.h"
+    // #include "mod_nimBLE.h"
     #include "mod_BLEScan.h"
 
     mod_BLEScan_setup();
