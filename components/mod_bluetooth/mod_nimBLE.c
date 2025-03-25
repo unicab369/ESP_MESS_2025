@@ -8,9 +8,8 @@
 
 #include "mod_nimBLE.h"
 
-#include "mod_BLEGap.h"
-#include "mod_BLEGatt.h"
-
+#include "BLEGap/mod_BLEGap.h"
+#include "BLEGatt/mod_BLEGatt.h"
 
 static const char *TAG = "MOD_NIMBLE";
 
@@ -55,6 +54,12 @@ void mod_nimbleBLE_setup(bool beacon) {
         return;
     }
 
+    //! Set host callbacks
+    ble_hs_cfg.reset_cb = on_stack_reset;
+    ble_hs_cfg.sync_cb = on_stack_sync;
+    ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
+    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+
     //# GAP service init
     int rc = mod_BLEGap_init(beacon);
     if (rc != 0) {
@@ -63,21 +68,20 @@ void mod_nimbleBLE_setup(bool beacon) {
     }
 
     if (!beacon) {
-        //# GATT service init
-        ESP_LOGE(TAG, "IM HEREEEEEEE");
+        //! Current Time Service: Secure connection
+        ble_hs_cfg.sm_bonding = 1;
+        ble_hs_cfg.sm_sc = 1;
+        ble_hs_cfg.sm_mitm = 1;
+        ble_hs_cfg.sm_our_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+        ble_hs_cfg.sm_their_key_dist |= BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
 
+        //# GATT service init
         rc = mod_BLEGatt_init();
         if (rc != 0) {
             ESP_LOGE(TAG, "failed to initialize GATT server, error code: %d", rc);
             return;
         }
     }
-
-    /* Set host callbacks */
-    ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = on_stack_sync;
-    ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
-    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
     /* Store host configuration */
     // ble_store_config_init();

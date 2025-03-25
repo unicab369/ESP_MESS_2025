@@ -11,31 +11,8 @@ static uint8_t own_addr_type;
 static uint8_t addr_val[6] = {0};
 static uint8_t esp_uri[] = {BLE_GAP_URI_PREFIX_HTTPS, '/', '/', 'e', 's', 'p', 'r', 'e', 's', 's', 'i', 'f', '.', 'c', 'o', 'm'};
 
-static int start_service_advertising();
+static int start_advertising();
 static bool beacon_only = false;
-
-int mod_BLEGap_init(bool beacon) {
-    beacon_only = beacon;
-
-    //# GAP service init
-    ble_svc_gap_init();
-
-    //# Set GAP device name
-    int rc = ble_svc_gap_device_name_set(DEVICE_NAME);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "failed to set device name to %s, error code: %d", DEVICE_NAME, rc);
-        return rc;
-    }
-
-    //# Set GAP device appearance
-    rc = ble_svc_gap_device_appearance_set(BLE_GAP_APPEARANCE_GENERIC_TAG);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "failed to set device appearance, error code: %d", rc);
-        return rc;
-    }
-
-    return rc;
-}
 
 void gatt_svr_subscribe_cb(struct ble_gap_event *event) {
     /* Check connection handle */
@@ -60,7 +37,6 @@ inline static void format_addr(char *addr_str, uint8_t addr[]) {
     sprintf(addr_str, "%02X:%02X:%02X:%02X:%02X:%02X", addr[0], addr[1],
             addr[2], addr[3], addr[4], addr[5]);
 }
-
 
 static void print_conn_desc(struct ble_gap_conn_desc *desc) {
     /* Local variables */
@@ -124,7 +100,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         }
         /* Connection failed, restart advertising */
         else {
-            start_service_advertising();
+            start_advertising();
         }
         return rc;
 
@@ -133,7 +109,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         ESP_LOGI(TAG, "disconnected from peer; reason=%d", event->disconnect.reason);
 
         /* Restart advertising */
-        start_service_advertising();
+        start_advertising();
         return rc;
 
     /* Connection parameters update event */
@@ -150,7 +126,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
     /* Advertising complete event */
     case BLE_GAP_EVENT_ADV_COMPLETE:
         ESP_LOGI(TAG, "advertise complete; reason=%d", event->adv_complete.reason);
-        start_service_advertising();
+        start_advertising();
         return rc;
 
     /* Notification sent event */
@@ -188,13 +164,69 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 }
 
 
-static int start_service_advertising() {
-    /* Set advertising flags */
-    struct ble_hs_adv_fields adv_fields = {0};
-    adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
+//! Current Time Service: extended adv
+#if CONFIG_EXAMPLE_EXTENDED_ADV
+    static void ext_ble_cts_prph_advertise(void) {
+        struct ble_gap_ext_adv_params params;
+        struct os_mbuf *data;
+        uint8_t instance = 0;
+        int rc;
 
+        /* First check if any instance is already active */
+        if (ble_gap_ext_adv_active(instance)) {
+            return;
+        }
+
+        /* use defaults for non-set params */
+        memset (&params, 0, sizeof(params));
+
+        /* enable connectable advertising */
+        params.connectable = 1;
+
+        /* advertise using random addr */
+        params.own_addr_type = BLE_OWN_ADDR_PUBLIC;
+
+        params.primary_phy = BLE_HCI_LE_PHY_1M;
+        params.secondary_phy = BLE_HCI_LE_PHY_2M;
+        params.sid = 1;
+
+        params.itvl_min = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
+        params.itvl_max = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
+
+        /* configure instance 0 */
+        rc = ble_gap_ext_adv_configure(instance, &params, NULL, ble_cts_prph_gap_event, NULL);
+        assert (rc == 0);
+
+        /* in this case only scan response is allowed */
+
+        /* get mbuf for scan rsp data */
+        data = os_msys_get_pkthdr(sizeof(ext_adv_pattern_1), 0);
+        assert(data);
+
+        /* fill mbuf with scan rsp data */
+        rc = os_mbuf_append(data, ext_adv_pattern_1, sizeof(ext_adv_pattern_1));
+        assert(rc == 0);
+
+        rc = ble_gap_ext_adv_set_data(instance, data);
+        assert (rc == 0);
+
+        /* start advertising */
+        rc = ble_gap_ext_adv_start(instance, 0, 0);
+        assert (rc == 0);
+    }
+#else
+    static void ble_cts_prph_advertise(void) {
+
+    }
+#endif
+
+
+
+static int start_advertising() {
     //# Set device name
     const char *name = ble_svc_gap_device_name();
+    struct ble_hs_adv_fields adv_fields = {0};
+    adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
     adv_fields.name = (uint8_t *)name;
     adv_fields.name_len = strlen(name);
     adv_fields.name_is_complete = 1;
@@ -207,9 +239,19 @@ static int start_service_advertising() {
     adv_fields.appearance = BLE_GAP_APPEARANCE_GENERIC_TAG;
     adv_fields.appearance_is_present = 1;
 
-    /* Set device LE role */
-    adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
-    adv_fields.le_role_is_present = 1;
+    // /* Set device LE role */
+    // adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
+    // adv_fields.le_role_is_present = 1;
+
+    //! Current Time Service
+    /* 16 Bit Current Time Service UUID */
+    #define BLE_SVC_CTS_UUID16                      0x1805
+
+    adv_fields.uuids16 = (ble_uuid16_t[]) {
+        BLE_UUID16_INIT(BLE_SVC_CTS_UUID16)
+    };
+    adv_fields.num_uuids16 = 1;
+    adv_fields.uuids16_is_complete = 1;
 
     //# Set dvertisement fields
     int rc = ble_gap_adv_set_fields(&adv_fields);
@@ -218,6 +260,7 @@ static int start_service_advertising() {
         return rc;
     }
 
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! DIFF
     //# Set device address */
     struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
@@ -268,7 +311,6 @@ static int start_service_advertising() {
     }
 }
 
-
 void on_stack_sync() {
     int rc = 0;
     char addr_str[18] = {0};
@@ -297,10 +339,34 @@ void on_stack_sync() {
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
     //! Start advertising
-    rc = start_service_advertising();
+    rc = start_advertising();
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to start advertising, error code: %d", rc);
         return;
     }
     ESP_LOGI(TAG, "advertising started!");
+}
+
+
+int mod_BLEGap_init(bool beacon) {
+    beacon_only = beacon;
+
+    //# GAP service init
+    ble_svc_gap_init();
+
+    //# Set GAP device name
+    int rc = ble_svc_gap_device_name_set(DEVICE_NAME);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "failed to set device name to %s, error code: %d", DEVICE_NAME, rc);
+        return rc;
+    }
+
+    //# Set GAP device appearance
+    rc = ble_svc_gap_device_appearance_set(BLE_GAP_APPEARANCE_GENERIC_TAG);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "failed to set device appearance, error code: %d", rc);
+        return rc;
+    }
+
+    return rc;
 }

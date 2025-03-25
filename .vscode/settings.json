@@ -149,7 +149,8 @@
         "mod_nimble_beacon.h": "c",
         "ble_svc_gap.h": "c",
         "mod_nimble.h": "c",
-        "esp_random.h": "c"
+        "esp_random.h": "c",
+        "ble_svc_cts.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

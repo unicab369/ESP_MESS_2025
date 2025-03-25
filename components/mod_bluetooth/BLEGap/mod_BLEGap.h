@@ -1,4 +1,4 @@
-#include "common.h"
+#include "./common.h"
 
 
 int mod_BLEGap_init(bool beacon);
