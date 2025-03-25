@@ -18,13 +18,7 @@ static uint8_t own_addr_type;
 static uint8_t addr_val[6] = {0};
 static uint8_t esp_uri[] = {BLE_GAP_URI_PREFIX_HTTPS, '/', '/', 'e', 's', 'p', 'r', 'e', 's', 's', 'i', 'f', '.', 'c', 'o', 'm'};
 
-static void on_sync_advertising();
-
-
-static void on_stack_reset(int reason) {
-    /* On reset, print reset reason to console */
-    ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
-}
+static int start_service_advertising();
 
 inline static void format_addr(char *addr_str, uint8_t addr[]) {
     sprintf(addr_str, "%02X:%02X:%02X:%02X:%02X:%02X", addr[0], addr[1],
@@ -103,7 +97,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         }
         /* Connection failed, restart advertising */
         else {
-            on_sync_advertising();
+            start_service_advertising();
         }
         return rc;
 
@@ -117,7 +111,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
         //# led_off();
 
         /* Restart advertising */
-        on_sync_advertising();
+        start_service_advertising();
         return rc;
 
     /* Connection parameters update event */
@@ -140,7 +134,72 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg) {
 }
 
 
-static void on_sync_advertising(void) {
+static int start_service_advertising() {
+    /* Set device address */
+    struct ble_hs_adv_fields rsp_fields = {0};
+    rsp_fields.device_addr = addr_val;
+    rsp_fields.device_addr_type = own_addr_type;
+    rsp_fields.device_addr_is_present = 1;
+
+    /* Set URI */
+    rsp_fields.uri = esp_uri;
+    rsp_fields.uri_len = sizeof(esp_uri);
+
+    /* Set advertising interval */
+    rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
+    rsp_fields.adv_itvl_is_present = 1;
+
+    //# Set scan response fields
+    int rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "failed to set scan response data, error code: %d", rc);
+        return rc;
+    }
+
+    // Set non-connetable and general discoverable mode to be a beacon
+    struct ble_gap_adv_params adv_params = {0};
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+
+    /* Set advertising interval */
+    adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
+    adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
+
+    /* Set advertising flags */
+    struct ble_hs_adv_fields adv_fields = {0};
+    adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
+
+    //# Set device name
+    const char *name = ble_svc_gap_device_name();
+    adv_fields.name = (uint8_t *)name;
+    adv_fields.name_len = strlen(name);
+    adv_fields.name_is_complete = 1;
+
+    /* Set device tx power */
+    adv_fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
+    adv_fields.tx_pwr_lvl_is_present = 1;
+
+    /* Set device appearance */
+    adv_fields.appearance = BLE_GAP_APPEARANCE_GENERIC_TAG;
+    adv_fields.appearance_is_present = 1;
+
+    /* Set device LE role */
+    adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
+    adv_fields.le_role_is_present = 1;
+
+    //# Set dvertisement fields
+    rc = ble_gap_adv_set_fields(&adv_fields);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
+        return rc;
+    }
+
+    //# Start advertising
+    return rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params,
+                            gap_event_handler, NULL);
+}
+
+static void on_sync_change() {
     int rc = 0;
     char addr_str[18] = {0};
 
@@ -167,69 +226,8 @@ static void on_sync_advertising(void) {
     format_addr(addr_str, addr_val);
     ESP_LOGI(TAG, "device address: %s", addr_str);
 
-
-    /* Set advertising flags */
-    struct ble_hs_adv_fields adv_fields = {0};
-    adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
-
-    //# Set device name
-    const char *name = ble_svc_gap_device_name();
-    adv_fields.name = (uint8_t *)name;
-    adv_fields.name_len = strlen(name);
-    adv_fields.name_is_complete = 1;
-
-    /* Set device tx power */
-    adv_fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
-    adv_fields.tx_pwr_lvl_is_present = 1;
-
-    /* Set device appearance */
-    adv_fields.appearance = BLE_GAP_APPEARANCE_GENERIC_TAG;
-    adv_fields.appearance_is_present = 1;
-
-    /* Set device LE role */
-    adv_fields.le_role = BLE_GAP_LE_ROLE_PERIPHERAL;
-    adv_fields.le_role_is_present = 1;
-
-    //# Set advertiement fields
-    rc = ble_gap_adv_set_fields(&adv_fields);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "failed to set advertising data, error code: %d", rc);
-        return;
-    }
-
-    /* Set device address */
-    struct ble_hs_adv_fields rsp_fields = {0};
-    rsp_fields.device_addr = addr_val;
-    rsp_fields.device_addr_type = own_addr_type;
-    rsp_fields.device_addr_is_present = 1;
-
-    /* Set URI */
-    rsp_fields.uri = esp_uri;
-    rsp_fields.uri_len = sizeof(esp_uri);
-
-    /* Set advertising interval */
-    rsp_fields.adv_itvl = BLE_GAP_ADV_ITVL_MS(500);
-    rsp_fields.adv_itvl_is_present = 1;
-
-    //# Set scan response fields
-    rc = ble_gap_adv_rsp_set_fields(&rsp_fields);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "failed to set scan response data, error code: %d", rc);
-        return;
-    }
-
-    // Set non-connetable and general discoverable mode to be a beacon
-    struct ble_gap_adv_params adv_params = {0};
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-
-    /* Set advertising interval */
-    adv_params.itvl_min = BLE_GAP_ADV_ITVL_MS(500);
-    adv_params.itvl_max = BLE_GAP_ADV_ITVL_MS(510);
-
     //# Start advertising
-    rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params,
-                            gap_event_handler, NULL);
+    rc = start_service_advertising();
     if (rc != 0) {
         ESP_LOGE(TAG, "failed to start advertising, error code: %d", rc);
         return;
@@ -237,7 +235,12 @@ static void on_sync_advertising(void) {
     ESP_LOGI(TAG, "advertising started!");
 }
 
-void mod_nimbleBLE_setup2() {
+static void on_stack_reset(int reason) {
+    /* On reset, print reset reason to console */
+    ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
+}
+
+void mod_nimbleBLE_setup2(bool beacon_only) {
     int rc = 0;
     esp_err_t ret = ESP_OK;
 
@@ -262,14 +265,17 @@ void mod_nimbleBLE_setup2() {
         return;
     }
 
-    /* NimBLE host configuration initialization */
     /* Set host callbacks */
     ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = on_sync_advertising;
+    ble_hs_cfg.sync_cb = on_sync_change;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 
-    //# GAP service initialization
-    ble_svc_gap_init();
+    if (beacon_only) {
+
+    } else {
+        //# GAP service initialization
+        ble_svc_gap_init();
+    }
 
     /* Store host configuration */
     // ble_store_config_init();

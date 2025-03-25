@@ -17,7 +17,7 @@ inline static void format_addr(char *addr_str, uint8_t addr[]) {
             addr[2], addr[3], addr[4], addr[5]);
 }
 
-static void on_sync_handler(void) {
+static void on_sync_advertising(void) {
     /* Local variables */
     int rc = 0;
     char addr_str[18] = {0};
@@ -75,6 +75,9 @@ static void on_sync_handler(void) {
         return;
     }
 
+
+
+    
     /* Set device address */
     struct ble_hs_adv_fields rsp_fields = {0};
     rsp_fields.device_addr = addr_val;
@@ -141,7 +144,7 @@ void mod_nimbleBLE_setup(void) {
 
     /* Set host callbacks */
     ble_hs_cfg.reset_cb = on_stack_reset;
-    ble_hs_cfg.sync_cb = on_sync_handler;
+    ble_hs_cfg.sync_cb = on_sync_advertising;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
 }
 
