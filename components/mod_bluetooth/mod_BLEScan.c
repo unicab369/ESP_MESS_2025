@@ -24,52 +24,36 @@ static char *day_of_week[7] = {
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-void printtime(struct ble_svc_cts_curr_time ctime) {
-    ESP_LOGI(TAG, "Date : %d/%d/%d %s", ctime.et_256.d_d_t.d_t.day,
-                                     ctime.et_256.d_d_t.d_t.month,
-                                     ctime.et_256.d_d_t.d_t.year,
-                                     day_of_week[ctime.et_256.d_d_t.day_of_week]);
-    ESP_LOGI(TAG, "hours : %d minutes : %d ",
-                             ctime.et_256.d_d_t.d_t.hours,
-                             ctime.et_256.d_d_t.d_t.minutes);
-    ESP_LOGI(TAG, "seconds : %d\n", ctime.et_256.d_d_t.d_t.seconds);
-    ESP_LOGI(TAG, "fractions : %d\n", ctime.et_256.fractions_256);
-}
-
-/**
- * Application callback.  Called when the read of the cts current time
- * characteristic has completed.
- */
-static int
-ble_cts_cent_on_read(uint16_t conn_handle,
-                     const struct ble_gatt_error *error,
-                     struct ble_gatt_attr *attr,
-                     void *arg)
-{
+static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_error *error,
+                     struct ble_gatt_attr *attr, void *arg) {
     struct ble_svc_cts_curr_time ctime; /* store the read time */
     MODLOG_DFLT(INFO, "Read Current time complete; status=%d conn_handle=%d\n",
                 error->status, conn_handle);
     if (error->status == 0) {
         MODLOG_DFLT(INFO, " attr_handle=%d value=\n", attr->handle);
         print_mbuf(attr->om);
-    }
-    else {
+    } else {
         goto err;
     }
     MODLOG_DFLT(INFO, "\n");
     ble_hs_mbuf_to_flat(attr->om, &ctime, sizeof(ctime), NULL);
-    printtime(ctime);
+
+    //# Print time
+    ESP_LOGI(TAG, "Date : %d/%d/%d %s", ctime.et_256.d_d_t.d_t.day,
+        ctime.et_256.d_d_t.d_t.month, ctime.et_256.d_d_t.d_t.year,
+        day_of_week[ctime.et_256.d_d_t.day_of_week]);
+    ESP_LOGI(TAG, "hours : %d minutes : %d ", ctime.et_256.d_d_t.d_t.hours, ctime.et_256.d_d_t.d_t.minutes);
+    ESP_LOGI(TAG, "seconds : %d\n", ctime.et_256.d_d_t.d_t.seconds);
+    ESP_LOGI(TAG, "fractions : %d\n", ctime.et_256.fractions_256);
     return 0;
-err:
-    /* Terminate the connection. */
-    return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+
+    err:
+        /* Terminate the connection. */
+        return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
 }
 
-/**
- *  Performs read on the current time characteristic
- *
- */
+
+
 static int
 ble_cts_cent_read_time(const struct peer *peer)
 {
@@ -319,20 +303,7 @@ ble_cts_cent_connect_if_interesting(void *disc)
     }
 }
 
-/**
- * The nimble host executes this callback when a GAP event occurs.  The
- * application associates a GAP event callback with each connection that is
- * established.  ble_cts_cent uses the same callback for all connections.
- *
- * @param event                 The event being signalled.
- * @param arg                   Application-specified argument; unused by
- *                                  ble_cts_cent.
- *
- * @return                      0 if the application successfully handled the
- *                                  event; nonzero on failure.  The semantics
- *                                  of the return code is specific to the
- *                                  particular GAP event being signalled.
- */
+
 static int
 ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg)
 {
