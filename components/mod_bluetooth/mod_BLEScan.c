@@ -156,100 +156,91 @@ ble_cts_cent_scan(void)
     }
 }
 
-/**
- * Indicates whether we should try to connect to the sender of the specified
- * advertisement.  The function returns a positive result if the device
- * advertises connectability and support for the Current Time Service.
- */
+
+
 
 #if CONFIG_EXAMPLE_EXTENDED_ADV
-static int
-ext_ble_cts_cent_should_connect(const struct ble_gap_ext_disc_desc *disc)
-{
-    int offset = 0;
-    int ad_struct_len = 0;
+    static int should_connect(const struct ble_gap_ext_disc_desc *disc) {
+        int offset = 0;
+        int ad_struct_len = 0;
 
-    if (disc->legacy_event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
-            disc->legacy_event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
-        return 0;
-    }
-    if (strlen(CONFIG_EXAMPLE_PEER_ADDR) && (strncmp(CONFIG_EXAMPLE_PEER_ADDR, "ADDR_ANY", strlen("ADDR_ANY")) != 0)) {
-        ESP_LOGI(tag, "Peer address from menuconfig: %s", CONFIG_EXAMPLE_PEER_ADDR);
-        /* Convert string to address */
-        sscanf(CONFIG_EXAMPLE_PEER_ADDR, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-               &peer_addr[5], &peer_addr[4], &peer_addr[3],
-               &peer_addr[2], &peer_addr[1], &peer_addr[0]);
-        if (memcmp(peer_addr, disc->addr.val, sizeof(disc->addr.val)) != 0) {
+        if (disc->legacy_event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
+                disc->legacy_event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
             return 0;
         }
-    }
-
-    /* The device has to advertise support for the CTS
-    * service (0x1805).
-    */
-    do {
-        ad_struct_len = disc->data[offset];
-
-        if (!ad_struct_len) {
-            break;
+        if (strlen(CONFIG_EXAMPLE_PEER_ADDR) && (strncmp(CONFIG_EXAMPLE_PEER_ADDR, "ADDR_ANY", strlen("ADDR_ANY")) != 0)) {
+            ESP_LOGI(tag, "Peer address from menuconfig: %s", CONFIG_EXAMPLE_PEER_ADDR);
+            /* Convert string to address */
+            sscanf(CONFIG_EXAMPLE_PEER_ADDR, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+                &peer_addr[5], &peer_addr[4], &peer_addr[3],
+                &peer_addr[2], &peer_addr[1], &peer_addr[0]);
+            if (memcmp(peer_addr, disc->addr.val, sizeof(disc->addr.val)) != 0) return 0;
         }
 
-        /* Search if cts UUID is advertised */
-        if (disc->data[offset + 1] == 0x03) {
-            int temp = 2;
-            while(temp < disc->data[offset + 1]) {
-                if(disc->data[offset + temp] == 0x05 &&
-                   disc->data[offset + temp + 1] == 0x18) {
-                    return 1;
+        /* The device has to advertise support for the CTS service (0x1805).*/
+        do {
+            ad_struct_len = disc->data[offset];
+            if (!ad_struct_len) break;
+
+            //! Search if CTS UUID is advertised
+            if (disc->data[offset + 1] == 0x03) {
+                int temp = 2;
+                while(temp < disc->data[offset + 1]) {
+                    if(disc->data[offset + temp] == 0x05 && disc->data[offset + temp + 1] == 0x18) {
+                        return 1;
+                    }
+                    temp += 2;
                 }
-                temp += 2;
             }
-        }
-        offset += ad_struct_len + 1;
-    } while ( offset < disc->length_data );
 
-    return 0;
-}
+            // //! Search if HTP UUID is advertised
+            // if ((disc->data[offset] == 0x03 && disc->data[offset + 1] == 0x03)
+            //         && (disc->data[offset + 2] == 0x18 && disc->data[offset + 3] == 0x09)) {
+            //     return 1;
+            // }
+            offset += ad_struct_len + 1;
+        } while ( offset < disc->length_data );
+
+        return 0;
+    }
 #else
+    static int should_connect(const struct ble_gap_disc_desc *disc) {
+        struct ble_hs_adv_fields fields;
+        int rc;
+        int i;
 
-static int
-ble_cts_cent_should_connect(const struct ble_gap_disc_desc *disc)
-{
-    struct ble_hs_adv_fields fields;
-    int rc;
-    int i;
-
-    /* The device has to be advertising connectability. */
-    if (disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
-            disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
-
-        return 0;
-    }
-
-    rc = ble_hs_adv_parse_fields(&fields, disc->data, disc->length_data);
-    if (rc != 0) {
-        return 0;
-    }
-
-
-    /* The device has to advertise support for the Current Time
-     * service (0x1805).
-     */
-    for (i = 0; i < fields.num_uuids16; i++) {
-        if (ble_uuid_u16(&fields.uuids16[i].u) == BLE_SVC_CTS_UUID16) {
-            return 1;
+        /* The device has to be advertising connectability. */
+        if (disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
+                disc->event_type != BLE_HCI_ADV_RPT_EVTYPE_DIR_IND) {
+            return 0;
         }
-    }
 
-    return 0;
-}
+        rc = ble_hs_adv_parse_fields(&fields, disc->data, disc->length_data);
+        if (rc != 0) return 0;
+
+        // if (strlen(CONFIG_EXAMPLE_PEER_ADDR) && (strncmp(CONFIG_EXAMPLE_PEER_ADDR, "ADDR_ANY", strlen("ADDR_ANY")) != 0)) {
+        //     ESP_LOGI(tag, "Peer address from menuconfig: %s", CONFIG_EXAMPLE_PEER_ADDR);
+        //     /* Convert string to address */
+        //     sscanf(CONFIG_EXAMPLE_PEER_ADDR, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+        //         &peer_addr[5], &peer_addr[4], &peer_addr[3],
+        //         &peer_addr[2], &peer_addr[1], &peer_addr[0]);
+        //     if (memcmp(peer_addr, disc->addr.val, sizeof(disc->addr.val)) != 0) {
+        //         return 0;
+        //     }
+        // }
+
+        // The device has to advertise support for the Current Time service (0x1805).
+        for (i = 0; i < fields.num_uuids16; i++) {
+            uint16_t service_id = ble_uuid_u16(&fields.uuids16[i].u);
+            printf("check service_Id: %u, comp_id: %u\n", service_id, BLE_SVC_CTS_UUID16);
+            if (service_id == BLE_SVC_CTS_UUID16) return 1;
+        }
+
+        return 0;
+    }
 #endif
 
-/**
- * Connects to the sender of the specified advertisement of it looks
- * interesting.  A device is "interesting" if it advertises connectability and
- * support for the Current Time service.
- */
+
 static void
 ble_cts_cent_connect_if_interesting(void *disc)
 {
@@ -259,11 +250,11 @@ ble_cts_cent_connect_if_interesting(void *disc)
 
     /* Don't do anything if we don't care about this advertiser. */
 #if CONFIG_EXAMPLE_EXTENDED_ADV
-    if (!ext_ble_cts_cent_should_connect((struct ble_gap_ext_disc_desc *)disc)) {
+    if (!should_connect((struct ble_gap_ext_disc_desc *)disc)) {
         return;
     }
 #else
-    if (!ble_cts_cent_should_connect((struct ble_gap_disc_desc *)disc)) {
+    if (!should_connect((struct ble_gap_disc_desc *)disc)) {
         return;
     }
 #endif
