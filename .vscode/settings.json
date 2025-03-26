@@ -160,7 +160,8 @@
         "ble_svc_gatt.h": "c",
         "common.h": "c",
         "ble.h": "c",
-        "mod_blescan.h": "c"
+        "mod_blescan.h": "c",
+        "ble_svc_htp.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

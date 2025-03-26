@@ -9,7 +9,7 @@
 
 #include "services/gap/ble_svc_gap.h"
 #include "services/cts/ble_svc_cts.h"
-
+#include "services/htp/ble_svc_htp.h"
 
 
 static const char *TAG = "MOD_BLESCAN";
@@ -20,34 +20,6 @@ static int handle_gap_event(struct ble_gap_event *event, void *arg);
 static uint8_t peer_addr[6];
 
 
-
-// static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_error *error,
-//                      struct ble_gatt_attr *attr, void *arg) {
-//     struct ble_svc_cts_curr_time ctime; /* store the read time */
-//     MODLOG_DFLT(INFO, "Read Current time complete; status=%d conn_handle=%d\n",
-//                 error->status, conn_handle);
-//     if (error->status == 0) {
-//         MODLOG_DFLT(INFO, " attr_handle=%d value=\n", attr->handle);
-//         print_mbuf(attr->om);
-//     } else {
-//         goto err;
-//     }
-//     MODLOG_DFLT(INFO, "\n");
-//     ble_hs_mbuf_to_flat(attr->om, &ctime, sizeof(ctime), NULL);
-
-//     //# Print time
-//     ESP_LOGI(TAG, "Date : %d/%d/%d %s", ctime.et_256.d_d_t.d_t.day,
-//         ctime.et_256.d_d_t.d_t.month, ctime.et_256.d_d_t.d_t.year,
-//         day_of_week[ctime.et_256.d_d_t.day_of_week]);
-//     ESP_LOGI(TAG, "hours : %d minutes : %d ", ctime.et_256.d_d_t.d_t.hours, ctime.et_256.d_d_t.d_t.minutes);
-//     ESP_LOGI(TAG, "seconds : %d\n", ctime.et_256.d_d_t.d_t.seconds);
-//     ESP_LOGI(TAG, "fractions : %d\n", ctime.et_256.fractions_256);
-//     return 0;
-
-//     err:
-//         /* Terminate the connection. */
-//         return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-// }
 
 static void on_discovery_complete(const struct peer *peer, int status, void *arg) {
     if (status != 0) {
@@ -64,19 +36,39 @@ static void on_discovery_complete(const struct peer *peer, int status, void *arg
      */
     MODLOG_DFLT(INFO, "Service discovery complete; status=%d "
                 "conn_handle=%d\n", status, peer->conn_handle);
-    const struct peer_chr *chr;
-    int rc;
 
+    int rc;
+    struct peer_chr *chr;
+    bool found_support_char = false;
+    
     chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_CTS_UUID16),
                                     BLE_UUID16_DECLARE(BLE_SVC_CTS_CHR_UUID16_CURRENT_TIME));
-    if (chr == NULL) {
-        MODLOG_DFLT(ERROR, "Error: Peer doesn't support the CTS characteristic\n");
-        ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-    }
-    rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, (ble_gatt_attr_fn*)ble_cts_cent_on_read, NULL);
+    if (chr != NULL) {
+        found_support_char = true;
+        rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, (ble_gatt_attr_fn*)ble_cts_cent_on_read, NULL);
 
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "Error: Failed to read characteristic; rc=%d\n", rc);
+        if (rc != 0) {
+            MODLOG_DFLT(ERROR, "Error: Failed to read Current Time characteristic; rc=%d\n", rc);
+            ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+            return;
+        }
+    }
+
+    chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_HTP_UUID16),
+                                    BLE_UUID16_DECLARE(BLE_SVC_HTP_CHR_UUID16_TEMP_TYPE));
+    if (chr != NULL) {
+        found_support_char = true;
+        rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, (ble_gatt_attr_fn*)ble_htp_cent_on_read, NULL);
+
+        if (rc != 0) {
+            MODLOG_DFLT(ERROR, "Error: Failed to read Health Thermometer characteristic; rc=%d\n", rc);
+            ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+            return;
+        }
+    }
+
+    if (!found_support_char) {
+        ESP_LOGE(TAG, "Error: Did not find a supporting characteristic");
         ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
     }
 }
@@ -155,7 +147,11 @@ static void on_discovery_complete(const struct peer *peer, int status, void *arg
         for (i = 0; i < fields.num_uuids16; i++) {
             uint16_t service_id = ble_uuid_u16(&fields.uuids16[i].u);
             printf("check service_Id: %u, comp_id: %u\n", service_id, BLE_SVC_CTS_UUID16);
-            if (service_id == BLE_SVC_CTS_UUID16) return 1;
+            if (service_id == BLE_SVC_CTS_UUID16 ||
+                service_id == BLE_SVC_HTP_UUID16
+            ) {
+                return 1;
+            }
         }
 
         return 0;
