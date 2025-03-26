@@ -22,7 +22,6 @@ static char *day_of_week[7] = {
     "Friday", "Saturday", "Sunday"
 };
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_error *error,
                      struct ble_gatt_attr *attr, void *arg) {
@@ -52,44 +51,6 @@ static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_erro
         return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
 }
 
-
-
-static int
-ble_cts_cent_read_time(const struct peer *peer)
-{
-
-    /* Subscribe to notifications for the Current Time Characteristic.
-     * A central enables notifications by writing two bytes (1, 0) to the
-     * characteristic's client-characteristic-configuration-descriptor (CCCD).
-     */
-    const struct peer_chr *chr;
-    int rc;
-
-    chr = peer_chr_find_uuid(peer,
-                             BLE_UUID16_DECLARE(BLE_SVC_CTS_UUID16),
-                             BLE_UUID16_DECLARE(BLE_SVC_CTS_CHR_UUID16_CURRENT_TIME));
-    if (chr == NULL) {
-        MODLOG_DFLT(ERROR, "Error: Peer doesn't support the CTS "
-                    " characteristic\n");
-        goto err;
-    }
-    rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle,
-                        ble_cts_cent_on_read, NULL);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "Error: Failed to read characteristic; rc=%d\n",
-                    rc);
-        goto err;
-    }
-
-    return 0;
-err:
-    /* Terminate the connection. */
-    return ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-}
-
-/**
- * Called when service discovery of the specified peer has completed.
- */
 static void ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
     if (status != 0) {
         /* Service discovery failed.  Terminate the connection. */
@@ -105,12 +66,22 @@ static void ble_cts_cent_on_disc_complete(const struct peer *peer, int status, v
      */
     MODLOG_DFLT(INFO, "Service discovery complete; status=%d "
                 "conn_handle=%d\n", status, peer->conn_handle);
-    ble_cts_cent_read_time(peer);
+    const struct peer_chr *chr;
+    int rc;
+
+    chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_CTS_UUID16),
+                                    BLE_UUID16_DECLARE(BLE_SVC_CTS_CHR_UUID16_CURRENT_TIME));
+    if (chr == NULL) {
+        MODLOG_DFLT(ERROR, "Error: Peer doesn't support the CTS characteristic\n");
+        ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    }
+    rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, ble_cts_cent_on_read, NULL);
+
+    if (rc != 0) {
+        MODLOG_DFLT(ERROR, "Error: Failed to read characteristic; rc=%d\n", rc);
+        ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    }
 }
-
-
-
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #if CONFIG_EXAMPLE_EXTENDED_ADV
     static int should_connect(const struct ble_gap_ext_disc_desc *disc) {
