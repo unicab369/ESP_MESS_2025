@@ -149,8 +149,7 @@ ble_cts_cent_scan(void)
     disc_params.filter_policy = 0;
     disc_params.limited = 0;
 
-    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params,
-                      ble_cts_cent_gap_event, NULL);
+    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error initiating GAP discovery procedure; rc=%d\n",
                     rc);
@@ -293,8 +292,7 @@ ble_cts_cent_connect_if_interesting(void *disc)
 #else
     addr = &((struct ble_gap_disc_desc *)disc)->addr;
 #endif
-    rc = ble_gap_connect(own_addr_type, addr, 30000, NULL,
-                         ble_cts_cent_gap_event, NULL);
+    rc = ble_gap_connect(own_addr_type, addr, 30000, NULL, handle_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error: Failed to connect to device; addr_type=%d "
                     "addr=%s; rc=%d\n",
@@ -304,32 +302,24 @@ ble_cts_cent_connect_if_interesting(void *disc)
 }
 
 
-static int
-ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg)
-{
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+static int handle_gap_event(struct ble_gap_event *event, void *arg) {
     struct ble_gap_conn_desc desc;
     struct ble_hs_adv_fields fields;
     int rc;
 
     switch (event->type) {
     case BLE_GAP_EVENT_DISC:
-        rc = ble_hs_adv_parse_fields(&fields, event->disc.data,
-                                     event->disc.length_data);
-        if (rc != 0) {
-            return 0;
-        }
+        rc = ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data);
+        if (rc != 0) return 0;
 
-        /* An advertisement report was received during GAP discovery. */
         print_adv_fields(&fields);
-
-        /* Try to connect to the advertiser if it looks interesting. */
         ble_cts_cent_connect_if_interesting(&event->disc);
         return 0;
 
     case BLE_GAP_EVENT_LINK_ESTAB:
-        /* A new connection was established or a connection attempt failed. */
         if (event->connect.status == 0) {
-            /* Connection successfully established. */
             MODLOG_DFLT(INFO, "Connection established ");
 
             rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
@@ -344,7 +334,7 @@ ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg)
                 return 0;
             }
 
-#if CONFIG_EXAMPLE_ENCRYPTION
+    #if CONFIG_EXAMPLE_ENCRYPTION
             /** Initiate security - It will perform
              * Pairing (Exchange keys)
              * Bonding (Store keys)
@@ -354,72 +344,64 @@ ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg)
             rc = ble_gap_security_initiate(event->connect.conn_handle);
             if (rc != 0) {
                 MODLOG_DFLT(INFO, "Security could not be initiated, rc = %d\n", rc);
-                return ble_gap_terminate(event->connect.conn_handle,
-                                         BLE_ERR_REM_USER_CONN_TERM);
+                return ble_gap_terminate(event->connect.conn_handle, BLE_ERR_REM_USER_CONN_TERM);
             } else {
                 MODLOG_DFLT(INFO, "Connection secured\n");
             }
-#else
+    #else
             /* Perform service discovery */
-            rc = peer_disc_all(event->connect.conn_handle,
-                               ble_cts_cent_on_disc_complete, NULL);
+            rc = peer_disc_all(event->connect.conn_handle, ble_cts_cent_on_disc_complete, NULL);
+            // rc = peer_disc_all(event->connect.conn_handle, on_connect_handler, NULL);
             if (rc != 0) {
                 MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
                 return 0;
             }
-#endif
+    #endif
         } else {
             /* Connection attempt failed; resume scanning. */
-            MODLOG_DFLT(ERROR, "Error: Connection failed; status=%d\n",
-                        event->connect.status);
-            ble_cts_cent_scan();
+            MODLOG_DFLT(ERROR, "Error: Connection failed; status=%d\n", event->connect.status);
+            start_scan();
         }
 
         return 0;
 
     case BLE_GAP_EVENT_DISCONNECT:
-        /* Connection terminated. */
         MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
         print_conn_desc(&event->disconnect.conn);
         MODLOG_DFLT(INFO, "\n");
 
         /* Forget about peer. */
         peer_delete(event->disconnect.conn.conn_handle);
-
-        /* Resume scanning. */
-        ble_cts_cent_scan();
+        start_scan();
         return 0;
 
     case BLE_GAP_EVENT_DISC_COMPLETE:
-        MODLOG_DFLT(INFO, "discovery complete; reason=%d\n",
-                    event->disc_complete.reason);
+        MODLOG_DFLT(INFO, "discovery complete; reason=%d\n", event->disc_complete.reason);
         return 0;
 
     case BLE_GAP_EVENT_ENC_CHANGE:
         /* Encryption has been enabled or disabled for this connection. */
-        MODLOG_DFLT(INFO, "encryption change event; status=%d ",
-                    event->enc_change.status);
+        MODLOG_DFLT(INFO, "encryption change event; status=%d ", event->enc_change.status);
         rc = ble_gap_conn_find(event->enc_change.conn_handle, &desc);
         assert(rc == 0);
         print_conn_desc(&desc);
-#if CONFIG_EXAMPLE_ENCRYPTION
+
+    #if CONFIG_EXAMPLE_ENCRYPTION
         /*** Go for service discovery after encryption has been successfully enabled ***/
-        rc = peer_disc_all(event->connect.conn_handle,
-                           ble_cts_cent_on_disc_complete, NULL);
+        rc = peer_disc_all(event->connect.conn_handle, ble_cts_cent_on_disc_complete, NULL);
+        // rc = peer_disc_all(event->connect.conn_handle, on_connect_handler, NULL);
+
         if (rc != 0) {
             MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
             return 0;
         }
-#endif
+    #endif
         return 0;
 
     case BLE_GAP_EVENT_NOTIFY_RX:
         /* Peer sent us a notification or indication. */
-        MODLOG_DFLT(INFO, "received %s; conn_handle=%d attr_handle=%d "
-                    "attr_len=%d\n",
-                    event->notify_rx.indication ?
-                    "indication" :
-                    "notification",
+        MODLOG_DFLT(INFO, "received %s; conn_handle=%d attr_handle=%d attr_len=%d\n",
+                    event->notify_rx.indication ? "indication" : "notification",
                     event->notify_rx.conn_handle,
                     event->notify_rx.attr_handle,
                     OS_MBUF_PKTLEN(event->notify_rx.om));
@@ -430,17 +412,14 @@ ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg)
 
     case BLE_GAP_EVENT_MTU:
         MODLOG_DFLT(INFO, "mtu update event; conn_handle=%d cid=%d mtu=%d\n",
-                    event->mtu.conn_handle,
-                    event->mtu.channel_id,
-                    event->mtu.value);
+                    event->mtu.conn_handle, event->mtu.channel_id, event->mtu.value);
         return 0;
 
 #if CONFIG_EXAMPLE_EXTENDED_ADV
     case BLE_GAP_EVENT_EXT_DISC:
         /* An advertisement report was received during GAP discovery. */
         ext_print_adv_report(&event->disc);
-
-        ble_cts_cent_connect_if_interesting(&event->disc);
+        connect_if_interesting(&event->disc);
         return 0;
 #endif
 
@@ -450,7 +429,6 @@ ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg)
 }
 
 
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 static void start_scan(void) {
     uint8_t own_addr_type;
@@ -478,7 +456,7 @@ static void start_scan(void) {
 
     ESP_LOGW(TAG, "Start Scanning ");
     // rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
-    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, ble_cts_cent_gap_event, NULL);
+    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
 
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error initiating GAP discovery procedure; rc=%d\n", rc);
