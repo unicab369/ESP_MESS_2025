@@ -90,10 +90,7 @@ err:
 /**
  * Called when service discovery of the specified peer has completed.
  */
-static void
-ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg)
-{
-
+static void ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
     if (status != 0) {
         /* Service discovery failed.  Terminate the connection. */
         MODLOG_DFLT(ERROR, "Error: Service discovery failed; status=%d "
@@ -108,53 +105,9 @@ ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg)
      */
     MODLOG_DFLT(INFO, "Service discovery complete; status=%d "
                 "conn_handle=%d\n", status, peer->conn_handle);
-
-    /* Now perform GATT procedure against the peer: read
-     * for the cts service.
-     */
     ble_cts_cent_read_time(peer);
 }
 
-/**
- * Initiates the GAP general discovery procedure.
- */
-static void
-ble_cts_cent_scan(void)
-{
-    uint8_t own_addr_type;
-    struct ble_gap_disc_params disc_params;
-    int rc;
-
-    /* Figure out address to use while advertising (no privacy for now) */
-    rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
-        return;
-    }
-
-    /* Tell the controller to filter duplicates; we don't want to process
-     * repeated advertisements from the same device.
-     */
-    disc_params.filter_duplicates = 1;
-
-    /**
-     * Perform a passive scan.  I.e., don't send follow-up scan requests to
-     * each advertiser.
-     */
-    disc_params.passive = 1;
-
-    /* Use defaults for the rest of the parameters. */
-    disc_params.itvl = 0;
-    disc_params.window = 0;
-    disc_params.filter_policy = 0;
-    disc_params.limited = 0;
-
-    rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "Error initiating GAP discovery procedure; rc=%d\n",
-                    rc);
-    }
-}
 
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
