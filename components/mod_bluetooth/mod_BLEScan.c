@@ -157,7 +157,7 @@ ble_cts_cent_scan(void)
 }
 
 
-
+//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #if CONFIG_EXAMPLE_EXTENDED_ADV
     static int should_connect(const struct ble_gap_ext_disc_desc *disc) {
@@ -241,32 +241,28 @@ ble_cts_cent_scan(void)
 #endif
 
 
-static void
-ble_cts_cent_connect_if_interesting(void *disc)
-{
+/* Connects to the sender of the specified advertisement of it looks
+ interesting.  A device is "interesting" if it advertises compatible service. */
+ static void connect_if_interesting(void *disc) {
     uint8_t own_addr_type;
     int rc;
     ble_addr_t *addr;
 
     /* Don't do anything if we don't care about this advertiser. */
-#if CONFIG_EXAMPLE_EXTENDED_ADV
-    if (!should_connect((struct ble_gap_ext_disc_desc *)disc)) {
-        return;
-    }
-#else
-    if (!should_connect((struct ble_gap_disc_desc *)disc)) {
-        return;
-    }
-#endif
+    #if CONFIG_EXAMPLE_EXTENDED_ADV
+        if (!should_connect((struct ble_gap_ext_disc_desc *)disc)) return;
+    #else
+        if (!should_connect((struct ble_gap_disc_desc *)disc)) return;
+    #endif
 
-#if !(MYNEWT_VAL(BLE_HOST_ALLOW_CONNECT_WITH_SCAN))
-    /* Scanning must be stopped before a connection can be initiated. */
-    rc = ble_gap_disc_cancel();
-    if (rc != 0) {
-        MODLOG_DFLT(DEBUG, "Failed to cancel scan; rc=%d\n", rc);
-        return;
-    }
-#endif
+    #if !(MYNEWT_VAL(BLE_HOST_ALLOW_CONNECT_WITH_SCAN))
+        /* Scanning must be stopped before a connection can be initiated. */
+        rc = ble_gap_disc_cancel();
+        if (rc != 0) {
+            MODLOG_DFLT(DEBUG, "Failed to cancel scan; rc=%d\n", rc);
+            return;
+        }
+    #endif
 
     /* Figure out address to use for connect (no privacy for now) */
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
@@ -275,25 +271,23 @@ ble_cts_cent_connect_if_interesting(void *disc)
         return;
     }
 
-    /* Try to connect the the advertiser.  Allow 30 seconds (30000 ms) for
-     * timeout.
-     */
-#if CONFIG_EXAMPLE_EXTENDED_ADV
-    addr = &((struct ble_gap_ext_disc_desc *)disc)->addr;
-#else
-    addr = &((struct ble_gap_disc_desc *)disc)->addr;
-#endif
+    /* Try to connect the the advertiser.  Allow 30 seconds (30000 ms) for timeout */
+    #if CONFIG_EXAMPLE_EXTENDED_ADV
+        addr = &((struct ble_gap_ext_disc_desc *)disc)->addr;
+    #else
+        addr = &((struct ble_gap_disc_desc *)disc)->addr;
+    #endif
+
+    printf("connecting to device\n");
+
     rc = ble_gap_connect(own_addr_type, addr, 30000, NULL, handle_gap_event, NULL);
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error: Failed to connect to device; addr_type=%d "
-                    "addr=%s; rc=%d\n",
-                    addr->type, addr_str(addr->val), rc);
+                    "addr=%s; rc=%d\n", addr->type, addr_str(addr->val), rc);
         return;
     }
 }
 
-
-//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 static int handle_gap_event(struct ble_gap_event *event, void *arg) {
     struct ble_gap_conn_desc desc;
@@ -306,7 +300,7 @@ static int handle_gap_event(struct ble_gap_event *event, void *arg) {
         if (rc != 0) return 0;
 
         print_adv_fields(&fields);
-        ble_cts_cent_connect_if_interesting(&event->disc);
+        connect_if_interesting(&event->disc);
         return 0;
 
     case BLE_GAP_EVENT_LINK_ESTAB:
