@@ -1,57 +1,55 @@
-#include "./common.h"
+#include "mod_BLEScan.h"
 
-#include "modlog/modlog.h"
+#include "mod_BLEScan_helper.h"
 
-//! dependency
+//! dependencies: ORDER DOES MATTER
+#include "common.h"
 #include "esp_central.h"
+#include "modlog/modlog.h"
 
 #include "services/gap/ble_svc_gap.h"
 #include "services/cts/ble_svc_cts.h"
 
-static const char *TAG = "NimBLE_CTS_CENT";
+
+
+static const char *TAG = "MOD_BLESCAN";
 
 static void start_scan(void);
 static int handle_gap_event(struct ble_gap_event *event, void *arg);
 
-static int ble_cts_cent_gap_event(struct ble_gap_event *event, void *arg);
-
 static uint8_t peer_addr[6];
 
-static char *day_of_week[7] = {
-    "Unknown" "Monday", "Tuesday", "Wednesday", "Thursday",
-    "Friday", "Saturday", "Sunday"
-};
 
 
-static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_error *error,
-                     struct ble_gatt_attr *attr, void *arg) {
-    struct ble_svc_cts_curr_time ctime; /* store the read time */
-    MODLOG_DFLT(INFO, "Read Current time complete; status=%d conn_handle=%d\n",
-                error->status, conn_handle);
-    if (error->status == 0) {
-        MODLOG_DFLT(INFO, " attr_handle=%d value=\n", attr->handle);
-        print_mbuf(attr->om);
-    } else {
-        goto err;
-    }
-    MODLOG_DFLT(INFO, "\n");
-    ble_hs_mbuf_to_flat(attr->om, &ctime, sizeof(ctime), NULL);
+// static int ble_cts_cent_on_read(uint16_t conn_handle, const struct ble_gatt_error *error,
+//                      struct ble_gatt_attr *attr, void *arg) {
+//     struct ble_svc_cts_curr_time ctime; /* store the read time */
+//     MODLOG_DFLT(INFO, "Read Current time complete; status=%d conn_handle=%d\n",
+//                 error->status, conn_handle);
+//     if (error->status == 0) {
+//         MODLOG_DFLT(INFO, " attr_handle=%d value=\n", attr->handle);
+//         print_mbuf(attr->om);
+//     } else {
+//         goto err;
+//     }
+//     MODLOG_DFLT(INFO, "\n");
+//     ble_hs_mbuf_to_flat(attr->om, &ctime, sizeof(ctime), NULL);
 
-    //# Print time
-    ESP_LOGI(TAG, "Date : %d/%d/%d %s", ctime.et_256.d_d_t.d_t.day,
-        ctime.et_256.d_d_t.d_t.month, ctime.et_256.d_d_t.d_t.year,
-        day_of_week[ctime.et_256.d_d_t.day_of_week]);
-    ESP_LOGI(TAG, "hours : %d minutes : %d ", ctime.et_256.d_d_t.d_t.hours, ctime.et_256.d_d_t.d_t.minutes);
-    ESP_LOGI(TAG, "seconds : %d\n", ctime.et_256.d_d_t.d_t.seconds);
-    ESP_LOGI(TAG, "fractions : %d\n", ctime.et_256.fractions_256);
-    return 0;
+//     //# Print time
+//     ESP_LOGI(TAG, "Date : %d/%d/%d %s", ctime.et_256.d_d_t.d_t.day,
+//         ctime.et_256.d_d_t.d_t.month, ctime.et_256.d_d_t.d_t.year,
+//         day_of_week[ctime.et_256.d_d_t.day_of_week]);
+//     ESP_LOGI(TAG, "hours : %d minutes : %d ", ctime.et_256.d_d_t.d_t.hours, ctime.et_256.d_d_t.d_t.minutes);
+//     ESP_LOGI(TAG, "seconds : %d\n", ctime.et_256.d_d_t.d_t.seconds);
+//     ESP_LOGI(TAG, "fractions : %d\n", ctime.et_256.fractions_256);
+//     return 0;
 
-    err:
-        /* Terminate the connection. */
-        return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-}
+//     err:
+//         /* Terminate the connection. */
+//         return ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+// }
 
-static void ble_cts_cent_on_disc_complete(const struct peer *peer, int status, void *arg) {
+static void on_discovery_complete(const struct peer *peer, int status, void *arg) {
     if (status != 0) {
         /* Service discovery failed.  Terminate the connection. */
         MODLOG_DFLT(ERROR, "Error: Service discovery failed; status=%d "
@@ -75,7 +73,7 @@ static void ble_cts_cent_on_disc_complete(const struct peer *peer, int status, v
         MODLOG_DFLT(ERROR, "Error: Peer doesn't support the CTS characteristic\n");
         ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
     }
-    rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, ble_cts_cent_on_read, NULL);
+    rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, (ble_gatt_attr_fn*)ble_cts_cent_on_read, NULL);
 
     if (rc != 0) {
         MODLOG_DFLT(ERROR, "Error: Failed to read characteristic; rc=%d\n", rc);
@@ -259,8 +257,7 @@ static int handle_gap_event(struct ble_gap_event *event, void *arg) {
             }
     #else
             /* Perform service discovery */
-            rc = peer_disc_all(event->connect.conn_handle, ble_cts_cent_on_disc_complete, NULL);
-            // rc = peer_disc_all(event->connect.conn_handle, on_connect_handler, NULL);
+            rc = peer_disc_all(event->connect.conn_handle, on_discovery_complete, NULL);
             if (rc != 0) {
                 MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
                 return 0;
@@ -297,8 +294,7 @@ static int handle_gap_event(struct ble_gap_event *event, void *arg) {
 
     #if CONFIG_EXAMPLE_ENCRYPTION
         /*** Go for service discovery after encryption has been successfully enabled ***/
-        rc = peer_disc_all(event->connect.conn_handle, ble_cts_cent_on_disc_complete, NULL);
-        // rc = peer_disc_all(event->connect.conn_handle, on_connect_handler, NULL);
+        rc = peer_disc_all(event->connect.conn_handle, on_discovery_complete, NULL);
 
         if (rc != 0) {
             MODLOG_DFLT(ERROR, "Failed to discover services; rc=%d\n", rc);
@@ -364,7 +360,6 @@ static void start_scan(void) {
     disc_params.limited = 0;
 
     ESP_LOGW(TAG, "Start Scanning ");
-    // rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
     rc = ble_gap_disc(own_addr_type, BLE_HS_FOREVER, &disc_params, handle_gap_event, NULL);
 
     if (rc != 0) {
