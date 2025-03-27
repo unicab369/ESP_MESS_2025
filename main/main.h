@@ -27,7 +27,7 @@
 
 #include "mod_audio.h"
 
-#define ESP32_BOARD_V3 true
+#define ESP32_BOARD_V3 0
 
 
 #if CONFIG_IDF_TARGET_ESP32C3
@@ -35,8 +35,9 @@
     #define LED_FADE_PIN 2
     #define BLINK_PIN 10
     #define BUTTON_PIN 9
+
 #elif CONFIG_IDF_TARGET_ESP32
-    #ifdef ESP32_BOARD_V3
+    #if ESP32_BOARD_V3
         #define LED_FADE_PIN 22
         #define BUTTON_PIN 16
         #define ROTARY_CLK 15
@@ -75,8 +76,21 @@
 
     #else
         #define LED_FADE_PIN 22
-        #define BLINK_PIN 5
-        #define BUTTON_PIN 23
-        #define WS2812_PIN 12
+
+        #define SPI_MISO 19
+        #define SPI_MOSI 23
+        #define SPI_CLK 18
+        #define SPI_CS 5
+
+        #define SDA_PIN 32
+        #define SCL_PIN 33
+
+        #define SPI2_DC 2          // DC - AO
+        #define SPI2_RES 0
+        #define SPI2_BUSY 4         //# todo
+
+        // #define BLINK_PIN 5
+        // #define BUTTON_PIN 23
+        // #define WS2812_PIN 12
     #endif
 #endif

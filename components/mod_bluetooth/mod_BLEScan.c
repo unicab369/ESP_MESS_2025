@@ -54,18 +54,18 @@ static void on_discovery_complete(const struct peer *peer, int status, void *arg
         }
     }
 
-    chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_HTP_UUID16),
-                                    BLE_UUID16_DECLARE(BLE_SVC_HTP_CHR_UUID16_TEMP_TYPE));
-    if (chr != NULL) {
-        found_support_char = true;
-        rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, (ble_gatt_attr_fn*)ble_htp_cent_on_read, NULL);
+    // chr = peer_chr_find_uuid(peer, BLE_UUID16_DECLARE(BLE_SVC_HTP_UUID16),
+    //                                 BLE_UUID16_DECLARE(BLE_SVC_HTP_CHR_UUID16_TEMP_TYPE));
+    // if (chr != NULL) {
+    //     found_support_char = true;
+    //     rc = ble_gattc_read(peer->conn_handle, chr->chr.val_handle, (ble_gatt_attr_fn*)ble_htp_cent_on_read, NULL);
 
-        if (rc != 0) {
-            MODLOG_DFLT(ERROR, "Error: Failed to read Health Thermometer characteristic; rc=%d\n", rc);
-            ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-            return;
-        }
-    }
+    //     if (rc != 0) {
+    //         MODLOG_DFLT(ERROR, "Error: Failed to read Health Thermometer characteristic; rc=%d\n", rc);
+    //         ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    //         return;
+    //     }
+    // }
 
     if (!found_support_char) {
         ESP_LOGE(TAG, "Error: Did not find a supporting characteristic");
@@ -377,7 +377,7 @@ static void on_stack_reset(int reason) {
     ESP_LOGI(TAG, "nimble stack reset, reset reason: %d", reason);
 }
 
-void mod_nimbleBLE_task(void *param) {
+static void mod_nimbleBLE_task(void *param) {
     ESP_LOGI(TAG, "nimble host task has been started!");
 
     /* This function won't return until nimble_port_stop() is executed */

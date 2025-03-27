@@ -1,4 +1,4 @@
-ESP32 Pin Reference
+## ESP32 Pin Reference
 Copied from https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 
 | GPIO | INPUT     | OUTPUT | NOTES |
@@ -30,3 +30,19 @@ Copied from https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 | 35   | OK        |        | input only |
 | 36   | OK        |        | input only |
 | 39   | OK        |        | input only |
+
+
+## Default Pins (Hardware Pins)
+
+| SPI	    | MOSI	        | MISO	        | SCLK	        | CS        |
+|-----------|---------------|---------------|---------------|-----------|
+| VSPI	    | 23	        | 19    	    | 18	        | 5         |
+| HSPI	    | 13	        | 12	        | 14	        | 15        |
+
+
+<br>
+
+| i2C     | SDA     | SCL   |
+|---------|---------|-------|
+| I2C0    | 21      | 22    |
+| I2C1    | 32      | 33    |

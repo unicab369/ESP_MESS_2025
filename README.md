@@ -174,3 +174,4 @@ Noise Reduction:
 |&nbsp;&nbsp;&nbsp;.force_fast   |           28 |     0.34 |                |               |
 | `RTC SLOW`                     |           24 |     0.31 |           7656 |          7680 |
 |&nbsp;&nbsp;&nbsp;.rtc_slow     |           24 |     0.31 |                |               |
+

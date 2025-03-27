@@ -23,7 +23,7 @@ static i2c_device_t *ssd1306 = NULL;
 uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
 M_Page_Mask page_masks[SSD1306_HEIGHT];
 
-int8_t ssd1306_print_mode = 0;
+int8_t ssd1306_print_mode = 1;
 
 void precompute_page_masks() {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {

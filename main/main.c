@@ -191,15 +191,15 @@ void app_main(void) {
     #endif
 
     storage_sd_config_t sd_config = {
-        .mmc_enabled = true,
+        .mmc_enabled = false,
 
         //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
-        .mmc = {
-            .enable_width4 = false,
-            .clk = MMC_CLK,
-            .di = MMC_DI,
-            .d0 = MMC_D0
-        },
+        // .mmc = {
+        //     .enable_width4 = false,
+        //     .clk = MMC_CLK,
+        //     .di = MMC_DI,
+        //     .d0 = MMC_D0
+        // },
         .spi = {
             .mosi = SPI_MOSI,
             .miso = SPI_MISO,
@@ -211,17 +211,31 @@ void app_main(void) {
     mod_sd_spi_config(&sd_config);
     mod_sd_test();
 
-    M_Spi_Conf spi3_conf = {
-        .host = SPI3_HOST,
-        .mosi = SPI2_MOSI,
-        .clk = SPI2_SCLK,
-        .dc = SPI2_DC
-    };
+    #if ESP32_BOARD_V3
+        M_Spi_Conf spi3_conf = {
+            .host = SPI3_HOST,
+            .mosi = SPI2_MOSI,
+            .clk = SPI2_SCLK,
+            .dc = SPI2_DC
+        };
 
-    ret = mod_spi_init(&spi3_conf);
-    if (ret == ESP_OK) {
-        display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
-    }
+        ret = mod_spi_init(&spi3_conf);
+        if (ret == ESP_OK) {
+            display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
+        }
+    #else
+        M_Spi_Conf spi3_conf = {
+            .host = SPI3_HOST,
+            .mosi = SPI_MOSI,
+            .clk = SPI_CLK,
+            .dc = SPI2_DC
+        };
+
+        ret = mod_spi_init(&spi3_conf);
+        if (ret == ESP_OK) {
+            display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
+        }
+    #endif
     
 
     //! Audio test
@@ -245,10 +259,11 @@ void app_main(void) {
     led_fade_setup(LED_FADE_PIN);
     led_fade_restart(1023, 400);        // Brightness, fade_duration
 
-    ws2812_setup(WS2812_PIN);                   
+    // ws2812_setup(WS2812_PIN);                   
 
-    rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
-    button_click_setup(BUTTON_PIN, button_event_handler);
+    // rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
+    // button_click_setup(BUTTON_PIN, button_event_handler);
+
     // uart_setup(uart_read_handler);
 
     behavior_output_interface output_interface;
@@ -330,15 +345,15 @@ void app_main(void) {
     // };
     // mod_adc_1read_setup(&single_adc);    
 
-    adc_single_read_t mic_adc = {
-        .gpio = MIC_IN,
-    };
-    mod_adc_1read_setup(&mic_adc);
+    // adc_single_read_t mic_adc = {
+    //     .gpio = MIC_IN,
+    // };
+    // mod_adc_1read_setup(&mic_adc);
 
-    adc_single_read_t pir_adc = {
-        .gpio = PIR_IN,
-    };
-    mod_adc_1read_setup(&pir_adc);
+    // adc_single_read_t pir_adc = {
+    //     .gpio = PIR_IN,
+    // };
+    // mod_adc_1read_setup(&pir_adc);
 
 
     // adc_continous_read_t continous_read = (adc_continous_read_t){
@@ -357,7 +372,7 @@ void app_main(void) {
     // #include "mod_nimBLE.h"
     #include "mod_BLEScan.h"
 
-    mod_BLEScan_setup();
+    // mod_BLEScan_setup();
     // mod_nimbleBLE_setup(false);
     // xTaskCreate(mod_heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
 
@@ -369,11 +384,11 @@ void app_main(void) {
 
         if (current_time - interval_ref2 > 200000) {
             interval_ref2 = current_time;
-            mod_adc_1read(&mic_adc);
-            mod_adc_1read(&pir_adc);
+            // mod_adc_1read(&mic_adc);
+            // mod_adc_1read(&pir_adc);
             // printf("value = %u\n", pir_adc.value);
 
-            uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
+            // uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
             // printf("raw = %u, value = %u\n", mic_adc.value, value);
 
             if (ssd1306_print_mode == 2) {
@@ -412,10 +427,10 @@ void app_main(void) {
         // gpio_digital_loop(current_time);
         led_fade_loop(current_time);
 
-        button_click_loop(current_time);
-        rotary_loop(current_time);
+        // button_click_loop(current_time);
+        // rotary_loop(current_time);
 
-        ws2812_loop(current_time);
+        // ws2812_loop(current_time);
         app_console_task();
 
         // Small delay to avoid busy-waiting
