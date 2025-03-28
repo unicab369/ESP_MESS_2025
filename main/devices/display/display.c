@@ -5,7 +5,7 @@
 
 #include "esp_log.h"
 #include "esp_err.h"
-#include "mod_i2c.h"
+// #include "mod_i2c.h"
 #include "mod_bitmap.h"
 #include "mod_epaper.h"
 
@@ -65,6 +65,6 @@ void display_spi_setup(uint8_t rst, uint8_t busy, M_Spi_Conf *conf) {
     // ssd1683_setup(rst, busy, conf);
 }
 
-void display_print_str(const char *str, uint8_t line) {
-    ssd1306_print_str(str, line);
-}
+// void display_print_str(const char *str, uint8_t line) {
+//     ssd1306_print_str(str, line);
+// }

@@ -13,11 +13,12 @@
 
 char display_buff[64];
 
+M_I2C_Devices_Set *devices_set;
 
 
 void handle_print(const char* buff, uint8_t line) {
     if (ssd1306_print_mode != 1) return;
-    ssd1306_print_str(buff, line);
+    ssd1306_print_str(devices_set->ssd1306_ch0, buff, line);
 }
 
 void on_resolve_bh1750(float lux) {
@@ -84,15 +85,15 @@ M_Device_Handlers set0_handlers = {
 
 
 void app_i2c_setup(M_I2C_Devices_Set *devs_set, uint8_t scl_pin, uint8_t sda_pin) {
+    devices_set = devs_set;
+
     esp_err_t ret = i2c_setup(scl_pin, sda_pin);
 
-    ssd1306_setup(0x3C);
-    ssd1306_print_str("Hello Bee", 0);
+    // ssd1306_setup(0x3C);
+    // ssd1306_print_str("Hello Bee", 0);
 
     devs_set->handlers = &set0_handlers;
     i2c_devices_setup(devs_set, 0);
-
-    // do_i2cdetect_cmd(scl_pin, sda_pin);
 }
 
 #define MAX_PRINT_MODE 4

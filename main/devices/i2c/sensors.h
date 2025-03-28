@@ -6,6 +6,7 @@
 
 #include "esp_log.h"
 #include "esp_err.h"
+
 typedef struct {
     uint8_t sec;
     uint8_t min;
@@ -31,6 +32,8 @@ typedef struct {
 } M_Device_Handlers;
 
 typedef struct {
+    M_I2C_Device *ssd1306_ch0;
+    M_I2C_Device *ssd1306_ch1;
     M_I2C_Device *bh1750;
     M_I2C_Device *sht31;          // address 0x44 or 0x45
     M_I2C_Device *ap3216;
@@ -43,19 +46,6 @@ typedef struct {
     M_Device_Handlers *handlers;
     i2c_port_t port;
 } M_I2C_Devices_Set;
-
-typedef struct {
-    void (*on_handle_bh1750)(float reading);
-    void (*on_handle_ap3216)(uint16_t ps, uint16_t als);
-    void (*on_handle_apds9960)(uint8_t prox, uint16_t clear,
-                            uint16_t red, uint16_t green, uint16_t blue);
-    void (*on_handle_max4400)(float lux);
-    void (*on_handle_vl53lox)(uint8_t distance);
-    void (*on_handle_mpu6050)(int16_t accel_x, int16_t accel_y, int16_t accel_z);
-    void (*on_handle_ina219)(int16_t shunt, int16_t bus, int16_t current, int16_t power);
-    void (*on_handle_ds3231)(ds3231_dateTime_t *datetime);
-    void (*on_handle_sht31)(float temp, float hum)
-} M_Sensors_Interface;
 
 
 void i2c_devices_setup(M_I2C_Devices_Set *devs_set, uint8_t port);

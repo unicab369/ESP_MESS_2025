@@ -1,5 +1,8 @@
 #include "driver/i2c.h"
 
+
+#ifndef MOD_I2C_H  // Unique guard macro
+#define MOD_I2C_H
 typedef struct {
     i2c_port_t port;
     uint8_t address;
@@ -27,3 +30,5 @@ esp_err_t i2c_write_register(
     const M_I2C_Device* device, uint8_t cmd,
     const uint8_t *data, size_t len
 );
+
+#endif
