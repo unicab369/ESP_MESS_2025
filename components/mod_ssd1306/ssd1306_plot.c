@@ -1,7 +1,7 @@
 #include "ssd1306_plot.h"
 
 #include "mod_ssd1306.h"
-#include <mod_utility.h>
+#include "mod_utility.h"
 
 //# Draw horizontal line
 void ssd1306_horizontal_line(const M_Line *line, uint8_t thickness, uint8_t flipped) {
@@ -192,7 +192,7 @@ int16_t samples[] = {
 };
 
 // FFT-based spectrum analyzer core
-void ssd1306_spectrum(uint8_t num_band) {
+void ssd1306_spectrum(M_I2C_Device *device, uint8_t num_band) {
     // Simple energy calculation per band
     M_Line bands[num_band];
     memset(bands, 0, sizeof(bands));
@@ -236,5 +236,5 @@ void ssd1306_spectrum(uint8_t num_band) {
     ssd1306_triangle(55, 25, 90, 20, 70, 60);
 
     //! Update the display
-    ssd1306_update_frame();
+    ssd1306_update_frame(device);
 }

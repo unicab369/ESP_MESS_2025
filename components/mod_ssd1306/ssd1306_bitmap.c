@@ -120,7 +120,7 @@ void ssd1306_draw_bitmap(uint8_t x, uint8_t y, const uint8_t *bitmap, uint8_t wi
     }
 }
 
-void ssd1306_test_bitmaps() {
+void ssd1306_test_bitmaps(M_I2C_Device *device) {
     //! Clear the buffer
     memset(frame_buffer, 0, sizeof(frame_buffer));
 
@@ -154,5 +154,5 @@ void ssd1306_test_bitmaps() {
 
 
     //! update frame
-    ssd1306_update_frame();
+    ssd1306_update_frame(device);
 }

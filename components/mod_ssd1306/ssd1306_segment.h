@@ -3,4 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 
-void ssd1306_test_digits();
+#include "mod_i2c.h"
+
+void ssd1306_test_digits(M_I2C_Device *device);

@@ -123,7 +123,7 @@ void ssd1306_print_digits(const char *str, int8_t x, int8_t y, uint8_t width, ui
     }
 }
 
-void ssd1306_test_digits() {
+void ssd1306_test_digits(M_I2C_Device *device) {
     //! Clear the buffer
     memset(frame_buffer, 0, sizeof(frame_buffer));
 
@@ -136,5 +136,5 @@ void ssd1306_test_digits() {
     ssd1306_print_digits("0123456789", 0, 40, 10, 13, 2);
 
     //! update frame
-    ssd1306_update_frame();
+    ssd1306_update_frame(device);
 }

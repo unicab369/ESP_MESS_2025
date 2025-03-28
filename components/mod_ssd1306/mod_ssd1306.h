@@ -1,6 +1,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
+
+#include "driver/i2c.h"
+#include "esp_log.h"
+#include "esp_timer.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "mod_i2c.h"
 
@@ -24,9 +32,8 @@ void ssd1306_print_str_at(
 void ssd1306_clear_all(M_I2C_Device *device);
 
 void ssd1306_clear_frameBuffer();
-void ssd1306_update_frame();
+void ssd1306_update_frame(M_I2C_Device *device);
 
-extern int8_t ssd1306_print_mode;
 
 typedef struct {
     uint8_t pos;         // X or y position of the line

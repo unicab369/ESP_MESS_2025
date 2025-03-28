@@ -128,13 +128,13 @@ void app_serial_i2c_task(uint64_t current_time, M_I2C_Devices_Set *devs_set) {
         // printf("raw = %u, value = %u\n", mic_adc.value, value);
 
         if (ssd1306_print_mode == 2) {
-            ssd1306_spectrum(5);
+            ssd1306_spectrum(devs_set->ssd1306_ch0, 5);
         }
         else if (ssd1306_print_mode == 3) {
-            ssd1306_test_digits();
+            ssd1306_test_digits(devs_set->ssd1306_ch0);
         }
         else if (ssd1306_print_mode == 0) {
-            ssd1306_test_bitmaps();
+            ssd1306_test_bitmaps(devs_set->ssd1306_ch0);
         }
         
         // printf("mic reading: %u\n", mic_adc.raw);
