@@ -23,26 +23,12 @@ static i2c_device_t *ssd1306 = NULL;
 uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
 M_Page_Mask page_masks[SSD1306_HEIGHT];
 
-// int8_t ssd1306_print_mode = 1;
-
 void precompute_page_masks() {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
         page_masks[y].page       = y >> 3;             // (y / 8)
         page_masks[y].bitmask    = 1 << (y & 0x07);    // (y % 8)
     }
 }
-
-// void ssd1306_set_printMode(uint8_t direction) {
-//     ssd1306_print_mode += direction;
-
-//     if (ssd1306_print_mode < 0) {
-//         ssd1306_print_mode = 0;
-//     } else if (ssd1306_print_mode > SSD1306_MAX_PRINTMODE - 1) {
-//         ssd1306_print_mode = SSD1306_MAX_PRINTMODE - 1;
-//     }
-
-//     printf("print_mode: %d\n", ssd1306_print_mode);
-// }
 
 // Write command to SSD1306
 void ssd1306_send_cmd(uint8_t value) {
@@ -121,7 +107,6 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
 }
 
 void ssd1306_print_str(const char *str, uint8_t page) {
-    // if (ssd1306_print_mode != 1) return;
     ssd1306_print_str_at(str, page, 0, true);
 }
 
