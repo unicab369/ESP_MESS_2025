@@ -3,7 +3,7 @@
 #include "freertos/task.h"
 #include <string.h>
 
-esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin) {
+esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin, i2c_port_t port) {
     i2c_config_t conf = {
         .mode = I2C_MODE_MASTER,
         .sda_io_num = sda_pin,
@@ -12,9 +12,9 @@ esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin) {
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 400000,
     };
-    esp_err_t err = i2c_param_config(I2C_NUM_0, &conf);
+    esp_err_t err = i2c_param_config(port, &conf);
     if (err != ESP_OK) return err;
-    err = i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+    err = i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
     return err;
 }
 

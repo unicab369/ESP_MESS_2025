@@ -12,7 +12,7 @@ idf_component_register(SRCS "main.c"
                             "modbus/modbus.c"
                             "devices/display/display.c"
                             "devices/i2c/sensors.c"
-                            "devices/i2c/app_i2c.c"
+                            "devices/app_serial.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES
                         esp_driver_rmt

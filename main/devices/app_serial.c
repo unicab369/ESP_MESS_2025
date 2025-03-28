@@ -1,4 +1,4 @@
-#include "devices/i2c/sensors.h"
+#include "app_serial.h"
 
 #include "devices/display/display.h"
 
@@ -9,6 +9,22 @@
 #include "ssd1306_segment.h"
 #include "ssd1306_bitmap.h"
 
+
+#define MAX_PRINT_MODE 4
+
+int8_t ssd1306_print_mode = 1;
+
+void app_serial_setMode(uint8_t direction) {
+    ssd1306_print_mode += direction;
+
+    if (ssd1306_print_mode < 0) {
+        ssd1306_print_mode = 0;
+    } else if (ssd1306_print_mode > MAX_PRINT_MODE - 1) {
+        ssd1306_print_mode = MAX_PRINT_MODE - 1;
+    }
+
+    printf("print_mode: %d\n", ssd1306_print_mode);
+}
 
 
 char display_buff[64];
@@ -84,38 +100,22 @@ M_Device_Handlers set0_handlers = {
 };
 
 
-void app_i2c_setup(M_I2C_Devices_Set *devs_set, uint8_t scl_pin, uint8_t sda_pin) {
+void app_serial_i2c_setup(M_I2C_Devices_Set *devs_set, uint8_t scl_pin, uint8_t sda_pin) {
     devices_set = devs_set;
-
-    esp_err_t ret = i2c_setup(scl_pin, sda_pin);
-
-    // ssd1306_setup(0x3C);
-    // ssd1306_print_str("Hello Bee", 0);
+    esp_err_t ret = i2c_setup(scl_pin, sda_pin, 0);
+    if (ret != ESP_OK) {
+        
+    }
 
     devs_set->handlers = &set0_handlers;
     i2c_devices_setup(devs_set, 0);
 }
 
-#define MAX_PRINT_MODE 4
-
-int8_t ssd1306_print_mode = 1;
-
-void ssd1306_set_printMode(uint8_t direction) {
-    ssd1306_print_mode += direction;
-
-    if (ssd1306_print_mode < 0) {
-        ssd1306_print_mode = 0;
-    } else if (ssd1306_print_mode > MAX_PRINT_MODE - 1) {
-        ssd1306_print_mode = MAX_PRINT_MODE - 1;
-    }
-
-    printf("print_mode: %d\n", ssd1306_print_mode);
-}
 
 
 uint64_t interval_ref2 = 0;
 
-void app_i2c_task(uint64_t current_time, M_I2C_Devices_Set *devs_set) {
+void app_serial_i2c_task(uint64_t current_time, M_I2C_Devices_Set *devs_set) {
     i2c_sensor_readings(devs_set, current_time);
 
     if (current_time - interval_ref2 > 200000) {

@@ -8,9 +8,8 @@
 #include "mod_button.h"
 #include "mod_rotary.h"
 
-#include "devices/i2c/sensors.h"
 #include "mod_i2s.h"
-#include "devices/i2c/app_i2c.h"
+#include "devices/app_serial.h"
 
 #define WIFI_ENABLED 0
 
@@ -68,7 +67,7 @@ void button_event_handler(button_event_t event, uint8_t pin, uint64_t pressed_ti
 }
 
 void rotary_event_handler(int16_t value, int8_t direction) {
-    ssd1306_set_printMode(direction);
+    app_serial_setMode(direction);
     behavior_process_rotary(value, direction);
 }
 
@@ -107,7 +106,7 @@ void app_main(void) {
 
 
     M_I2C_Devices_Set i2c_devices_set0;
-    app_i2c_setup(&i2c_devices_set0, SCL_PIN, SDA_PIN);
+    app_serial_i2c_setup(&i2c_devices_set0, SCL_PIN, SDA_PIN);
 
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
@@ -313,7 +312,7 @@ void app_main(void) {
         uint64_t current_time = esp_timer_get_time();
             // mod_audio_test();
 
-        app_i2c_task(current_time, &i2c_devices_set0);
+            app_serial_i2c_task(current_time, &i2c_devices_set0);
 
         // if (current_time - interval_ref > pdMS_TO_TICKS(1)) {
         //     interval_ref = current_time;

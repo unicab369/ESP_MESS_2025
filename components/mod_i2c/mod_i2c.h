@@ -8,7 +8,8 @@ typedef struct {
     uint8_t address;
 } M_I2C_Device;
 
-esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin);
+
+esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin, i2c_port_t port);
 
 M_I2C_Device* i2c_device_create(i2c_port_t port, uint8_t address);
 esp_err_t i2c_device_delete(M_I2C_Device* device);
