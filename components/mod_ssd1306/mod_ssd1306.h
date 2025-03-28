@@ -21,7 +21,7 @@
 #define SSD1306_MAX_WIDTH_INDEX     (SSD1306_WIDTH - 1)
 #define SSD1306_MAX_HEIGHT_INDEX    (SSD1306_HEIGHT - 1)
 
-void ssd1306_setup(M_I2C_Device *device, uint8_t address);
+void ssd1306_setup(M_I2C_Device *device);
 void ssd1306_print_str(M_I2C_Device *device, const char *str, uint8_t page);
 
 void ssd1306_print_str_at(

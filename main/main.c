@@ -104,11 +104,8 @@ void app_main(void) {
         cdc_setup();
     #endif
 
-
-    M_I2C_Devices_Set i2c_devices_set0;
-    app_serial_i2c_setup(&i2c_devices_set0, SCL_PIN, SDA_PIN);
-
-    // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
+    app_serial_i2c_setup(SCL_PIN, SDA_PIN, 0);
+    app_serial_i2c_setup(SCL_PIN2, SDA_PIN2, 1);
 
     #if WIFI_ENABLED
         app_network_setup();
@@ -310,9 +307,23 @@ void app_main(void) {
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
-            // mod_audio_test();
+        // mod_audio_test();
 
-            app_serial_i2c_task(current_time, &i2c_devices_set0);
+        app_serial_i2c_task(current_time);
+
+        if (current_time - interval_ref2 > 200000) {
+            interval_ref2 = current_time;
+            // mod_adc_1read(&mic_adc);
+            // mod_adc_1read(&pir_adc);
+            // printf("value = %u\n", pir_adc.value);
+    
+            // uint8_t value = map_value(mic_adc.value, 1910, 2000, 0, 64);
+            // printf("raw = %u, value = %u\n", mic_adc.value, value);
+            
+            // printf("mic reading: %u\n", mic_adc.raw);
+            // mod_adc_continous_read(&continous_read);
+        }
+
 
         // if (current_time - interval_ref > pdMS_TO_TICKS(1)) {
         //     interval_ref = current_time;

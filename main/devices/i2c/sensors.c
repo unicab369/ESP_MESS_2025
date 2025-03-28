@@ -25,10 +25,10 @@ static void print_error(esp_err_t ret, const char *text) {
     }
 }
 
-
 void i2c_devices_setup(M_I2C_Devices_Set *devs_set, uint8_t port) {
     //! ssd1306
     devs_set->ssd1306 = i2c_device_create(port, 0x3C);
+    ssd1306_setup(devs_set->ssd1306);
     ssd1306_print_str(devs_set->ssd1306, "Hello Bee", 0);
 
     //! bh1750
@@ -286,7 +286,7 @@ static esp_err_t sht31_get_readings(M_I2C_Device *device, M_Device_Handlers *han
         uint8_t sht_cmd[2] = { 0x24, 0x00 };
         ret = i2c_write_register_byte(device, 0x24, 0x00);     // HIGHREP 0x2400
         if (ret != ESP_OK) return ret;
-        sht31_wait_time = 300000;
+        sht31_wait_time = 200000;
     } else {
         ret = i2c_read(device, sht_readings, sizeof(sht_readings));
         if (ret != ESP_OK) return ret;
@@ -307,7 +307,7 @@ void i2c_sensor_readings(M_I2C_Devices_Set *devs_set, uint64_t current_time) {
     sht31_get_readings(devs_set->sht31, devs_set->handlers, current_time);
     ds3231_get_reading(devs_set->ds3231, devs_set->handlers, current_time);
 
-    if (current_time - interval_ref < 300000) return;
+    if (current_time - interval_ref < 200000) return;
     interval_ref = current_time;
 
     bh1750_get_reading(devs_set->bh1750, devs_set->handlers);

@@ -17,15 +17,15 @@ esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin, i2c_port_t port) {
         .master.clk_speed = 400000,
     };
 
-    esp_err_t ret = i2c_param_config(I2C_NUM_0, &conf);
+    esp_err_t ret = i2c_param_config(port, &conf);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Error: param_config\n");
+        ESP_LOGE(TAG, "Error on param_config\n");
         return ret;
     }
 
-    ret = i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+    ret = i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Error: driver_install\n");
+        ESP_LOGE(TAG, "Error on driver_install\n");
     } else {
         printf("%s started\n", TAG);
     }

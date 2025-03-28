@@ -6,5 +6,5 @@
 
 
 void app_serial_setMode(uint8_t direction);
-void app_serial_i2c_setup(M_I2C_Devices_Set *devs_set, uint8_t scl_pin, uint8_t sda_pin);
-void app_serial_i2c_task(uint64_t current_time, M_I2C_Devices_Set *devs_set);
+void app_serial_i2c_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t port);
+void app_serial_i2c_task(uint64_t current_time);

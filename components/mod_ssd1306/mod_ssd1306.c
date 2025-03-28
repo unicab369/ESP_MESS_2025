@@ -103,9 +103,7 @@ void ssd1306_print_str(M_I2C_Device *display, const char *str, uint8_t page) {
     ssd1306_print_str_at(display, str, page, 0, true);
 }
 
-void ssd1306_setup(M_I2C_Device *device, uint8_t address) {
-    // ssd1306 = i2c_device_create(I2C_NUM_0, 0x3C);
-
+void ssd1306_setup(M_I2C_Device *device) {
     // Initialize display
     ssd1306_send_cmd(device, 0xAE); // Display off
     ssd1306_send_cmd(device, 0xD5); // Set display clock divide
