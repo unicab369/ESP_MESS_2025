@@ -32,8 +32,7 @@ typedef struct {
 } M_Device_Handlers;
 
 typedef struct {
-    M_I2C_Device *ssd1306_ch0;
-    M_I2C_Device *ssd1306_ch1;
+    M_I2C_Device *ssd1306;
     M_I2C_Device *bh1750;
     M_I2C_Device *sht31;          // address 0x44 or 0x45
     M_I2C_Device *ap3216;

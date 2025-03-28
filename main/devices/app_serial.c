@@ -12,7 +12,10 @@
 
 #define MAX_PRINT_MODE 4
 
+M_I2C_Devices_Set *devices_set;
 int8_t ssd1306_print_mode = 1;
+char display_buff[64];
+
 
 void app_serial_setMode(uint8_t direction) {
     ssd1306_print_mode += direction;
@@ -27,14 +30,9 @@ void app_serial_setMode(uint8_t direction) {
 }
 
 
-char display_buff[64];
-
-M_I2C_Devices_Set *devices_set;
-
-
 void handle_print(const char* buff, uint8_t line) {
     if (ssd1306_print_mode != 1) return;
-    ssd1306_print_str(devices_set->ssd1306_ch0, buff, line);
+    ssd1306_print_str(devices_set->ssd1306, buff, line);
 }
 
 void on_resolve_bh1750(float lux) {
@@ -102,15 +100,13 @@ M_Device_Handlers set0_handlers = {
 
 void app_serial_i2c_setup(M_I2C_Devices_Set *devs_set, uint8_t scl_pin, uint8_t sda_pin) {
     devices_set = devs_set;
+
+    vTaskDelay(pdMS_TO_TICKS(100));
     esp_err_t ret = i2c_setup(scl_pin, sda_pin, 0);
-    if (ret != ESP_OK) {
-        
-    }
 
     devs_set->handlers = &set0_handlers;
     i2c_devices_setup(devs_set, 0);
 }
-
 
 
 uint64_t interval_ref2 = 0;
@@ -128,13 +124,13 @@ void app_serial_i2c_task(uint64_t current_time, M_I2C_Devices_Set *devs_set) {
         // printf("raw = %u, value = %u\n", mic_adc.value, value);
 
         if (ssd1306_print_mode == 2) {
-            ssd1306_spectrum(devs_set->ssd1306_ch0, 5);
+            ssd1306_spectrum(devs_set->ssd1306, 5);
         }
         else if (ssd1306_print_mode == 3) {
-            ssd1306_test_digits(devs_set->ssd1306_ch0);
+            ssd1306_test_digits(devs_set->ssd1306);
         }
         else if (ssd1306_print_mode == 0) {
-            ssd1306_test_bitmaps(devs_set->ssd1306_ch0);
+            ssd1306_test_bitmaps(devs_set->ssd1306);
         }
         
         // printf("mic reading: %u\n", mic_adc.raw);

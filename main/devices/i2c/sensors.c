@@ -28,8 +28,8 @@ static void print_error(esp_err_t ret, const char *text) {
 
 void i2c_devices_setup(M_I2C_Devices_Set *devs_set, uint8_t port) {
     //! ssd1306
-    devs_set->ssd1306_ch0 = i2c_device_create(port, 0x3C);
-    ssd1306_print_str(devs_set->ssd1306_ch0, "Hello Bee", 0);
+    devs_set->ssd1306 = i2c_device_create(port, 0x3C);
+    ssd1306_print_str(devs_set->ssd1306, "Hello Bee", 0);
 
     //! bh1750
     devs_set->bh1750 = i2c_device_create(port, 0x23);

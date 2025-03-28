@@ -1,7 +1,11 @@
 #include "mod_i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include <string.h>
+#include "esp_log.h"
+
+static const char *TAG = "MOD_I2C";
 
 esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin, i2c_port_t port) {
     i2c_config_t conf = {
@@ -12,10 +16,21 @@ esp_err_t i2c_setup(uint8_t scl_pin, uint8_t sda_pin, i2c_port_t port) {
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 400000,
     };
-    esp_err_t err = i2c_param_config(port, &conf);
-    if (err != ESP_OK) return err;
-    err = i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
-    return err;
+
+    esp_err_t ret = i2c_param_config(I2C_NUM_0, &conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error: param_config\n");
+        return ret;
+    }
+
+    ret = i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error: driver_install\n");
+    } else {
+        printf("%s started\n", TAG);
+    }
+    
+    return ret;
 }
 
 M_I2C_Device* i2c_device_create(i2c_port_t port, const uint8_t address) {
