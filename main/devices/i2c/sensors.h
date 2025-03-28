@@ -31,15 +31,15 @@ typedef struct {
 } M_Device_Handlers;
 
 typedef struct {
-    i2c_device_t *bh1750;
-    i2c_device_t *sht31;          // address 0x44 or 0x45
-    i2c_device_t *ap3216;
-    i2c_device_t *apds9960;
-    i2c_device_t *max4400;
-    i2c_device_t *vl53lox;
-    i2c_device_t *mpu6050;
-    i2c_device_t *ina219;
-    i2c_device_t *ds3231;
+    M_I2C_Device *bh1750;
+    M_I2C_Device *sht31;          // address 0x44 or 0x45
+    M_I2C_Device *ap3216;
+    M_I2C_Device *apds9960;
+    M_I2C_Device *max4400;
+    M_I2C_Device *vl53lox;
+    M_I2C_Device *mpu6050;
+    M_I2C_Device *ina219;
+    M_I2C_Device *ds3231;
     M_Device_Handlers *handlers;
     i2c_port_t port;
 } M_I2C_Devices_Set;
@@ -61,5 +61,5 @@ typedef struct {
 void i2c_devices_setup(M_I2C_Devices_Set *devs_set, uint8_t port);
 void i2c_sensor_readings(M_I2C_Devices_Set *devs_set, uint64_t current_time);
 
-esp_err_t ds3231_update_time(i2c_device_t *device, ds3231_dateTime_t *datetime);
-esp_err_t ds3231_update_date(i2c_device_t *device, ds3231_dateTime_t *datetime);
+esp_err_t ds3231_update_time(M_I2C_Device *device, ds3231_dateTime_t *datetime);
+esp_err_t ds3231_update_date(M_I2C_Device *device, ds3231_dateTime_t *datetime);

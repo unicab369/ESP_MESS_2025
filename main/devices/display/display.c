@@ -11,13 +11,29 @@
 
 static const char *TAG = "I2C_DEVICE";
 
+typedef enum {
+    DISPLAY_I2C_CH0,    // SSD1306 on I2C0
+    DISPLAY_I2C_CH1,
+    DISPLAY_SPI_CH0,
+    DISPLAY_SPI_CH1,
+    DISPLAY_SPI_CH2
+} E_DisplayID;
 
-void display_setup(uint8_t scl_pin, uint8_t sda_pin) {
-    esp_err_t ret = i2c_setup(scl_pin, sda_pin);
+typedef struct {
 
-    ssd1306_setup(0x3C);
-    ssd1306_print_str("Hello Bee", 0);
-}
+} M_Display_Manager;
+
+// typedef struct {
+//     SSD1306_t *ssd1306;  // I2C display
+//     ST7735_t  *st7735;   // SPI display
+// } DisplayManager;
+
+// DisplayManager displays = {
+//     .ssd1306 = &dev1,
+//     .st7735  = &dev2
+// };
+
+
 
 //# TODO: char_spacing crash above value 1
 void display_spi_setup(uint8_t rst, uint8_t busy, M_Spi_Conf *conf) {

@@ -99,12 +99,12 @@ void i2c_devices_setup(M_I2C_Devices_Set *devs_set, uint8_t port) {
 
 
 //! DS3231
-esp_err_t ds3231_update_time(i2c_device_t *device, ds3231_dateTime_t *datetime) {
+esp_err_t ds3231_update_time(M_I2C_Device *device, ds3231_dateTime_t *datetime) {
     uint8_t time[3] = { datetime->sec, datetime->min, datetime->hr };
     return i2c_write_register(device, 0x00, time, sizeof(time));
 }
 
-esp_err_t ds3231_update_date(i2c_device_t *device, ds3231_dateTime_t *datetime) {
+esp_err_t ds3231_update_date(M_I2C_Device *device, ds3231_dateTime_t *datetime) {
     esp_err_t ret = i2c_write_register_byte(device, 0x04, DECIMAL_TO_BCD(datetime->date));
     if (ret != ESP_OK) ESP_LOGE(TAG, "ERROR WRITE_DATE DS3231");
 
@@ -118,7 +118,7 @@ esp_err_t ds3231_update_date(i2c_device_t *device, ds3231_dateTime_t *datetime) 
 
 
 //! DS3231
-static esp_err_t ds3231_read_time(i2c_device_t *device, ds3231_dateTime_t *datetime) {
+static esp_err_t ds3231_read_time(M_I2C_Device *device, ds3231_dateTime_t *datetime) {
     uint8_t data[7];
     esp_err_t ret = i2c_write_read_register(device, 0x00, data, sizeof(data));
     datetime->sec   = BCD_TO_DECIMAL(data[0]);
@@ -132,7 +132,7 @@ static esp_err_t ds3231_read_time(i2c_device_t *device, ds3231_dateTime_t *datet
 
 uint64_t ds3231_timeRef = 0;
 
-static esp_err_t ds3231_get_reading(i2c_device_t *device, M_Device_Handlers *handlers,  uint64_t current_time) {
+static esp_err_t ds3231_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers,  uint64_t current_time) {
     if (current_time - ds3231_timeRef < 1000000) return ESP_FAIL;
     ds3231_timeRef = current_time;
 
@@ -144,7 +144,7 @@ static esp_err_t ds3231_get_reading(i2c_device_t *device, M_Device_Handlers *han
 }
 
 //! bh1750
-static esp_err_t bh1750_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t bh1750_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     esp_err_t ret;
 
     uint8_t readings[2] = {0};
@@ -156,7 +156,7 @@ static esp_err_t bh1750_get_reading(i2c_device_t *device, M_Device_Handlers *han
 }
 
 //! AP3216
-static esp_err_t ap3216_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t ap3216_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     uint8_t valHi; uint8_t valLo;
     esp_err_t ret = i2c_write_read_register(device, 0x0F, &valHi, 1);
     ret = i2c_write_read_register(device, 0x0E, &valLo, 1);
@@ -174,7 +174,7 @@ static esp_err_t ap3216_get_reading(i2c_device_t *device, M_Device_Handlers *han
 }
 
 //! ADPS9960
-static esp_err_t apds9960_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t apds9960_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     esp_err_t ret;
     uint8_t prox;
     ret = i2c_write_read_register(device, 0x9C, &prox, 1);      // PROX DATA 0x9c
@@ -196,7 +196,7 @@ static esp_err_t apds9960_get_reading(i2c_device_t *device, M_Device_Handlers *h
 }
 
 //! MAX44009
-static esp_err_t max4400_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t max4400_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     esp_err_t ret;
 
     uint8_t reading[2];
@@ -212,7 +212,7 @@ static esp_err_t max4400_get_reading(i2c_device_t *device, M_Device_Handlers *ha
 }
 
 //! VL53LOX
-static esp_err_t vl53lox_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t vl53lox_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     esp_err_t ret;
 
     uint8_t status;
@@ -229,7 +229,7 @@ static esp_err_t vl53lox_get_reading(i2c_device_t *device, M_Device_Handlers *ha
 }
 
 //! MPU6050
-static esp_err_t mpu6050_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t mpu6050_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     esp_err_t ret;
 
     uint8_t buff[6];
@@ -244,7 +244,7 @@ static esp_err_t mpu6050_get_reading(i2c_device_t *device, M_Device_Handlers *ha
 }
 
 //! INA219
-static esp_err_t ina219_get_reading(i2c_device_t *device, M_Device_Handlers *handlers) {
+static esp_err_t ina219_get_reading(M_I2C_Device *device, M_Device_Handlers *handlers) {
     esp_err_t ret;
 
     uint8_t buff[2];
@@ -270,7 +270,7 @@ uint64_t sht31_wait_time = 30000;
 uint64_t sht31_timeRef = 0;
 uint64_t interval_ref = 0;
 
-static esp_err_t sht31_get_readings(i2c_device_t *device, M_Device_Handlers *handlers,  uint64_t current_time) {
+static esp_err_t sht31_get_readings(M_I2C_Device *device, M_Device_Handlers *handlers,  uint64_t current_time) {
     if (current_time - sht31_timeRef < sht31_wait_time) return ESP_FAIL;
     sht31_timeRef = current_time;
 

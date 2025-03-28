@@ -2,12 +2,18 @@
 
 #include "devices/display/display.h"
 
+#include "freertos/queue.h"
+
 #include "mod_ssd1306.h"
 #include "ssd1306_plot.h"
 #include "ssd1306_segment.h"
 #include "ssd1306_bitmap.h"
 
+
+
 char display_buff[64];
+
+
 
 void handle_print(const char* buff, uint8_t line) {
     if (ssd1306_print_mode != 1) return;
@@ -76,9 +82,12 @@ M_Device_Handlers set0_handlers = {
     .on_handle_sht31 = on_resolve_sht31
 };
 
+
 void app_i2c_setup(M_I2C_Devices_Set *devs_set, uint8_t scl_pin, uint8_t sda_pin) {
-    display_setup(scl_pin, sda_pin);
-    
+    esp_err_t ret = i2c_setup(scl_pin, sda_pin);
+
+    ssd1306_setup(0x3C);
+    ssd1306_print_str("Hello Bee", 0);
 
     devs_set->handlers = &set0_handlers;
     i2c_devices_setup(devs_set, 0);

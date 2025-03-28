@@ -18,7 +18,7 @@
 
 // static const char *TAG = "SSD1306";
 static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
-static i2c_device_t *ssd1306 = NULL;
+static M_I2C_Device *ssd1306 = NULL;
 
 uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
 M_Page_Mask page_masks[SSD1306_HEIGHT];
