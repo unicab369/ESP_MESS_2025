@@ -20,6 +20,24 @@ typedef enum {
 
 } bh1750_mode_t;
 
+
+
+typedef struct {
+    i2c_device_t *bh1750;
+    i2c_device_t *sht31;          // address 0x44 or 0x45
+    i2c_device_t *ap3216;
+    i2c_device_t *apds9960;
+    i2c_device_t *max4400;
+    i2c_device_t *vl53lox;
+    i2c_device_t *mpu6050;
+    i2c_device_t *ina219;
+    i2c_device_t *ds3231;
+} M_I2C_Devices_Set;
+
+
+M_I2C_Devices_Set i2C_devices_set0;
+
+
 static i2c_device_t *bh1750 = NULL;
 static i2c_device_t *sht31 = NULL;          // address 0x44 or 0x45
 static i2c_device_t *ap3216 = NULL;
@@ -32,6 +50,87 @@ static i2c_device_t *ds3231 = NULL;
 
 static M_Sensors_Interface* interface;
 
+
+static void print_error(esp_err_t ret, const char *text) {
+    if (ret == ESP_OK) {
+        printf("%s started.\n", text);
+    } else {
+        ESP_LOGE(TAG, "%s ERROR.", text);
+    }
+}
+
+
+void i2c_devices_setup(M_I2C_Devices_Set *devs_set) {
+    //! bh1750
+    devs_set->bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
+    uint8_t data = 0x01;
+    esp_err_t ret = i2c_write(devs_set->bh1750, &data, 1);           // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
+    print_error(ret, "BH1750");
+
+    //! sht31
+    devs_set->sht31 = i2c_device_create(I2C_NUM_0, 0x44);
+    ret = i2c_write_register_byte(devs_set->sht31, 0x30, 0xA2);     // SOFT_RESET 0x30A2
+    print_error(ret, "SHT31");
+
+    //! AP3216
+    devs_set->ap3216 = i2c_device_create(I2C_NUM_0, 0x1E);
+    ret = i2c_write_register_byte(devs_set->ap3216, 0x00, 0x03);    // RESET
+    print_error(ret, "AP3216");
+
+    //! APDS9960
+    uint8_t config[] = {
+        0x80,           // ENABLE
+        0x0F,           // Power ON, Proximity enable, ALS enable, Wait enable
+        0x90,           // CONFIG2
+        0x01,           // Proximity gain control (4x)
+        0x8F, 0x20,     // Proximity pulse count (8 pulses)
+        0x8E, 0x87      // Proximity pulse length (16us)
+    };
+
+    devs_set->apds9960 = i2c_device_create(I2C_NUM_0, 0x39);
+    ret = i2c_write(devs_set->apds9960, config, sizeof(config));
+    print_error(ret, "APDS9960");
+
+    //! MAX44009
+    devs_set->max4400 = i2c_device_create(I2C_NUM_0, 0x4A);       // AO to ground for ADDR 0x4B
+    ret = i2c_write_register_byte(max4400, 0x02, 0x80);       // 0x02 Config_Reg, 0x80 Config_value
+    print_error(ret, "MAX44009");
+
+    //! VL53LOX
+    devs_set->vl53lox = i2c_device_create(I2C_NUM_0, 0x29);
+
+    uint8_t model_id;
+    ret = i2c_write_read_register(vl53lox, 0xC0, &model_id, 1);
+    ret = i2c_write_register_byte(vl53lox, 0x00, 0x01);       // write command to START_RANGING REG
+    print_error(ret, "VL53LOX");
+
+    //! MPU6050
+    devs_set->mpu6050 = i2c_device_create(I2C_NUM_0, 0x69);       // ADO HI 0x69, unconnect 0x68
+    ret = i2c_write_register_byte(mpu6050, 0x6B, 0x00);       // WAKEUP REG
+    print_error(ret, "MPU6050");
+
+    //! INA219
+    devs_set->ina219 = i2c_device_create(I2C_NUM_0, 0x40);        // adjust A0 and A1 for 0x41, 0x44, 0x45
+    uint8_t ina_config[2] = { 0x39, 0x9F };
+    ret = i2c_write_register(ina219, 0x00, ina_config, sizeof(ina_config));
+    print_error(ret, "INA219");
+
+    //! DS3231
+    devs_set->ds3231 = i2c_device_create(I2C_NUM_0, 0x68);
+    ds3231_dateTime_t new_time = {
+        .sec = 25, .min = 30, .hr = 4,
+        .date = 18, .month = 3, .year = 2025
+    };
+
+    if (ret == ESP_OK) {
+        printf("DS3231 started.\n");
+        ret = ds3231_update_date(&new_time);
+        ret = ds3231_update_time(&new_time);
+    } else {
+        ESP_LOGE(TAG, "DS3231 ERROR: TIME_SET");
+    }
+}
+
 void i2c_sensors_setup(M_Sensors_Interface *intf) {
     interface = intf;
 
@@ -39,32 +138,17 @@ void i2c_sensors_setup(M_Sensors_Interface *intf) {
     bh1750 = i2c_device_create(I2C_NUM_0, 0x23);
     uint8_t data = 0x01;
     esp_err_t ret = i2c_write(bh1750, &data, 1);           // BH1750 POWER_ON = 0x01, POWER_DOWN = 0x00
-
-    if (ret == ESP_OK) {
-        printf("BH1750 started.\n");
-    } else {
-        ESP_LOGE(TAG, "BH1750 ERROR: POWER_ON");
-    }
+    print_error(ret, "BH1750");
 
     //! sht31
     sht31 = i2c_device_create(I2C_NUM_0, 0x44);
     ret = i2c_write_register_byte(sht31, 0x30, 0xA2);     // SOFT_RESET 0x30A2
-
-    if (ret == ESP_OK) {
-        printf("SHT31 started.\n");
-    } else {
-        ESP_LOGE(TAG, "SHT31 ERROR: SOFT_RESET");
-    }
+    print_error(ret, "SHT31");
 
     //! AP3216
     ap3216 = i2c_device_create(I2C_NUM_0, 0x1E);
     ret = i2c_write_register_byte(ap3216, 0x00, 0x03);    // RESET
-
-    if (ret == ESP_OK) {
-        printf("AP3216 started.\n");
-    } else {
-        ESP_LOGE(TAG, "AP3216 ERROR: SOFT_RESET");
-    }
+    print_error(ret, "AP3216");
 
     //! APDS9960
     uint8_t config[] = {
@@ -78,22 +162,12 @@ void i2c_sensors_setup(M_Sensors_Interface *intf) {
 
     apds9960 = i2c_device_create(I2C_NUM_0, 0x39);
     ret = i2c_write(apds9960, config, sizeof(config));
-
-    if (ret == ESP_OK) {
-        printf("APDS9960 started.\n");
-    } else {
-        ESP_LOGE(TAG, "APDS9960 ERROR: SOFT_RESET");
-    }
+    print_error(ret, "APDS9960");
 
     //! MAX44009
     max4400 = i2c_device_create(I2C_NUM_0, 0x4A);       // AO to ground for ADDR 0x4B
     ret = i2c_write_register_byte(max4400, 0x02, 0x80);       // 0x02 Config_Reg, 0x80 Config_value
-
-    if (ret == ESP_OK) {
-        printf("MAX44009 started.\n");
-    } else {
-        ESP_LOGE(TAG, "MAX44009 ERROR: SOFT_RESET");
-    }
+    print_error(ret, "MAX44009");
 
     //! VL53LOX
     vl53lox = i2c_device_create(I2C_NUM_0, 0x29);
@@ -101,33 +175,18 @@ void i2c_sensors_setup(M_Sensors_Interface *intf) {
     uint8_t model_id;
     ret = i2c_write_read_register(vl53lox, 0xC0, &model_id, 1);
     ret = i2c_write_register_byte(vl53lox, 0x00, 0x01);       // write command to START_RANGING REG
-
-    if (ret == ESP_OK) {
-        printf("VL53LOX started.\n");
-    } else {
-        ESP_LOGE(TAG, "VL53LOX ERROR: SOFT_RESET");
-    }
+    print_error(ret, "VL53LOX");
 
     //! MPU6050
     mpu6050 = i2c_device_create(I2C_NUM_0, 0x69);       // ADO HI 0x69, unconnect 0x68
     ret = i2c_write_register_byte(mpu6050, 0x6B, 0x00);       // WAKEUP REG
-
-    if (ret == ESP_OK) {
-        printf("MPU6050 started.\n");
-    } else {
-        ESP_LOGE(TAG, "MPU6050 ERROR: WAKEUP");
-    }
+    print_error(ret, "MPU6050");
 
     //! INA219
     ina219 = i2c_device_create(I2C_NUM_0, 0x40);        // adjust A0 and A1 for 0x41, 0x44, 0x45
     uint8_t ina_config[2] = { 0x39, 0x9F };
     ret = i2c_write_register(ina219, 0x00, ina_config, sizeof(ina_config));
-
-    if (ret == ESP_OK) {
-        printf("INA219 started.\n");
-    } else {
-        ESP_LOGE(TAG, "INA219 ERROR: SOFT_RESET");
-    }
+    print_error(ret, "INA219");
 
     //! DS3231
     ds3231 = i2c_device_create(I2C_NUM_0, 0x68);

@@ -65,6 +65,7 @@
         #define MMC_CLK SPI_CLK
         #define MMC_CS SPI_CS
         
+        //! NOTE: Pins are swapped comparing to the other mode
         #define SCL_PIN 32
         #define SDA_PIN 33
 
@@ -77,17 +78,25 @@
     #else
         #define LED_FADE_PIN 22
 
-        #define SPI_MISO 19
-        #define SPI_MOSI 23
-        #define SPI_CLK 18
-        #define SPI_CS 5
+        #define SPI_MISO    19
+        #define SPI_MOSI    23
+        #define SPI_CLK     18
+        #define SPI_CS      5
 
-        #define SDA_PIN 32
-        #define SCL_PIN 33
+        #define SPI_MISO2   12
+        #define SPI_MOSI2   13
+        #define SPI_CLK2    14
+        #define SPI_CS2     15
 
-        #define SPI2_DC 2          // DC - AO
-        #define SPI2_RES 0
-        #define SPI2_BUSY 4         //# todo
+        #define SDA_PIN     25
+        #define SCL_PIN     26
+
+        // #define SDA_PIN2 32
+        // #define SCL_PIN2 33
+
+        #define SPI2_DC     4          // DC - AO
+        #define SPI2_RES    2
+        #define SPI2_BUSY   0         //# todo
 
         // #define BLINK_PIN 5
         // #define BUTTON_PIN 23

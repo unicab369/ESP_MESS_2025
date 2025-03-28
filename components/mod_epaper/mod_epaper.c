@@ -217,52 +217,27 @@ esp_err_t ssd1683_setup(uint8_t rst, uint8_t busy, M_Spi_Conf *conf) {
     };
     mod_spi_write_command(0x01, data, sizeof(data), conf);     // POWER SETTING
 
-    // epd_write_command(0x01); // POWER SETTING
-    // epd_write_data(0x03);    // VDS_EN, VDG_EN
-    // epd_write_data(0x00);    // VCOM_HV, VGHL_LV
-    // epd_write_data(0x2b);    // VDH
-    // epd_write_data(0x2b);    // VDL
-    
     data[0] = 0x17;
     data[1] = 0x17;
     data[2] = 0x17;
     mod_spi_write_command(0x06, data, 3, conf);                 // BOOSTER SOFT START
 
-    // epd_write_command(0x06); // BOOSTER SOFT START
-    // epd_write_data(0x17);
-    // epd_write_data(0x17);
-    // epd_write_data(0x17);
-    
     mod_spi_cmd(0x04, conf);          // POWER ON
     epd_wait_until_idle();
 
     data[0] = 0x3c;
     mod_spi_write_command(0x30, data, 1, conf);     // PLL CONTROL
     
-    // epd_write_command(0x30); // PLL CONTROL
-    // epd_write_data(0x3c);    // 3A 100HZ   29 150Hz 39 200HZ  31 171HZ
-    
     data[0] = 0XFA;
     data[1] = 0x01;                 // 250
     data[2] = 0x00;                 // 122
     mod_spi_write_command(0x61, data, 3, conf);    // RESOLUTION SETTING
     
-    // epd_write_command(0x61); // RESOLUTION SETTING
-    // epd_write_data(0xfa);    // 250
-    // epd_write_data(0x01);    // 122
-    // epd_write_data(0x00);
-    
     data[0] = 0x12;
     mod_spi_write_command(0x82, data, 1, conf);
 
-    // epd_write_command(0x82); // VCM_DC_SETTING
-    // epd_write_data(0x12);
-    
     data[0] = 0x97;
     mod_spi_write_command(0x50, data, 1, conf);
-
-    // epd_write_command(0x50); // VCOM AND DATA INTERVAL SETTING
-    // epd_write_data(0x97);
 
     ssd1683_clear(conf);
 
