@@ -162,7 +162,8 @@ void app_main(void) {
 
     display_setup(SCL_PIN, SDA_PIN);
 
-    M_Sensors_Interface sensors_intf = {
+    
+    M_Device_Handlers set0_handlers = {
         .on_handle_bh1750 = on_resolve_bh1750,
         .on_handle_ap3216 = on_resolve_ap3216,
         .on_handle_apds9960 = on_resolve_apds9960,
@@ -172,10 +173,12 @@ void app_main(void) {
         .on_handle_ina219 = on_resolve_ina219,
         .on_handle_ds3231 = on_resolve_ds3231,
         .on_handle_sht31 = on_resolve_sht31
-
     };
-    i2c_sensors_setup(&sensors_intf);
-    
+
+    M_I2C_Devices_Set i2c_devices_set0;
+    i2c_devices_set0.handlers = &set0_handlers;
+    i2c_devices_setup(&i2c_devices_set0, 0);
+
     // do_i2cdetect_cmd(SCL_PIN, SDA_PIN);
 
     #if WIFI_ENABLED
@@ -380,7 +383,7 @@ void app_main(void) {
         uint64_t current_time = esp_timer_get_time();
             // mod_audio_test();
 
-        i2c_sensor_readings(current_time);
+        i2c_sensor_readings(&i2c_devices_set0, current_time);
 
         if (current_time - interval_ref2 > 200000) {
             interval_ref2 = current_time;

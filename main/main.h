@@ -91,8 +91,8 @@
         #define SDA_PIN     25
         #define SCL_PIN     26
 
-        // #define SDA_PIN2 32
-        // #define SCL_PIN2 33
+        #define SDA_PIN2 32
+        #define SCL_PIN2 33
 
         #define SPI2_DC     4          // DC - AO
         #define SPI2_RES    2

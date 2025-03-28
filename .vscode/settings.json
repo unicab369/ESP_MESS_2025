@@ -161,7 +161,8 @@
         "common.h": "c",
         "ble.h": "c",
         "mod_blescan.h": "c",
-        "ble_svc_htp.h": "c"
+        "ble_svc_htp.h": "c",
+        "ssd1306_bitmap.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

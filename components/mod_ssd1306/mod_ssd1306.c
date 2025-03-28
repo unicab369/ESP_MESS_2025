@@ -14,7 +14,7 @@
 #include "mod_bitmap.h"
 
 #define SSD1306_MAX_CHAR (SSD1306_WIDTH / 5)
-#define SSD1306_MAX_PRINTMODE 4
+// #define SSD1306_MAX_PRINTMODE 4
 
 // static const char *TAG = "SSD1306";
 static uint8_t zero_buffer[SSD1306_WIDTH] = {0}; // Buffer of zeros (128 bytes)
@@ -23,7 +23,7 @@ static i2c_device_t *ssd1306 = NULL;
 uint8_t frame_buffer[SSD1306_PAGES][SSD1306_WIDTH] = {0};
 M_Page_Mask page_masks[SSD1306_HEIGHT];
 
-int8_t ssd1306_print_mode = 1;
+// int8_t ssd1306_print_mode = 1;
 
 void precompute_page_masks() {
     for (uint8_t y = 0; y < SSD1306_HEIGHT; y++) {
@@ -32,17 +32,17 @@ void precompute_page_masks() {
     }
 }
 
-void ssd1306_set_printMode(uint8_t direction) {
-    ssd1306_print_mode += direction;
+// void ssd1306_set_printMode(uint8_t direction) {
+//     ssd1306_print_mode += direction;
 
-    if (ssd1306_print_mode < 0) {
-        ssd1306_print_mode = 0;
-    } else if (ssd1306_print_mode > SSD1306_MAX_PRINTMODE - 1) {
-        ssd1306_print_mode = SSD1306_MAX_PRINTMODE - 1;
-    }
+//     if (ssd1306_print_mode < 0) {
+//         ssd1306_print_mode = 0;
+//     } else if (ssd1306_print_mode > SSD1306_MAX_PRINTMODE - 1) {
+//         ssd1306_print_mode = SSD1306_MAX_PRINTMODE - 1;
+//     }
 
-    printf("print_mode: %d\n", ssd1306_print_mode);
-}
+//     printf("print_mode: %d\n", ssd1306_print_mode);
+// }
 
 // Write command to SSD1306
 void ssd1306_send_cmd(uint8_t value) {
@@ -121,7 +121,7 @@ void ssd1306_print_str_at(const char *str, uint8_t page, uint8_t column, bool cl
 }
 
 void ssd1306_print_str(const char *str, uint8_t page) {
-    if (ssd1306_print_mode != 1) return;
+    // if (ssd1306_print_mode != 1) return;
     ssd1306_print_str_at(str, page, 0, true);
 }
 
