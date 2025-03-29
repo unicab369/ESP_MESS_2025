@@ -88,58 +88,38 @@ esp_err_t mod_sd_get(const char *path, char *buff, size_t len) {
     return ESP_OK;
 }
 
-// By default, SD card frequency is initialized to SDMMC_FREQ_DEFAULT (20MHz)
-// For setting a specific frequency, use host.max_freq_khz (range 400kHz - 20MHz for SDSPI)
-// Example: for fixed frequency of 10MHz, use host.max_freq_khz = 10000;
-static sdmmc_host_t host = SDSPI_HOST_DEFAULT();
 static sdmmc_card_t *card;
-
-// This initializes the slot without card detect (CD) and write protect (WP) signals.
-// Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
-sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
 static esp_err_t ret;
 const char mount_point[] = MOUNT_POINT;
 
 
-void mod_sd_spi_config(storage_sd_config_t *config) {
-    // Note: esp_vfs_fat_sdmmc/sdspi_mount is all-in-one convenience functions.
-    // Please check its source code and implement error recovery when developing
-    // production applications.
+void mod_sd_spi_config(uint8_t cs_pin) {
     ESP_LOGI(TAG, "Initializing SD card. Using SPI peripheral");
 
     // For SoCs where the SD power can be supplied both via an internal or external (e.g. on-board LDO) power supply.
     // When using specific IO pins (which can be used for ultra high-speed SDMMC) to connect to the SD card
     // and the internal LDO power supply, we need to initialize the power supply first.
-#if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
-    sd_pwr_ctrl_ldo_config_t ldo_config = {
-        .ldo_chan_id = CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_IO_ID,
-    };
-    sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
+    #if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+        sd_pwr_ctrl_ldo_config_t ldo_config = {
+            .ldo_chan_id = CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_IO_ID,
+        };
+        sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
 
-    ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
-        return;
-    }
-    host.pwr_ctrl_handle = pwr_ctrl_handle;
-#endif
+        ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to create a new on-chip LDO power control driver");
+            return;
+        }
+        host.pwr_ctrl_handle = pwr_ctrl_handle;
+    #endif
 
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = config->spi.mosi,
-        .miso_io_num = config->spi.miso,
-        .sclk_io_num = config->spi.sclk,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 4096,
-    };
-
-    ret = spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize bus.");
-        return;
-    }
-
-    slot_config.gpio_cs = config->spi.cs;
+    
+    // This initializes the slot without card detect (CD) and write protect (WP) signals.
+    // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = cs_pin;
+    
+    static sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     slot_config.host_id = host.slot;
 
     ESP_LOGI(TAG, "Mounting filesystem");
@@ -148,12 +128,13 @@ void mod_sd_spi_config(storage_sd_config_t *config) {
         .max_files = 5,
         .allocation_unit_size = 16 * 1024
     };
+    //# Mounting SD card
     ret = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card);
 
     if (ret != ESP_OK) {
         if (ret == ESP_FAIL) {
             ESP_LOGE(TAG, "Failed to mount filesystem. "
-                    "If you want the card to be formatted, set the CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
+                    "Format the card if needed before use.");
         } else {
             ESP_LOGE(TAG, "Failed to initialize the card (%s). "
                     "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
@@ -161,13 +142,15 @@ void mod_sd_spi_config(storage_sd_config_t *config) {
                 check_sd_card_pins(&config, pin_count);
             #endif
         }
+
         return;
     }
-    ESP_LOGI(TAG, "Filesystem mounted");
 
-    // Card has been initialized, print its properties
+    //# Card has been initialized, print its properties
+    ESP_LOGI(TAG, "Filesystem mounted");
     sdmmc_card_print_info(stdout, card);
 }
+
 
 //# Format Card
 void storage_sd_format_card() {
@@ -188,10 +171,11 @@ void storage_sd_format_card() {
     }
 }
 
+
 void mod_sd_test(void) {
     if (ret != ESP_OK) return;
     
-    // First create a file.
+    //# First create a file.
     const char *file_hello = MOUNT_POINT"/hello.txt";
     char data[MAX_CHAR_SIZE];
     printf("card name: %s", card->cid.name);
@@ -200,16 +184,16 @@ void mod_sd_test(void) {
     ret = mod_sd_write(file_hello, data);
     if (ret != ESP_OK) return;
 
-    const char *file_foo = MOUNT_POINT"/foo2.txt";
 
-    // Check if destination file exists before renaming
+    //# Check if destination file exists before renaming
+    const char *file_foo = MOUNT_POINT"/foo2.txt";
     struct stat st;
     if (stat(file_foo, &st) == 0) {
         // Delete it if it exists
         unlink(file_foo);
     }
 
-    // Rename original file
+    //# Rename original file
     ESP_LOGI(TAG, "Renaming file %s to %s", file_hello, file_foo);
     if (rename(file_hello, file_foo) != 0) {
         ESP_LOGE(TAG, "Rename failed");
@@ -226,25 +210,27 @@ void mod_sd_test(void) {
     ret = mod_sd_write(file_nihao, data);
     if (ret != ESP_OK) return;
 
-    //Open file for reading
+    //# Open file for reading
     ret = mod_sd_get(file_foo, line, sizeof(line));
     if (ret != ESP_OK) return;
 
-//     // All done, unmount partition and disable SPI peripheral
-//     esp_vfs_fat_sdcard_unmount(mount_point, card);
-//     ESP_LOGI(TAG, "Card unmounted");
+    //     // Deinitialize the power control driver if it was used
+    // #if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
+    //     ret = sd_pwr_ctrl_del_on_chip_ldo(pwr_ctrl_handle);
+    //     if (ret != ESP_OK) {
+    //         ESP_LOGE(TAG, "Failed to delete the on-chip LDO power control driver");
+    //         return;
+    //     }
+    // #endif
+}
 
-//     //deinitialize the bus after all devices are removed
-//     spi_bus_free(host.slot);
+void mod_sd_deinit(spi_host_device_t slot) {
+    //# unmount partition and disable SPI peripheral
+    esp_vfs_fat_sdcard_unmount(mount_point, card);
+    ESP_LOGI(TAG, "Card unmounted");
 
-//     // Deinitialize the power control driver if it was used
-// #if CONFIG_EXAMPLE_SD_PWR_CTRL_LDO_INTERNAL_IO
-//     ret = sd_pwr_ctrl_del_on_chip_ldo(pwr_ctrl_handle);
-//     if (ret != ESP_OK) {
-//         ESP_LOGE(TAG, "Failed to delete the on-chip LDO power control driver");
-//         return;
-//     }
-// #endif
+    //# deinitialize the bus after all devices are removed
+    spi_bus_free(slot);
 }
 
 #define EXAMPLE_IS_UHS1    (CONFIG_EXAMPLE_SDMMC_SPEED_UHS_I_SDR50 || CONFIG_EXAMPLE_SDMMC_SPEED_UHS_I_DDR50)
@@ -252,8 +238,7 @@ void mod_sd_test(void) {
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
 
-void mod_sd_mmc_config(storage_sd_config_t *config)
-{
+void mod_sd_mmc_config(storage_sd_config_t *config) {
     // By default, SD card frequency is initialized to SDMMC_FREQ_DEFAULT (20MHz)
     // For setting a specific frequency, use host.max_freq_khz (range 400kHz - 40MHz for SDMMC)
     // Example: for fixed frequency of 10MHz, use host.max_freq_khz = 10000;

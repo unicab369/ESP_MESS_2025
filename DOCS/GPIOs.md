@@ -34,15 +34,11 @@ Copied from https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
 
 ## Default Pins (Hardware Pins)
 
-| SPI	    | MOSI	        | MISO	        | SCLK	        | CS        |
-|-----------|---------------|---------------|---------------|-----------|
-| VSPI	    | 23	        | 19    	    | 18	        | 5         |
-| HSPI	    | 13	        | 12	        | 14	        | 15        |
-
-
 <br>
 
 | i2C     | SDA     | SCL   |
 |---------|---------|-------|
 | I2C0    | 21      | 22    |
 | I2C1    | 32      | 33    |
+
+

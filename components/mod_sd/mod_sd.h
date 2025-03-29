@@ -16,16 +16,10 @@ typedef struct {
         uint8_t d3;
     } mmc;
 
-    struct {
-        uint8_t mosi;
-        uint8_t miso;
-        uint8_t sclk;
-        uint8_t cs;
-    } spi;
-
 } storage_sd_config_t;
 
-void mod_sd_spi_config(storage_sd_config_t *config);
+void mod_sd_spi_config(uint8_t cs_pin);
+
 void mod_sd_mmc_config(storage_sd_config_t *config);
 void mod_sd_test(void);
 

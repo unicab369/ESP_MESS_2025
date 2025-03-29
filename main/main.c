@@ -122,80 +122,65 @@ void app_main(void) {
         });
     #endif
 
-    storage_sd_config_t sd_config = {
-        .mmc_enabled = false,
 
-        //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
-        // .mmc = {
-        //     .enable_width4 = false,
-        //     .clk = MMC_CLK,
-        //     .di = MMC_DI,
-        //     .d0 = MMC_D0
-        // },
-        .spi = {
-            .mosi = SPI_MOSI,
-            .miso = SPI_MISO,
-            .sclk = SPI_CLK,
-            .cs = SPI_CS
-        },
+    #include "mod_bitmap.h"
+
+    
+
+    M_Spi_Conf spi3_conf = {
+        .host = SPI2_HOST,
+        .mosi = SPI_MOSI,
+        .miso = SPI_MISO,
+        .clk = SPI_CLK,
+        .dc = SPI2_DC
     };
 
-    mod_sd_spi_config(&sd_config);
-    mod_sd_test();
+    ret = mod_spi_init(&spi3_conf);
 
-    #if ESP32_BOARD_V3
-        M_Spi_Conf spi3_conf = {
-            .host = SPI3_HOST,
-            .mosi = SPI2_MOSI,
-            .clk = SPI2_SCLK,
-            .dc = SPI2_DC
+    if (ret == ESP_OK) {
+        //# SD Card
+        storage_sd_config_t sd_config = {
+            .mmc_enabled = false,
+    
+            //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
+            // .mmc = {
+            //     .enable_width4 = false,
+            //     .clk = MMC_CLK,
+            //     .di = MMC_DI,
+            //     .d0 = MMC_D0
+            // },
         };
+    
+        mod_sd_spi_config(SPI_CS);
+        mod_sd_test();
 
-        ret = mod_spi_init(&spi3_conf);
-        if (ret == ESP_OK) {
-            display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
-        }
-    #else        
-        M_Spi_Conf spi3_conf = {
-            .host = SPI3_HOST,
-            .mosi = SPI_MOSI,
-            .clk = SPI_CLK,
-            .dc = SPI2_DC
+        //# ST7735
+        st7735_init(SPI2_RES, &spi3_conf);
+
+        M_TFT_Text tft_text = {
+            .x = 0, .y = 0,
+            .color = 0x00AA,
+            .page_wrap = 1,
+            .word_wrap = 1,
+    
+            .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
+            .font_width = 5,                        // Font width
+            .font_height = 7,                       // Font height
+            .char_spacing = 1,                      // Spacing between characters
+            .text = "What is Thy bidding, my master? Tell me!"
+                    "\nTomorrow is another day!"
+                    "\n\nThis is a new line. Continue with this line."
         };
+    
+        // st7735_draw_line(0, 0, 80, 150, 0x00CC, conf);
+    
+        st7735_draw_text(&tft_text, &spi3_conf);
+        st7735_draw_horLine(80, 10, 100, 0xF800, 3, &spi3_conf);
+        st7735_draw_verLine(80, 10, 100, 0xF800, 3, &spi3_conf);
+        st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, &spi3_conf);
 
-
-        #include "mod_bitmap.h"
-
-        ret = mod_spi_init(&spi3_conf);
-        if (ret == ESP_OK) {
-
-            st7735_init(SPI2_RES, &spi3_conf);
-
-            M_TFT_Text tft_text = {
-                .x = 0, .y = 0,
-                .color = 0x00AA,
-                .page_wrap = 1,
-                .word_wrap = 1,
-        
-                .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
-                .font_width = 5,                        // Font width
-                .font_height = 7,                       // Font height
-                .char_spacing = 1,                      // Spacing between characters
-                .text = "What is Thy bidding, my master? Tell me!"
-                        "\nTomorrow is another day!"
-                        "\n\nThis is a new line. Continue with this line."
-            };
-        
-            // st7735_draw_line(0, 0, 80, 150, 0x00CC, conf);
-        
-            st7735_draw_text(&tft_text, &spi3_conf);
-            st7735_draw_horLine(80, 10, 100, 0xF800, 3, &spi3_conf);
-            st7735_draw_verLine(80, 10, 100, 0xF800, 3, &spi3_conf);
-            st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, &spi3_conf);
-
-            // display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
-        }
-    #endif
+        // display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
+    }
     
 
     //! Audio test

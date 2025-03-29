@@ -12,13 +12,12 @@ esp_err_t mod_spi_init(M_Spi_Conf *conf) {
         .max_transfer_sz = 4096,
     };
 
-    esp_err_t ret = spi_bus_initialize(conf->host, &buscfg, SPI_DMA_CH2);
+    esp_err_t ret = spi_bus_initialize(conf->host, &buscfg, SPI_DMA_CH_AUTO);
     if (ret != ESP_OK) {
         ESP_LOGE("SPI", "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    // Configure SPI device for ST7735
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = 20*1000*1000 ,        //! Clock Speed
         .mode = 0,                              // SPI mode 0
