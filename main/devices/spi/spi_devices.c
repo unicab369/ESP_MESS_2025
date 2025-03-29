@@ -1,24 +1,19 @@
 #include "spi_devices.h"
 
 #include "mod_spi.h"
-
 #include "mod_sd.h"
-
 #include "st7735_shape.h"
-
 #include "mod_bitmap.h"
-
 
 M_Spi_Conf spi_config;
 
-
 void spi_devices_setup(
     uint8_t host, 
-    int8_t mosi_pin, int8_t miso_pin, int8_t clk_pin, int8_t cs_pin,
-    int8_t dc_pin, int8_t rst_pin,
-    int8_t cs_x0, int8_t cs_x1
+    int8_t mosi_pin, int8_t miso_pin, int8_t clk_pin,
+    int8_t cs_pin, int8_t cs_extra,
+    int8_t dc_pin, int8_t rst_pin
 ) {
-    spi_config.host = SPI2_HOST,
+    spi_config.host = host,
     spi_config.mosi = mosi_pin,
     spi_config.miso = miso_pin,
     spi_config.clk = clk_pin,
@@ -29,31 +24,19 @@ void spi_devices_setup(
 
     //# IMPORTANTE: Reset CS pins
     mod_spi_setup_cs(cs_pin);
-    mod_spi_setup_cs(cs_x0);
-    mod_spi_setup_cs(cs_x1);
+    mod_spi_setup_cs(cs_extra);
 
     //# Init SPI peripheral
     esp_err_t ret = mod_spi_init(&spi_config);
 
+    //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
     if (ret == ESP_OK) {
-        storage_sd_config_t sd_config = {
-            .mmc_enabled = false,
-    
-            //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
-            // .mmc = {
-            //     .enable_width4 = false,
-            //     .clk = MMC_CLK,
-            //     .di = MMC_DI,
-            //     .d0 = MMC_D0
-            // },
-        };
-    
         //# SD Card
         mod_sd_spi_config(spi_config.cs);
         mod_sd_test();
 
         //# IMPORTANTE: Switch CS pins
-        mod_spi_switch_cs(spi_config.cs, cs_x0);
+        mod_spi_switch_cs(spi_config.cs, cs_extra);
         
         //# ST7735
         st7735_init(&spi_config);

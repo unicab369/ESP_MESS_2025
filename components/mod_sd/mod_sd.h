@@ -4,23 +4,9 @@
 #include <sys/stat.h>
 #include "sdmmc_cmd.h"
 
-typedef struct {
-    bool mmc_enabled;
-    struct {
-        bool enable_width4;         // bus width
-        uint8_t clk;
-        uint8_t di;
-        uint8_t d0;
-        uint8_t d1;
-        uint8_t d2;
-        uint8_t d3;
-    } mmc;
-
-} storage_sd_config_t;
-
 void mod_sd_spi_config(uint8_t cs_pin);
 
-void mod_sd_mmc_config(storage_sd_config_t *config);
+void mod_sd_mmc_config(int8_t clk, int8_t di, int8_t d0, int8_t d1, int8_t d2, int8_t d3);
 void mod_sd_test(void);
 
 esp_err_t mod_sd_fopen(const char *path);

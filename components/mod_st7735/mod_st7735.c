@@ -83,8 +83,6 @@ void st7735_fill_screen(uint16_t color, M_Spi_Conf *conf) {
 
 esp_err_t st7735_init(M_Spi_Conf *conf) {
     if (conf->rst > 0) {
-        printf("IM HERE RST: %u\n", conf->rst);
-
         //! Set the RST pin
         gpio_set_direction(conf->rst, GPIO_MODE_OUTPUT);
 
@@ -95,7 +93,6 @@ esp_err_t st7735_init(M_Spi_Conf *conf) {
 
     //! Set the DC pin
     if (conf->dc > 0) {
-        printf("IM HERE DC: %u\n", conf->dc);
         gpio_set_direction(conf->dc, GPIO_MODE_OUTPUT);
 
         //! Send initialization commands

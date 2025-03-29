@@ -93,10 +93,10 @@
         #define SPI_DC          4          // DC - AO
         #define SPI_RST         2
 
-        #define SPI_MISO2       12
-        #define SPI_MOSI2       13
-        #define SPI_CLK2        14
-        #define SPI_CS1         15
+        #define SPI2_MISO       12
+        #define SPI2_MOSI       13
+        #define SPI2_CLK        14
+        #define SPI2_CS0        15
 
         //! I2C Pins
         #define SDA_PIN         25

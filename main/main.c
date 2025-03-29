@@ -106,6 +106,7 @@ void app_main(void) {
     app_serial_i2c_setup(SCL_PIN, SDA_PIN, 0);
     app_serial_i2c_setup(SCL_PIN2, SDA_PIN2, 1);
 
+    
     #if WIFI_ENABLED
         app_network_setup();
 
@@ -120,9 +121,14 @@ void app_main(void) {
 
     #include "devices/spi/spi_devices.h"
 
-    spi_devices_setup(1, SPI_MOSI, SPI_MISO, SPI_CLK, SPI_CS0,
-                    SPI_DC, SPI_RST, 
-                    SPI_CS_X0, SPI_CS_X1);
+    spi_devices_setup(1, SPI_MOSI, SPI_MISO, SPI_CLK,
+                    SPI_CS0, SPI_CS_X0,
+                    SPI_DC, SPI_RST);
+
+    spi_devices_setup(2, SPI2_MOSI, SPI2_MISO, SPI2_CLK, 
+                    SPI2_CS0, SPI_CS_X1,
+                    SPI_DC, SPI_RST);
+
 
     //! Audio test
     // mod_audio_setup(SPI2_BUSY);
