@@ -11,6 +11,7 @@ idf_component_register(SRCS "main.c"
                             "app_network/app_network.c"
                             "modbus/modbus.c"
                             "devices/i2c/sensors.c"
+                            "devices/spi/spi_devices.c"
                             "devices/app_serial.c"
                     INCLUDE_DIRS "."
                     PRIV_REQUIRES

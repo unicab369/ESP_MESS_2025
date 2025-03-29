@@ -2,7 +2,7 @@
 
 #include "mod_utility.h"
 #include "mod_adc.h"
-#include "mod_sd.h"
+
 #include "mod_mbedtls.h"
 #include "mod_ws2812.h"
 #include "mod_button.h"
@@ -88,9 +88,6 @@ static void http_request_handler(uint16_t **data, size_t *size) {
     *size = MAX_ADC_SAMPLE;
 }
 
-        
-#include "st7735_shape.h"
-
 void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
@@ -121,71 +118,11 @@ void app_main(void) {
         });
     #endif
 
-    #include "mod_bitmap.h"
+    #include "devices/spi/spi_devices.h"
 
-    M_Spi_Conf spi_conf = {
-        .host = SPI2_HOST,
-        .mosi = SPI_MOSI,
-        .miso = SPI_MISO,
-        .clk = SPI_CLK,
+    spi_devices_setup(1, SPI_MOSI, SPI_MISO, SPI_CLK,
+                    SPI_CS0, SPI_CS_X0, SPI_CS_X1);
 
-        //! dc and rst are not part of SPI interface
-        //! They are used for some display modules
-        .dc = SPI_DC,
-        .rst = SPI_RES,
-    };
-
-    //# IMPORTANTE: Reset CS pins
-    mod_spi_setup_cs(SPI_CS0, SPI_CS1, SPI_CS_X0, SPI_CS_X1);
-
-    //# Init SPI peripheral
-    ret = mod_spi_init(&spi_conf);
-
-    if (ret == ESP_OK) {
-        //# SD Card
-        storage_sd_config_t sd_config = {
-            .mmc_enabled = false,
-    
-            //! NOTE: for MMC D3 or CS needs to be pullup if not used otherwise it will go into SPI mode
-            // .mmc = {
-            //     .enable_width4 = false,
-            //     .clk = MMC_CLK,
-            //     .di = MMC_DI,
-            //     .d0 = MMC_D0
-            // },
-        };
-    
-        mod_sd_spi_config(SPI_CS0);
-        mod_sd_test();
-
-        //# IMPORTANTE: Switch CS pins
-        mod_spi_switch_cs(SPI_CS0, SPI_CS_X0);
-
-        //# ST7735
-        st7735_init(&spi_conf);
-
-        M_TFT_Text tft_text = {
-            .x = 0, .y = 0,
-            .color = 0x00AA,
-            .page_wrap = 1,
-            .word_wrap = 1,
-    
-            .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
-            .font_width = 5,                        // Font width
-            .font_height = 7,                       // Font height
-            .char_spacing = 1,                      // Spacing between characters
-            .text = "What is Thy bidding, my master? Tell me!"
-                    "\nTomorrow is another day!"
-                    "\n\nThis is a new line. Continue with this line."
-        };
-    
-        st7735_draw_text(&tft_text, &spi_conf);
-        st7735_draw_horLine(80, 10, 100, 0xF800, 3, &spi_conf);
-        st7735_draw_verLine(80, 10, 100, 0xF800, 3, &spi_conf);
-        st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, &spi_conf);
-        // st7735_draw_line(0, 0, 80, 150, 0x00CC, &spi_conf);
-    }
-    
 
     //! Audio test
     // mod_audio_setup(SPI2_BUSY);
@@ -208,7 +145,7 @@ void app_main(void) {
     led_fade_setup(LED_FADE_PIN);
     led_fade_restart(1023, 200);        // Brightness, fade_duration
 
-    // ws2812_setup(WS2812_PIN);                   
+    ws2812_setup(WS2812_PIN);                   
 
     // rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
     // button_click_setup(BUTTON_PIN, button_event_handler);
@@ -370,7 +307,7 @@ void app_main(void) {
         // button_click_loop(current_time);
         // rotary_loop(current_time);
 
-        // ws2812_loop(current_time);
+        ws2812_loop(current_time);
         app_console_task();
 
         // Small delay to avoid busy-waiting

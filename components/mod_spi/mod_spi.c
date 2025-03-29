@@ -92,15 +92,10 @@ void mod_spi_switch_cs(int8_t from_pin, int8_t to_pin) {
     gpio_set_level(to_pin, 0);          // turn on to_pin
 }
 
-void mod_spi_setup_cs(int8_t cs_a, int8_t cs_b, int8_t cs_c, int8_t cs_d) {
-    gpio_set_direction(cs_a, GPIO_MODE_OUTPUT);
-    gpio_set_direction(cs_b, GPIO_MODE_OUTPUT);
-    gpio_set_direction(cs_c, GPIO_MODE_OUTPUT);
-    gpio_set_direction(cs_d, GPIO_MODE_OUTPUT);
+void mod_spi_setup_cs(int8_t pin) {
+    if (pin == -1) return;
+    gpio_set_direction(pin, GPIO_MODE_OUTPUT);
 
     //# set the pin HIGH to deactive SPI devices
-    gpio_set_level(cs_a, 1);
-    gpio_set_level(cs_b, 1);
-    gpio_set_level(cs_c, 1);
-    gpio_set_level(cs_d, 1);
+    gpio_set_level(pin, 1);
 }

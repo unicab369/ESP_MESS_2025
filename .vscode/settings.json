@@ -165,7 +165,8 @@
         "ssd1306_bitmap.h": "c",
         "ssd1306_segment.h": "c",
         "main.h": "c",
-        "spi_master.h": "c"
+        "spi_master.h": "c",
+        "spi_devices.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

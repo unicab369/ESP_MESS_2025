@@ -13,6 +13,8 @@ static uint32_t fade_duration_us = 2000000;
 static uint8_t led_gpio;
 static bool is_enabled = false;
 
+static uint32_t step_size = 1;      // make sure step_size always > 0
+
 void led_fade_setup(gpio_num_t gpio) {
     led_gpio = gpio;
 
@@ -40,7 +42,10 @@ void led_fade_restart(uint32_t threshold, uint32_t duration_ms) {
     ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0);
 
     brightness_threshold = threshold;
-    fade_duration_us = duration_ms*1000;
+
+    //Calculate the step size based on fade duration and threshold
+    step_size = threshold / (duration_ms*1000 / LED_UPDATE_FREQUENCY);
+
     last_update_time = esp_timer_get_time();
     is_enabled = true;
 }
@@ -55,10 +60,6 @@ void led_fade_loop(uint64_t current_time) {
     if (is_enabled && current_time - last_update_time >= LED_UPDATE_FREQUENCY) {
         last_update_time = current_time;
 
-        //Calculate the step size based on fade duration and threshold
-        uint32_t step_size = brightness_threshold / (fade_duration_us / LED_UPDATE_FREQUENCY); 
-        if(step_size == 0) step_size = 1; //Ensure step size is not zero
-
         if (is_fading_up) {
             current_duty += step_size;
             if (current_duty >= brightness_threshold) {
@@ -69,7 +70,7 @@ void led_fade_loop(uint64_t current_time) {
             if (current_duty >= step_size)
                 current_duty -= step_size;
             else
-               current_duty = 0;
+                current_duty = 0;
 
             if (current_duty == 0) {
                 is_fading_up = true;

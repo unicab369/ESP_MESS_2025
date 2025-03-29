@@ -88,6 +88,7 @@ esp_err_t st7735_init(M_Spi_Conf *conf) {
 
         //! Reset the display
         gpio_set_level(conf->rst, 0);
+        vTaskDelay(pdMS_TO_TICKS(10));
         gpio_set_level(conf->rst, 1);
     }
 
@@ -97,7 +98,7 @@ esp_err_t st7735_init(M_Spi_Conf *conf) {
 
         //! Send initialization commands
         mod_spi_cmd(0x01, conf); // Software reset
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(10));
         mod_spi_cmd(0x11, conf); // Sleep out
         
         //! Set color mode
