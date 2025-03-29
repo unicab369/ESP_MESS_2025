@@ -18,7 +18,11 @@ typedef struct {
     int8_t mosi;
     int8_t miso;
     int8_t clk;
-    int8_t dc;
+
+    //! dc and rst are not part of SPI interface
+    //! They are used for some display modules
+    int8_t dc;          // set to -1 when not use
+    int8_t rst;         // set to -1 when not use
     esp_err_t err;
 } M_Spi_Conf;
 
@@ -27,5 +31,8 @@ esp_err_t mod_spi_cmd(uint8_t cmd, M_Spi_Conf *conf);
 esp_err_t mod_spi_data(uint8_t *data, uint16_t len, M_Spi_Conf *conf);
 
 esp_err_t mod_spi_write_command(uint8_t cmd, const uint8_t *data, size_t len, M_Spi_Conf *conf);
+
+void mod_spi_switch_cs(int8_t from_pin, int8_t to_pin);
+void mod_spi_setup_cs(int8_t cs_a, int8_t cs_b, int8_t cs_c, int8_t cs_d);
 
 #endif

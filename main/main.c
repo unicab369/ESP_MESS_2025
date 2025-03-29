@@ -83,7 +83,6 @@ static void print_hex(const char *label, const unsigned char *buf, size_t len) {
     printf("\n");
 }
 
-
 static void http_request_handler(uint16_t **data, size_t *size) {
     *data = adc_read_arr;
     *size = MAX_ADC_SAMPLE;
@@ -122,20 +121,25 @@ void app_main(void) {
         });
     #endif
 
-
     #include "mod_bitmap.h"
 
-    
-
-    M_Spi_Conf spi3_conf = {
+    M_Spi_Conf spi_conf = {
         .host = SPI2_HOST,
         .mosi = SPI_MOSI,
         .miso = SPI_MISO,
         .clk = SPI_CLK,
-        .dc = SPI2_DC
+
+        //! dc and rst are not part of SPI interface
+        //! They are used for some display modules
+        .dc = SPI_DC,
+        .rst = SPI_RES,
     };
 
-    ret = mod_spi_init(&spi3_conf);
+    //# IMPORTANTE: Reset CS pins
+    mod_spi_setup_cs(SPI_CS0, SPI_CS1, SPI_CS_X0, SPI_CS_X1);
+
+    //# Init SPI peripheral
+    ret = mod_spi_init(&spi_conf);
 
     if (ret == ESP_OK) {
         //# SD Card
@@ -151,11 +155,14 @@ void app_main(void) {
             // },
         };
     
-        mod_sd_spi_config(SPI_CS);
+        mod_sd_spi_config(SPI_CS0);
         mod_sd_test();
 
+        //# IMPORTANTE: Switch CS pins
+        mod_spi_switch_cs(SPI_CS0, SPI_CS_X0);
+
         //# ST7735
-        st7735_init(SPI2_RES, &spi3_conf);
+        st7735_init(&spi_conf);
 
         M_TFT_Text tft_text = {
             .x = 0, .y = 0,
@@ -172,14 +179,11 @@ void app_main(void) {
                     "\n\nThis is a new line. Continue with this line."
         };
     
-        // st7735_draw_line(0, 0, 80, 150, 0x00CC, conf);
-    
-        st7735_draw_text(&tft_text, &spi3_conf);
-        st7735_draw_horLine(80, 10, 100, 0xF800, 3, &spi3_conf);
-        st7735_draw_verLine(80, 10, 100, 0xF800, 3, &spi3_conf);
-        st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, &spi3_conf);
-
-        // display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
+        st7735_draw_text(&tft_text, &spi_conf);
+        st7735_draw_horLine(80, 10, 100, 0xF800, 3, &spi_conf);
+        st7735_draw_verLine(80, 10, 100, 0xF800, 3, &spi_conf);
+        st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, &spi_conf);
+        // st7735_draw_line(0, 0, 80, 150, 0x00CC, &spi_conf);
     }
     
 

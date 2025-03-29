@@ -164,7 +164,8 @@
         "ble_svc_htp.h": "c",
         "ssd1306_bitmap.h": "c",
         "ssd1306_segment.h": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "spi_master.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

@@ -68,7 +68,7 @@ esp_err_t mod_sd_write(const char *path, char *buff) {
 }
 
 esp_err_t mod_sd_get(const char *path, char *buff, size_t len) {
-    ESP_LOGI(TAG, "Reading file %s\n", path);
+    ESP_LOGI(TAG, "Reading file %s", path);
     file = fopen(path, "r");
     if (file == NULL) {
         ESP_LOGE(TAG, "Failed to open file for reading");
@@ -83,7 +83,7 @@ esp_err_t mod_sd_get(const char *path, char *buff, size_t len) {
     // strip newline
     char *pos = strchr(buff, '\n');
     if (pos) *pos = '\0';
-    ESP_LOGI(TAG, "Read from file: '%s'\n", buff);
+    ESP_LOGI(TAG, "Read from file: '%s'", buff);
 
     return ESP_OK;
 }
@@ -171,6 +171,15 @@ void storage_sd_format_card() {
     }
 }
 
+//# Unmount card
+void mod_sd_deinit(spi_host_device_t slot) {
+    //! unmount partition and disable SPI peripheral
+    esp_vfs_fat_sdcard_unmount(mount_point, card);
+    ESP_LOGI(TAG, "Card unmounted");
+
+    //! deinitialize the bus after all devices are removed
+    spi_bus_free(slot);
+}
 
 void mod_sd_test(void) {
     if (ret != ESP_OK) return;
@@ -222,15 +231,6 @@ void mod_sd_test(void) {
     //         return;
     //     }
     // #endif
-}
-
-void mod_sd_deinit(spi_host_device_t slot) {
-    //# unmount partition and disable SPI peripheral
-    esp_vfs_fat_sdcard_unmount(mount_point, card);
-    ESP_LOGI(TAG, "Card unmounted");
-
-    //# deinitialize the bus after all devices are removed
-    spi_bus_free(slot);
 }
 
 #define EXAMPLE_IS_UHS1    (CONFIG_EXAMPLE_SDMMC_SPEED_UHS_I_SDR50 || CONFIG_EXAMPLE_SDMMC_SPEED_UHS_I_DDR50)

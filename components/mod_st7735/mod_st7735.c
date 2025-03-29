@@ -81,36 +81,40 @@ void st7735_fill_screen(uint16_t color, M_Spi_Conf *conf) {
     }
 }
 
-esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf) {
-    //! Set the RST pin
-    esp_err_t ret = gpio_set_direction(rst, GPIO_MODE_OUTPUT);
+esp_err_t st7735_init(M_Spi_Conf *conf) {
+    if (conf->rst != -1) {
+        //! Set the RST pin
+        gpio_set_direction(conf->rst, GPIO_MODE_OUTPUT);
 
-    //! Reset the display
-    gpio_set_level(rst, 0);
-    vTaskDelay(pdMS_TO_TICKS(100));
-    gpio_set_level(rst, 1);
-    vTaskDelay(pdMS_TO_TICKS(100));
+        //! Reset the display
+        gpio_set_level(conf->rst, 0);
+        gpio_set_level(conf->rst, 1);
+    }
 
-    //! Send initialization commands
-    mod_spi_cmd(0x01, conf); // Software reset
-    vTaskDelay(pdMS_TO_TICKS(120));
-    mod_spi_cmd(0x11, conf); // Sleep out
-    vTaskDelay(pdMS_TO_TICKS(120));
-    
-    //! Set color mode
-    mod_spi_cmd(0x3A, conf);
-    mod_spi_data((uint8_t[]){0x05}, 1, conf); // 16-bit color
+    //! Set the DC pin
+    if (conf->dc != -1) {
+        gpio_set_direction(conf->dc, GPIO_MODE_OUTPUT);
 
-    //! INVOFF: Disable display inversion
-    mod_spi_cmd(0x20, conf); // 0x20 OFF | 0x21 ON
-    
-    //! Start display
-    mod_spi_cmd(0x29, conf); // Display on
+        //! Send initialization commands
+        mod_spi_cmd(0x01, conf); // Software reset
+        vTaskDelay(pdMS_TO_TICKS(1));
+        mod_spi_cmd(0x11, conf); // Sleep out
+        
+        //! Set color mode
+        mod_spi_cmd(0x3A, conf);
+        mod_spi_data((uint8_t[]){0x05}, 1, conf); // 16-bit color
 
-    //! Fill display color
-    st7735_fill_screen(BACKGROUND_COLOR, conf);
+        //! INVOFF: Disable display inversion
+        mod_spi_cmd(0x20, conf); // 0x20 OFF | 0x21 ON
+        
+        //! Start display
+        mod_spi_cmd(0x29, conf); // Display on
 
-    return ret;
+        //! Fill display color
+        st7735_fill_screen(BACKGROUND_COLOR, conf);
+    }
+
+    return ESP_OK;
 }
 
 

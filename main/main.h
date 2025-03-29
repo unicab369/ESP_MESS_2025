@@ -80,12 +80,23 @@
         #define SPI_MISO    19
         #define SPI_MOSI    23
         #define SPI_CLK     18
-        #define SPI_CS      5
+        #define SPI_CS0      5
+
+        //! EXTRA CS pins
+        #define SPI_CS_X0   16
+        #define SPI_CS_X1   17
+        
+        //! SPI_DC and SPI_RES are not part of SPI interface
+        //! They are used for some display modules
+        #define SPI_DC      4          // DC - AO
+        #define SPI_RES     2
+
+
 
         #define SPI_MISO2   12
         #define SPI_MOSI2   13
         #define SPI_CLK2    14
-        #define SPI_CS2     15
+        #define SPI_CS1     15
 
         #define SDA_PIN     25
         #define SCL_PIN     26
@@ -93,8 +104,6 @@
         #define SDA_PIN2 32
         #define SCL_PIN2 33
 
-        #define SPI2_DC     4          // DC - AO
-        #define SPI2_RES    2
         #define SPI2_BUSY   0         //# todo
 
         // #define BLINK_PIN 5

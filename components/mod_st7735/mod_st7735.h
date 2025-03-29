@@ -42,7 +42,7 @@ typedef struct {
     uint8_t x0;     // Starting x position of the current buffer
 } M_Render_State;
 
-esp_err_t st7735_init(uint8_t rst, M_Spi_Conf *conf);
+esp_err_t st7735_init(M_Spi_Conf *conf);
 esp_err_t st7735_set_address_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, M_Spi_Conf *conf);
 
 esp_err_t st7735_draw_pixel(uint16_t color, M_Spi_Conf *conf);
