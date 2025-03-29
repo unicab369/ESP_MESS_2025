@@ -91,7 +91,7 @@
         //! SPI_DC and SPI_RES are not part of SPI interface
         //! They are used for some display modules
         #define SPI_DC          4          // DC - AO
-        #define SPI_RES         2
+        #define SPI_RST         2
 
         #define SPI_MISO2       12
         #define SPI_MOSI2       13

@@ -120,9 +120,9 @@ void app_main(void) {
 
     #include "devices/spi/spi_devices.h"
 
-    spi_devices_setup(1, SPI_MOSI, SPI_MISO, SPI_CLK,
-                    SPI_CS0, SPI_CS_X0, SPI_CS_X1);
-
+    spi_devices_setup(1, SPI_MOSI, SPI_MISO, SPI_CLK, SPI_CS0,
+                    SPI_DC, SPI_RST, 
+                    SPI_CS_X0, SPI_CS_X1);
 
     //! Audio test
     // mod_audio_setup(SPI2_BUSY);

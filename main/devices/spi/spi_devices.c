@@ -15,6 +15,7 @@ M_Spi_Conf spi_config;
 void spi_devices_setup(
     uint8_t host, 
     int8_t mosi_pin, int8_t miso_pin, int8_t clk_pin, int8_t cs_pin,
+    int8_t dc_pin, int8_t rst_pin,
     int8_t cs_x0, int8_t cs_x1
 ) {
     spi_config.host = SPI2_HOST,
@@ -22,6 +23,9 @@ void spi_devices_setup(
     spi_config.miso = miso_pin,
     spi_config.clk = clk_pin,
     spi_config.cs = cs_pin,
+
+    spi_config.dc = dc_pin;
+    spi_config.rst = rst_pin;
 
     //# IMPORTANTE: Reset CS pins
     mod_spi_setup_cs(cs_pin);
@@ -32,7 +36,6 @@ void spi_devices_setup(
     esp_err_t ret = mod_spi_init(&spi_config);
 
     if (ret == ESP_OK) {
-        //# SD Card
         storage_sd_config_t sd_config = {
             .mmc_enabled = false,
     
@@ -45,13 +48,12 @@ void spi_devices_setup(
             // },
         };
     
+        //# SD Card
         mod_sd_spi_config(spi_config.cs);
         mod_sd_test();
 
         //# IMPORTANTE: Switch CS pins
         mod_spi_switch_cs(spi_config.cs, cs_x0);
-
-        vTaskDelay(pdMS_TO_TICKS(50));
         
         //# ST7735
         st7735_init(&spi_config);
