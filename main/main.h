@@ -22,7 +22,6 @@
 #include "timer_pulse.h"
 #include "console/app_console.h"
 
-#include "devices/display/display.h"
 #include "sdkconfig.h"
 
 #include "mod_audio.h"

@@ -7,7 +7,6 @@
 
 // modules
 #include "mod_sd.h"
-#include "devices/display/display.h"
 
 // networking
 #include "mod_wifi.h"
@@ -58,7 +57,7 @@ void espnow_controller_send() {
 static uint8_t esp_mac[6];
 
 app_wifi_interface_t interface = {
-    .on_display_print = display_print_str,
+    // .on_display_print = display_print_str,
     .max_retries = 10,
 };
 
@@ -82,7 +81,8 @@ void app_network_setup() {
     char mac_str[32];
     snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", MAC2STR(esp_mac));
     ESP_LOGW(TAG, "mac: %s", mac_str);
-    display_print_str(mac_str, 0);
+
+    // display_print_str(mac_str, 0);
 
     // wifi_scan();
     // wifi_nan_subscribe();

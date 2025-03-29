@@ -21,6 +21,7 @@ static const char *TAG = "STORAGE_SD";
 
 static FILE *file;
 
+//# Open File
 esp_err_t mod_sd_fopen(const char *path) {
     char full_path[MAX_CHAR_SIZE];
     // Concatenate MOUNT_POINT and the provided path
@@ -38,6 +39,7 @@ esp_err_t mod_sd_fopen(const char *path) {
     return ESP_OK;
 }
 
+//# Read File
 size_t mod_sd_fread(char *buff, size_t len) {
     // Reads a specified number of bytes (or records) from a file.
     return fread(buff, 1, len, file);
@@ -49,6 +51,7 @@ int mod_sd_fclose() {
     return fclose(file);
 }
 
+//# Write File
 esp_err_t mod_sd_write(const char *path, char *buff) {
     ESP_LOGI(TAG, "Opening file %s", path);
 
@@ -97,7 +100,7 @@ sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
 static esp_err_t ret;
 const char mount_point[] = MOUNT_POINT;
 
-        
+
 void mod_sd_spi_config(storage_sd_config_t *config) {
     // Note: esp_vfs_fat_sdmmc/sdspi_mount is all-in-one convenience functions.
     // Please check its source code and implement error recovery when developing
@@ -166,6 +169,7 @@ void mod_sd_spi_config(storage_sd_config_t *config) {
     sdmmc_card_print_info(stdout, card);
 }
 
+//# Format Card
 void storage_sd_format_card() {
     ret = esp_vfs_fat_sdcard_format(mount_point, card);
     if (ret != ESP_OK) {

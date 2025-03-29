@@ -20,8 +20,8 @@ esp_err_t mod_spi_init(M_Spi_Conf *conf) {
 
     // Configure SPI device for ST7735
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 27000000 ,        // 40 MHz
-        .mode = 0,                          // SPI mode 0
+        .clock_speed_hz = 20*1000*1000 ,        //! Clock Speed
+        .mode = 0,                              // SPI mode 0
         .queue_size = 1,
     };
     ret = spi_bus_add_device(conf->host, &devcfg, &conf->spi_handle);

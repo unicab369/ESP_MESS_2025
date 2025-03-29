@@ -1,7 +1,5 @@
 #include "app_serial.h"
 
-#include "devices/display/display.h"
-
 #include "freertos/queue.h"
 
 #include "mod_ssd1306.h"
@@ -119,6 +117,7 @@ M_Device_Handlers device_handlers = {
 };
 
 void app_serial_i2c_setup(uint8_t scl_pin, uint8_t sda_pin, uint8_t port) {
+    //# Setup i2C Bus
     esp_err_t ret = i2c_setup(scl_pin, sda_pin, port);
     if (ret != ESP_OK) return;
 

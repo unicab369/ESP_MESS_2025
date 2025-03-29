@@ -89,6 +89,9 @@ static void http_request_handler(uint16_t **data, size_t *size) {
     *size = MAX_ADC_SAMPLE;
 }
 
+        
+#include "st7735_shape.h"
+
 void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
@@ -152,7 +155,7 @@ void app_main(void) {
         if (ret == ESP_OK) {
             display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
         }
-    #else
+    #else        
         M_Spi_Conf spi3_conf = {
             .host = SPI3_HOST,
             .mosi = SPI_MOSI,
@@ -160,9 +163,37 @@ void app_main(void) {
             .dc = SPI2_DC
         };
 
+
+        #include "mod_bitmap.h"
+
         ret = mod_spi_init(&spi3_conf);
         if (ret == ESP_OK) {
-            display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
+
+            st7735_init(SPI2_RES, &spi3_conf);
+
+            M_TFT_Text tft_text = {
+                .x = 0, .y = 0,
+                .color = 0x00AA,
+                .page_wrap = 1,
+                .word_wrap = 1,
+        
+                .font = (const uint8_t *)FONT_7x5,      // Pointer to the font data
+                .font_width = 5,                        // Font width
+                .font_height = 7,                       // Font height
+                .char_spacing = 1,                      // Spacing between characters
+                .text = "What is Thy bidding, my master? Tell me!"
+                        "\nTomorrow is another day!"
+                        "\n\nThis is a new line. Continue with this line."
+            };
+        
+            // st7735_draw_line(0, 0, 80, 150, 0x00CC, conf);
+        
+            st7735_draw_text(&tft_text, &spi3_conf);
+            st7735_draw_horLine(80, 10, 100, 0xF800, 3, &spi3_conf);
+            st7735_draw_verLine(80, 10, 100, 0xF800, 3, &spi3_conf);
+            st7735_draw_rectangle(20, 20, 50, 50, 0xAA00, 3, &spi3_conf);
+
+            // display_spi_setup(SPI2_RES, SPI2_BUSY, &spi3_conf);
         }
     #endif
     
@@ -186,7 +217,7 @@ void app_main(void) {
     gpio_digital_config(obj0);
 
     led_fade_setup(LED_FADE_PIN);
-    led_fade_restart(1023, 400);        // Brightness, fade_duration
+    led_fade_restart(1023, 200);        // Brightness, fade_duration
 
     // ws2812_setup(WS2812_PIN);                   
 
