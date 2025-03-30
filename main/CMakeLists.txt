@@ -13,7 +13,10 @@ idf_component_register(SRCS "main.c"
                             "devices/i2c/sensors.c"
                             "devices/spi/spi_devices.c"
                             "devices/app_serial.c"
-                    INCLUDE_DIRS "."
+                            "sx127x/esp_utils.c"
+                    INCLUDE_DIRS 
+                        "."
+
                     PRIV_REQUIRES
                         esp_driver_rmt
                         nvs_flash
@@ -38,10 +41,12 @@ idf_component_register(SRCS "main.c"
                         mod_i2s
                         mod_audio
                         mod_bluetooth
+                        mod_lora
                     REQUIRES
                         driver
                         uart_driver
                         cdc_driver
+                        sx127x  
                     )
 
 # Note: you must have a partition named the first argument (here it's "littlefs")

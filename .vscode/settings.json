@@ -5,7 +5,7 @@
     "idf.openOcdConfigs": [
         "board/esp32-wrover-kit-3.3v.cfg"
     ],
-    "idf.portWin": "COM4",
+    "idf.portWin": "COM10",
     "idf.toolsPathWin": "C:\\Users\\uni\\.espressif",
     "files.associations": {
         "led_toggle.h": "c",
@@ -166,7 +166,9 @@
         "ssd1306_segment.h": "c",
         "main.h": "c",
         "spi_master.h": "c",
-        "spi_devices.h": "c"
+        "spi_devices.h": "c",
+        "sx127x.h": "c",
+        "esp_intr_alloc.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

@@ -1,4 +1,11 @@
 dependencies:
+  dernasherbrezon/sx127x:
+    component_hash: 97e3499f254372fab6b724e2eed4177167bd45cc68182d370dcb7956f2df00e8
+    dependencies: []
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 4.0.1
   idf:
     source:
       type: idf
@@ -26,10 +33,11 @@ dependencies:
       type: local
     version: '*'
 direct_dependencies:
+- dernasherbrezon/sx127x
 - idf
 - joltwallet/littlefs
 - nimble_central_utils
 - sd_card
-manifest_hash: d9b8346c1aa7907c83d3112919e5b747ae3e805d0c06e12e27300ae916a6a784
+manifest_hash: e691a7f3d792bec26b12b89d3c15c6a403065979224a6d21442c3a1cfdaf00e0
 target: esp32
 version: 2.0.0

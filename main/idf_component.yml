@@ -23,3 +23,5 @@ dependencies:
 
   # espressif/esp-modbus:
   #   version: "^1.0"
+  
+  dernasherbrezon/sx127x: ^4.0.1
