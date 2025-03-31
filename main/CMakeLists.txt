@@ -13,7 +13,10 @@ idf_component_register(SRCS "main.c"
                             "devices/i2c/sensors.c"
                             "devices/spi/spi_devices.c"
                             "devices/app_serial.c"
+
                             "sx127x/esp_utils.c"
+                            "sx127x/sx127x_esp_spi.c"
+                            "sx127x/sx127x.c"
                     INCLUDE_DIRS 
                         "."
 
@@ -45,7 +48,7 @@ idf_component_register(SRCS "main.c"
                         driver
                         uart_driver
                         cdc_driver
-                        sx127x  
+                        # sx127x
                     )
 
 # Note: you must have a partition named the first argument (here it's "littlefs")

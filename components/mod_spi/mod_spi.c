@@ -45,13 +45,13 @@ esp_err_t mod_spi_init(M_Spi_Conf *conf) {
     }
 
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 20*1000*1000 ,        //! Clock Speed
+        .clock_speed_hz = 20*1000*1000,        //! Clock Speed
         .mode = 0,                              // SPI mode 0
         .queue_size = 16,
         .spics_io_num = conf->cs,               //! Uses for LoRa
         .command_bits = 0,
         .dummy_bits = 0,
-        // .address_bits = 8,
+        .address_bits = 8,
     };
     
     ret = spi_bus_add_device(conf->host, &devcfg, &conf->spi_handle);

@@ -95,13 +95,119 @@ static void http_request_handler(uint16_t **data, size_t *size) {
 
 
 #include "sx127x/esp_utils.h"
+#include "sx127x/sx127x.c"
+
 sx127x device;
 
 
 
 void setup_loRa(spi_device_handle_t *spi_device) {
+    ESP_ERROR_CHECK(gpio_set_direction((gpio_num_t) RST, GPIO_MODE_OUTPUT));
+    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t) RST, 0));
+    vTaskDelay(pdMS_TO_TICKS(5));
+    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t) RST, 1));
+    vTaskDelay(pdMS_TO_TICKS(10));
+    ESP_LOGI(TAG, "sx127x was reset");
+
     // spi_device_handle_t spi_device;
     // sx127x_init_spi(&spi_device);
+
+    ESP_ERROR_CHECK(sx127x_create(spi_device, &device));
+    // ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, &device));
+    // ESP_ERROR_CHECK(sx127x_set_frequency(915000000, &device));  // 915MHz
+
+    // ESP_ERROR_CHECK(sx127x_lora_reset_fifo(&device));
+    // ESP_ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, &device));
+    // ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, &device));
+    // ESP_ERROR_CHECK(sx127x_rx_set_lna_gain(SX127x_LNA_GAIN_G4, &device));
+    // ESP_ERROR_CHECK(sx127x_lora_set_bandwidth(SX127x_BW_125000, &device));
+    // ESP_ERROR_CHECK(sx127x_lora_set_implicit_header(NULL, &device));
+
+    // ESP_ERROR_CHECK(sx127x_lora_set_modem_config_2(SX127x_SF_7, &device));
+    // ESP_ERROR_CHECK(sx127x_lora_set_syncword(18, &device));
+    // ESP_ERROR_CHECK(sx127x_set_preamble_length(8, &device));
+    // sx127x_rx_set_callback(lora_rx_callback, &device);
+    // sx127x_lora_cad_set_callback(cad_callback, &device);
+
+    // ESP_ERROR_CHECK(setup_task(&device));
+
+    // gpio_install_isr_service(0);
+    // setup_gpio_interrupts((gpio_num_t)DIO0, &device, GPIO_INTR_POSEDGE);
+
+    // ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, &device));
+}
+
+#include "devices/spi/spi_devices.h"
+
+#include "mod_spi.h"
+
+void lora_rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
+    uint8_t payload[514];
+    const char SYMBOLS[] = "0123456789ABCDEF";
+    for (size_t i = 0; i < data_length; i++) {
+        uint8_t cur = data[i];
+        payload[2 * i] = SYMBOLS[cur >> 4];
+        payload[2 * i + 1] = SYMBOLS[cur & 0x0F];
+    }
+    payload[data_length * 2] = '\0';
+
+    int16_t rssi;
+    ESP_ERROR_CHECK(sx127x_rx_get_packet_rssi(device, &rssi));
+    float snr;
+    ESP_ERROR_CHECK(sx127x_lora_rx_get_packet_snr(device, &snr));
+    int32_t frequency_error;
+    ESP_ERROR_CHECK(sx127x_rx_get_frequency_error(device, &frequency_error));
+    ESP_LOGI(TAG, "received: %d %s rssi: %d snr: %f freq_error: %" PRId32, data_length, payload, rssi, snr, frequency_error);
+}
+
+void cad_callback(sx127x *device, int cad_detected) {
+    if (cad_detected == 0) {
+        ESP_LOGI(TAG, "cad not detected");
+        ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_CAD, SX127x_MODULATION_LORA, device));
+        return;
+    }
+    // put into RX mode first to handle interrupt as soon as possible
+    ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, device));
+    ESP_LOGI(TAG, "cad detected\n");
+}
+
+
+void app_main() {
+    mod_spi_setup_rst(RST);
+    ESP_LOGI(TAG, "sx127x was reset");
+
+    spi_device_handle_t spi_device;
+
+    // //# Init SPI1 peripherals
+    // M_Spi_Conf spi_conf = {
+    //     .host = 1,
+    //     .mosi = MOSI,
+    //     .miso = MISO,
+    //     .clk = SCK,
+    //     .cs = SS,
+    // };
+    // mod_spi_init(&spi_conf);
+
+    spi_bus_config_t config = {
+        .mosi_io_num = MOSI,
+        .miso_io_num = MISO,
+        .sclk_io_num = SCK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 0,
+    };
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &config, 1));
+
+    spi_device_interface_config_t dev_cfg = {
+        .clock_speed_hz = 4E6,
+        .spics_io_num = SS,
+        .queue_size = 16,
+        .command_bits = 0,
+        .address_bits = 8,
+        .dummy_bits = 0,
+        .mode = 0};
+    ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &dev_cfg, &spi_device));
+
 
     ESP_ERROR_CHECK(sx127x_create(spi_device, &device));
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, &device));
@@ -128,7 +234,9 @@ void setup_loRa(spi_device_handle_t *spi_device) {
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, &device));
 }
 
-void app_main(void) {
+
+
+void app_main2(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -145,7 +253,6 @@ void app_main(void) {
 
     app_serial_i2c_setup(SCL_PIN, SDA_PIN, 0);
     app_serial_i2c_setup(SCL_PIN2, SDA_PIN2, 1);
-
     
     #if WIFI_ENABLED
         app_network_setup();
@@ -159,10 +266,6 @@ void app_main(void) {
         });
     #endif
 
-    #include "devices/spi/spi_devices.h"
-
-    #include "mod_spi.h"
-
     //# Init SPI1 peripherals
     M_Spi_Conf spi_config_a = {
         .host = 1,
@@ -174,41 +277,43 @@ void app_main(void) {
 
     ret = mod_spi_init(&spi_config_a);
     if (ret == ESP_OK) {
-        spi_setup_sdCard(spi_config_a.host, spi_config_a.cs);
+        // spi_setup_sdCard(spi_config_a.host, spi_config_a.cs);
 
-        //! DC and RST pins are required for ST7735
-        spi_config_a.dc = SPI_DC;
-        spi_config_a.rst = SPI_RST;
+        // //! DC and RST pins are required for ST7735
+        // spi_config_a.dc = SPI_DC;
+        // spi_config_a.rst = SPI_RST;
 
-        //! Reset the device first
-        // mod_spi_setup_rst(SPI_RST);
-        spi_setup_st7735(&spi_config_a, SPI_CS_X0);
+        // //! Reset the device first
+        // // mod_spi_setup_rst(SPI_RST);
+        // spi_setup_st7735(&spi_config_a, SPI_CS_X0);
+
+        setup_loRa(&spi_config_a.spi_handle);
     }
 
-    //# Init SPI2 peripherals
-    M_Spi_Conf spi_config_b = {
-        .host = 2,
-        .mosi = SPI2_MOSI,
-        .miso = SPI2_MISO,
-        .clk = SPI2_CLK,
-        .cs = SPI2_CS0,
-    };
+    // //# Init SPI2 peripherals
+    // M_Spi_Conf spi_config_b = {
+    //     .host = 2,
+    //     .mosi = SPI2_MOSI,
+    //     .miso = SPI2_MISO,
+    //     .clk = SPI2_CLK,
+    //     .cs = SPI2_CS0,
+    // };
 
-    ret = mod_spi_init(&spi_config_b);
-    if (ret == ESP_OK) {
-        // spi_setup_sdCard(spi_config_b.host, spi_config_b.cs);
+    // ret = mod_spi_init(&spi_config_b);
+    // if (ret == ESP_OK) {
+    //     // spi_setup_sdCard(spi_config_b.host, spi_config_b.cs);
 
-        //! DC and RST pins are required for ST7735
-        spi_config_b.dc = SPI_DC;
-        spi_config_b.rst = SPI_RST;
+    //     //! DC and RST pins are required for ST7735
+    //     spi_config_b.dc = SPI_DC;
+    //     spi_config_b.rst = SPI_RST;
 
-        //! Reset the device first
-        // mod_spi_setup_rst(SPI_RST);
-        spi_setup_st7735(&spi_config_b, SPI_CS_X1);
+    //     //! Reset the device first
+    //     // mod_spi_setup_rst(SPI_RST);
+    //     // spi_setup_st7735(&spi_config_b, SPI_CS_X1);
 
-        // mod_spi_setup_rst(SPI_RST);
-        // setup_loRa(&spi_config_b.spi_handle);
-    }
+    //     // mod_spi_setup_rst(SPI_RST);
+    //     // setup_loRa(&spi_config_b.spi_handle);
+    // }
 
 
     //! Audio test
@@ -217,14 +322,14 @@ void app_main(void) {
 
     // gpio_digital_setup(LED_FADE_PIN);
 
-    // gpio_toggle_obj obj0 = {
-    //     .object_index = 0,
-    //     .timer_config = {
-    //         .pulse_count = 2,
-    //         .pulse_time_ms = 100,
-    //         .wait_time_ms = 1000,
-    //     }
-    // };
+    gpio_toggle_obj obj0 = {
+        .object_index = 0,
+        .timer_config = {
+            .pulse_count = 2,
+            .pulse_time_ms = 100,
+            .wait_time_ms = 1000,
+        }
+    };
 
     // gpio_digital_config(obj0);
 
@@ -237,60 +342,60 @@ void app_main(void) {
 
     // behavior_setup(esp_mac, output_interface);
 
-    // ws2812_cyclePulse_t ojb1 = {
-    //     .obj_index = 0,
-    //     .led_index = 4,
-    //     .rgb = { .red = 150, .green = 0, .blue = 0 },
-    //     .config = {
-    //         .pulse_count = 1,
-    //         .pulse_time_ms = 100,
-    //         .wait_time_ms = 1000,
-    //     }
-    // };
+    ws2812_cyclePulse_t ojb1 = {
+        .obj_index = 0,
+        .led_index = 4,
+        .rgb = { .red = 150, .green = 0, .blue = 0 },
+        .config = {
+            .pulse_count = 1,
+            .pulse_time_ms = 100,
+            .wait_time_ms = 1000,
+        }
+    };
     // ws2812_load_pulse(ojb1);
 
-    // ws2812_cyclePulse_t ojb2 = {
-    //     .obj_index = 1,
-    //     .led_index = 3,
-    //     .rgb =  { .red = 0, .green = 150, .blue = 0 },
-    //     .config = {
-    //         .pulse_count = 2,
-    //         .pulse_time_ms = 100,
-    //         .wait_time_ms = 1000,
-    //     }
-    // };
+    ws2812_cyclePulse_t ojb2 = {
+        .obj_index = 1,
+        .led_index = 3,
+        .rgb =  { .red = 0, .green = 150, .blue = 0 },
+        .config = {
+            .pulse_count = 2,
+            .pulse_time_ms = 100,
+            .wait_time_ms = 1000,
+        }
+    };
     // ws2812_load_pulse(ojb2);
 
-    // ws2812_cycleFade_t obj3 = {
-    //     .led_index = 1,
-    //     .active_channels = { .red = 0xFF, .green = 0, .blue = 0xFF },
-    //     .config = {
-    //         .current_value = 0,
-    //         .direction = true,
-    //         .is_bounced = true,
-    //         .increment = 5,
-    //         .start_index = 0,
-    //         .end_index = 150,       // hue max 360
-    //         .refresh_time_uS = 20000,
-    //         .last_refresh_time = 0
-    //     }
-    // };
+    ws2812_cycleFade_t obj3 = {
+        .led_index = 1,
+        .active_channels = { .red = 0xFF, .green = 0, .blue = 0xFF },
+        .config = {
+            .current_value = 0,
+            .direction = true,
+            .is_bounced = true,
+            .increment = 5,
+            .start_index = 0,
+            .end_index = 150,       // hue max 360
+            .refresh_time_uS = 20000,
+            .last_refresh_time = 0
+        }
+    };
     // ws2812_load_fadeColor(obj3, 0);
 
-    // ws2812_cycleFade_t obj4 = {
-    //     .led_index = 2,
-    //     .active_channels = { .red = 0xFF, .green = 0, .blue = 0 },
-    //     .config = {
-    //         .current_value = 0,
-    //         .direction = true,
-    //         .is_bounced = false,
-    //         .increment = 5,
-    //         .start_index = 0,
-    //         .end_index = 150,       // hue max 360
-    //         .refresh_time_uS = 50000,
-    //         .last_refresh_time = 0
-    //     }
-    // };
+    ws2812_cycleFade_t obj4 = {
+        .led_index = 2,
+        .active_channels = { .red = 0xFF, .green = 0, .blue = 0 },
+        .config = {
+            .current_value = 0,
+            .direction = true,
+            .is_bounced = false,
+            .increment = 5,
+            .start_index = 0,
+            .end_index = 150,       // hue max 360
+            .refresh_time_uS = 50000,
+            .last_refresh_time = 0
+        }
+    };
     // ws2812_load_fadeColor(obj4, 1);
 
     // mod_mbedtls_setup();
@@ -402,42 +507,6 @@ void app_main(void) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
-
-
-
-
-
-// void app_main2() {
-//     ESP_LOGI(TAG, "starting up");
-//     sx127x_reset();
-
-//     spi_device_handle_t spi_device;
-//     sx127x_init_spi(&spi_device);
-
-//     ESP_ERROR_CHECK(sx127x_create(spi_device, &device));
-//     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, &device));
-//     ESP_ERROR_CHECK(sx127x_set_frequency(915000000, &device));  // 915MHz
-
-//     ESP_ERROR_CHECK(sx127x_lora_reset_fifo(&device));
-//     ESP_ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, &device));
-//     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, &device));
-//     ESP_ERROR_CHECK(sx127x_rx_set_lna_gain(SX127x_LNA_GAIN_G4, &device));
-//     ESP_ERROR_CHECK(sx127x_lora_set_bandwidth(SX127x_BW_125000, &device));
-//     ESP_ERROR_CHECK(sx127x_lora_set_implicit_header(NULL, &device));
-
-//     ESP_ERROR_CHECK(sx127x_lora_set_modem_config_2(SX127x_SF_7, &device));
-//     ESP_ERROR_CHECK(sx127x_lora_set_syncword(18, &device));
-//     ESP_ERROR_CHECK(sx127x_set_preamble_length(8, &device));
-//     sx127x_rx_set_callback(lora_rx_callback, &device);
-//     sx127x_lora_cad_set_callback(cad_callback, &device);
-
-//     ESP_ERROR_CHECK(setup_task(&device));
-
-//     gpio_install_isr_service(0);
-//     setup_gpio_interrupts((gpio_num_t)DIO0, &device, GPIO_INTR_POSEDGE);
-
-//     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, &device));
-// }
 
 
 // int messages_sent = 0;
