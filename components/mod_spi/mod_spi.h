@@ -33,6 +33,7 @@ esp_err_t mod_spi_data(uint8_t *data, uint16_t len, M_Spi_Conf *conf);
 
 esp_err_t mod_spi_write_command(uint8_t cmd, const uint8_t *data, size_t len, M_Spi_Conf *conf);
 
+void mod_spi_setup_rst(int8_t rst_pin);
 void mod_spi_setup_cs(int8_t pin);
 void mod_spi_switch_cs(int8_t from_pin, int8_t to_pin);
 

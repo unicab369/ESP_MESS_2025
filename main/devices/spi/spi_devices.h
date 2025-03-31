@@ -1,11 +1,8 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#include "mod_spi.h"
 
 
-void spi_devices_setup(
-    uint8_t host, 
-    int8_t mosi_pin, int8_t miso_pin, int8_t clk_pin,
-    int8_t cs_pin, int8_t cs_extra,
-    int8_t dc_pin, int8_t rst_pin
-);
+void spi_setup_sdCard(uint8_t host, uint8_t cs_pin);
+void spi_setup_st7735(M_Spi_Conf *config, uint8_t st7735_cs_pin);
