@@ -50,8 +50,8 @@ esp_err_t mod_spi_init(M_Spi_Conf *conf) {
         .queue_size = 16,
         .spics_io_num = conf->cs,               //! Uses for LoRa
         .command_bits = 0,
-        .address_bits = 8,
         .dummy_bits = 0,
+        // .address_bits = 8,
     };
     
     ret = spi_bus_add_device(conf->host, &devcfg, &conf->spi_handle);

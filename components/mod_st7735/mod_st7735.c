@@ -88,7 +88,6 @@ esp_err_t st7735_init(M_Spi_Conf *conf) {
 
         //! Reset the display
         gpio_set_level(conf->rst, 0);
-        vTaskDelay(pdMS_TO_TICKS(100));
         gpio_set_level(conf->rst, 1);
     }
 
