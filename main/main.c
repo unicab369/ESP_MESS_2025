@@ -205,9 +205,10 @@ void app_main(void) {
         //! Reset the device first
         // mod_spi_setup_rst(SPI_RST);
         spi_setup_st7735(&spi_config_b, SPI_CS_X1);
+
+        // mod_spi_setup_rst(SPI_RST);
+        // setup_loRa(&spi_config_b.spi_handle);
     }
-
-
 
 
     //! Audio test
@@ -227,17 +228,7 @@ void app_main(void) {
 
     // gpio_digital_config(obj0);
 
-    led_fade_setup(LED_FADE_PIN);
-    led_fade_restart(1023, 300);        // Brightness, fade_duration                   
-
-    // lora_init();
-
-    // Create tasks
-    // xTaskCreate(lora_send_task, "lora_send_task", 4096, NULL, 5, NULL);
-    // xTaskCreate(lora_receive_task, "lora_receive_task", 4096, NULL, 5, NULL);
-
     // rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
-    // button_click_setup(BUTTON_PIN, button_event_handler);
 
     // uart_setup(uart_read_handler);
 
@@ -245,8 +236,6 @@ void app_main(void) {
     // output_interface.on_gpio_set = 
 
     // behavior_setup(esp_mac, output_interface);
-
-    // ws2812_setup(WS2812_PIN);
 
     // ws2812_cyclePulse_t ojb1 = {
     //     .obj_index = 0,
@@ -342,7 +331,6 @@ void app_main(void) {
     // mod_i2s_setup();
     // mod_i2s_send();
 
-
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
 
@@ -353,6 +341,12 @@ void app_main(void) {
     // mod_nimbleBLE_setup(false);
     // xTaskCreate(mod_heart_rate_task, "Heart Rate", 4*1024, NULL, 5, NULL);
 
+    // button_click_setup(BUTTON_PIN, button_event_handler);
+
+    led_fade_setup(LED_FADE_PIN);
+    led_fade_restart(1023, 600);        // Brightness, fade_duration                
+
+    ws2812_setup(WS2812_PIN);
 
     app_console_setup();
 
@@ -401,7 +395,7 @@ void app_main(void) {
         // button_click_loop(current_time);
         // rotary_loop(current_time);
 
-        // ws2812_loop(current_time);
+        ws2812_loop(current_time);
         app_console_task();
 
         // Small delay to avoid busy-waiting
