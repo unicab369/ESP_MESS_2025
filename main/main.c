@@ -168,7 +168,7 @@ void setup_loRa() {
     ESP_ERROR_CHECK(sx127x_lora_reset_fifo(&device));
 }
 
-void app_main() {
+void app_main3() {
     setup_loRa();
 
     ESP_ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, &device));
@@ -178,11 +178,6 @@ void app_main() {
     sx127x_rx_set_callback(lora_rx_callback, &device);
     sx127x_lora_cad_set_callback(cad_callback, &device);
 
-    // ESP_ERROR_CHECK(setup_task(&device));
-
-    // gpio_install_isr_service(0);
-    // setup_gpio_interrupts((gpio_num_t)DIO0, &device, GPIO_INTR_POSEDGE);
-
     // Setup DIO0 as input
     gpio_set_direction(DIO0, GPIO_MODE_INPUT);
     gpio_pulldown_en(DIO0);
@@ -190,7 +185,6 @@ void app_main() {
 
     // Create task to monitor DIO0
     xTaskCreate(check_dio0, "dio0_monitor", 4096, &device, 2, NULL);
-
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_RX_CONT, SX127x_MODULATION_LORA, &device));
 }
 
@@ -229,24 +223,24 @@ void tx_callback(sx127x *device) {
     messages_sent++;
 }
 
-// void app_main() {
-//     setup_loRa();
+void app_main() {
+    setup_loRa();
 
-//     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, &device));
+    ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, &device));
 
-//     sx127x_tx_set_callback(tx_callback, &device);
+    sx127x_tx_set_callback(tx_callback, &device);
 
-//     gpio_install_isr_service(0);
-//     setup_gpio_interrupts((gpio_num_t)DIO0, &device, GPIO_INTR_POSEDGE);
+    gpio_install_isr_service(0);
+    setup_gpio_interrupts((gpio_num_t)DIO0, &device, GPIO_INTR_POSEDGE);
 
-//     ESP_ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, supported_power_levels[current_power_level], &device));
-//     sx127x_tx_header_t header = {
-//         .enable_crc = true,
-//         .coding_rate = SX127x_CR_4_5};
-//     ESP_ERROR_CHECK(sx127x_lora_tx_set_explicit_header(&header, &device));
+    ESP_ERROR_CHECK(sx127x_tx_set_pa_config(SX127x_PA_PIN_BOOST, supported_power_levels[current_power_level], &device));
+    sx127x_tx_header_t header = {
+        .enable_crc = true,
+        .coding_rate = SX127x_CR_4_5};
+    ESP_ERROR_CHECK(sx127x_lora_tx_set_explicit_header(&header, &device));
 
-//     ESP_ERROR_CHECK(setup_tx_task(&device, tx_callback));
-// }
+    ESP_ERROR_CHECK(setup_tx_task(&device, tx_callback));
+}
 
 
 

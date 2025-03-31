@@ -25,25 +25,6 @@ void setup_gpio_interrupts(gpio_num_t gpio, sx127x *device, gpio_int_type_t type
 }
 
 
-// //# handle_interrupt_task
-// void handle_interrupt_task(void *arg) {
-//   while (1) {
-//     if (ulTaskNotifyTakeIndexed(xArrayIndex, pdTRUE, portMAX_DELAY) > 0) {
-//       sx127x_handle_interrupt((sx127x *) arg);
-//     }
-//   }
-// }
-
-// esp_err_t setup_task(sx127x *device) {
-//   BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
-//   if (task_code != pdPASS) {
-//     ESP_LOGE(TAG, "can't create task %d", task_code);
-//     return ESP_FAIL;
-//   }
-//   return ESP_OK;
-// }
-
-
 //# handle_interrupt_tx_task
 void handle_interrupt_tx_task(void *arg) {
   global_tx_callback((sx127x *) arg);
