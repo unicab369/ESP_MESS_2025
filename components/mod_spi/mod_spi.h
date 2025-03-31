@@ -27,7 +27,8 @@ typedef struct {
     esp_err_t err;
 } M_Spi_Conf;
 
-esp_err_t mod_spi_init(M_Spi_Conf *conf);
+esp_err_t mod_spi_init(M_Spi_Conf *conf, int frequency);
+
 esp_err_t mod_spi_cmd(uint8_t cmd, M_Spi_Conf *conf);
 esp_err_t mod_spi_data(uint8_t *data, uint16_t len, M_Spi_Conf *conf);
 

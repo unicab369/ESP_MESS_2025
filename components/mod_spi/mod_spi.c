@@ -24,7 +24,7 @@ void mod_spi_setup_rst(int8_t rst_pin) {
     ESP_LOGI(TAG, "Device Reset");
 }
 
-esp_err_t mod_spi_init(M_Spi_Conf *conf) {
+esp_err_t mod_spi_init(M_Spi_Conf *conf, int frequency) {
     //# IMPORTANTE: Reset CS pins
     mod_spi_setup_cs(conf->cs);
 
@@ -45,7 +45,7 @@ esp_err_t mod_spi_init(M_Spi_Conf *conf) {
     }
 
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 20*1000*1000,        //! Clock Speed
+        .clock_speed_hz = frequency,    // 20*1000*1000,        //! Clock Speed
         .mode = 0,                              // SPI mode 0
         .queue_size = 16,
         .spics_io_num = conf->cs,               //! Uses for LoRa
