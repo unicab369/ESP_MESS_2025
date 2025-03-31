@@ -168,7 +168,8 @@
         "spi_master.h": "c",
         "spi_devices.h": "c",
         "sx127x.h": "c",
-        "esp_intr_alloc.h": "c"
+        "esp_intr_alloc.h": "c",
+        "mod_sd.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

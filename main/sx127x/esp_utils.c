@@ -16,22 +16,6 @@ void IRAM_ATTR handle_interrupt_fromisr(void *arg) {
   portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
-void handle_interrupt_task(void *arg) {
-  while (1) {
-    if (ulTaskNotifyTakeIndexed(xArrayIndex, pdTRUE, portMAX_DELAY) > 0) {
-      sx127x_handle_interrupt((sx127x *) arg);
-    }
-  }
-}
-
-void handle_interrupt_tx_task(void *arg) {
-  global_tx_callback((sx127x *) arg);
-  while (1) {
-    if (ulTaskNotifyTakeIndexed(xArrayIndex, pdTRUE, portMAX_DELAY) > 0) {
-      sx127x_handle_interrupt((sx127x *) arg);
-    }
-  }
-}
 
 void rx_callback(sx127x *device, uint8_t *data, uint16_t data_length) {
   uint8_t payload[2090 * 2];
@@ -94,6 +78,16 @@ void setup_gpio_interrupts(gpio_num_t gpio, sx127x *device, gpio_int_type_t type
   ESP_ERROR_CHECK(gpio_isr_handler_add(gpio, handle_interrupt_fromisr, (void *) device));
 }
 
+
+//# handle_interrupt_task
+void handle_interrupt_task(void *arg) {
+  while (1) {
+    if (ulTaskNotifyTakeIndexed(xArrayIndex, pdTRUE, portMAX_DELAY) > 0) {
+      sx127x_handle_interrupt((sx127x *) arg);
+    }
+  }
+}
+
 esp_err_t setup_task(sx127x *device) {
   BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle interrupt", 8196, device, 2, &handle_interrupt, xPortGetCoreID());
   if (task_code != pdPASS) {
@@ -101,6 +95,17 @@ esp_err_t setup_task(sx127x *device) {
     return ESP_FAIL;
   }
   return ESP_OK;
+}
+
+
+//# handle_interrupt_tx_task
+void handle_interrupt_tx_task(void *arg) {
+  global_tx_callback((sx127x *) arg);
+  while (1) {
+    if (ulTaskNotifyTakeIndexed(xArrayIndex, pdTRUE, portMAX_DELAY) > 0) {
+      sx127x_handle_interrupt((sx127x *) arg);
+    }
+  }
 }
 
 esp_err_t setup_tx_task(sx127x *device, void (*tx_callback)(sx127x *device)) {

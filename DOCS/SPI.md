@@ -95,3 +95,4 @@ ESP32’s Internal Pull-Up Strength
 | **Power Use**     | Low (~66µA @ 3.3V)                 | High (~0.7mA @ 3.3V)             |
 | **Noise Immunity**| Poor (easily disturbed)            | Excellent (resists interference) |
 | **Bus Loading**   | Good (works with multiple devices) | May overload weak drivers        |
+

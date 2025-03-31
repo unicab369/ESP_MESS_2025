@@ -11,6 +11,8 @@
 #include "mod_i2s.h"
 #include "devices/app_serial.h"
 
+#include "driver/spi_master.h"
+
 #define WIFI_ENABLED 0
 
 #if WIFI_ENABLED
@@ -92,7 +94,7 @@ static void http_request_handler(uint16_t **data, size_t *size) {
 // #include "mod_lora.h"
 
 
-void app_main2(void) {
+void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -134,10 +136,12 @@ void app_main2(void) {
     //                 SPI_DC, SPI_RST);
 
 
+    app_console_setup();
+
+
     //! Audio test
     // mod_audio_setup(SPI2_BUSY);
 
-    // app_console_setup();
 
     // gpio_digital_setup(LED_FADE_PIN);
 
@@ -335,9 +339,10 @@ void app_main2(void) {
 
 #include "sx127x/esp_utils.h"
 
+
 sx127x device;
 
-void app_main() {
+void app_main2() {
     ESP_LOGI(TAG, "starting up");
     sx127x_reset();
 

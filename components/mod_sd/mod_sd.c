@@ -115,7 +115,7 @@ static void check_sd_card(esp_err_t ret) {
     sdmmc_card_print_info(stdout, card);
 }
 
-void mod_sd_spi_config(uint8_t cs_pin) {
+void mod_sd_spi_config(uint8_t spi_host, uint8_t cs_pin) {
     ESP_LOGI(TAG, "Initializing SD card. Using SPI peripheral");
 
     // For SoCs where the SD power can be supplied both via an internal or external (e.g. on-board LDO) power supply.
@@ -140,9 +140,10 @@ void mod_sd_spi_config(uint8_t cs_pin) {
     // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = cs_pin;
-    
+    slot_config.host_id = spi_host;
+
     static sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    slot_config.host_id = host.slot;
+    // host.slot = spi_host;
 
     ESP_LOGI(TAG, "Mounting filesystem");
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
