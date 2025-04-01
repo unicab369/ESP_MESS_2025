@@ -230,8 +230,14 @@ const static char *TAG = "MOD_ADC";
 
             for (int i = 0; i < model->read_count; i += SOC_ADC_DIGI_RESULT_BYTES) {
                 adc_digi_output_data_t *p = (adc_digi_output_data_t*)&model->results[i];
-                uint32_t chan_num = p->type1.channel;
-                uint32_t data = p->type1.data;
+                
+                #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
+                    uint32_t chan_num = p->type1.channel;
+                    uint32_t data = p->type1.data;
+                #elif CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C2
+                    uint32_t chan_num = p->type2.channel;
+                    uint32_t data = p->type2.data;
+                #endif
 
                 /* Check the channel number validation, the data is invalid if the channel num exceed the maximum channel */
                 if (chan_num < SOC_ADC_CHANNEL_NUM(model->unit)) {

@@ -31,8 +31,7 @@
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
-    #define LED_FADE_PIN 2
-    #define BLINK_PIN 10
+    #define LED_FADE_PIN 12
     #define BUTTON_PIN 9
 
 #elif CONFIG_IDF_TARGET_ESP32

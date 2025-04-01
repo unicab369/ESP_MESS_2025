@@ -106,26 +106,26 @@ void littlefs_readLine_handler(char* file_name, char* str_buff, size_t len) {
     // compare remote_mac to device_mac
     // int compare_mac = memcmp(remote_mac, device_mac, sizeof(device_mac)) == 0;
 
-    behavior_config_t config;
-    // copy remote_mac into config
-    memcpy(config.remote_mac, remote_mac, sizeof(config.remote_mac));
-    // copy data_buff starting from index 1 to config starting at index 6
-    // forget the length bc it's off a  little bit
-    memcpy((uint8_t*)&config+6, data_buff+1, sizeof(behavior_config_t));
+    // behavior_config_t config;
+    // // copy remote_mac into config
+    // memcpy(config.remote_mac, remote_mac, sizeof(config.remote_mac));
+    // // copy data_buff starting from index 1 to config starting at index 6
+    // // forget the length bc it's off a  little bit
+    // memcpy((uint8_t*)&config+6, data_buff+1, sizeof(behavior_config_t));
     
-    // behavior_config_t* config = (behavior_config_t*)(data_buff+1);
+    // // behavior_config_t* config = (behavior_config_t*)(data_buff+1);
 
-    int validate_code = data_buff[INDEX_VALIDATION] == BEHAVIOR_VALIDATION_CODE;
+    // int validate_code = data_buff[INDEX_VALIDATION] == BEHAVIOR_VALIDATION_CODE;
     
-    if (validate_code && check_config_cmd(&config)) {
-        ESP_LOGI(TAG, "Behavior Config:");
-        print_bytes2(data_buff, sizeof(behavior_config_t));
+    // if (validate_code && check_config_cmd(&config)) {
+    //     ESP_LOGI(TAG, "Behavior Config:");
+    //     print_bytes2(data_buff, sizeof(behavior_config_t));
 
-        // copy config into device_behaviors[behaviors_index]
-        memcpy(&device_behaviors[behaviors_index++], &config, sizeof(behavior_config_t));
-        printf("INPUT CMD: %02X\n", device_behaviors[behaviors_index-1].input_cmd);
-        printf("OUTPUT CMD: %02X\n", device_behaviors[behaviors_index-1].output_cmd);
-    }
+    //     // copy config into device_behaviors[behaviors_index]
+    //     memcpy(&device_behaviors[behaviors_index++], &config, sizeof(behavior_config_t));
+    //     printf("INPUT CMD: %02X\n", device_behaviors[behaviors_index-1].input_cmd);
+    //     printf("OUTPUT CMD: %02X\n", device_behaviors[behaviors_index-1].output_cmd);
+    // }
 }
 
 void behavior_setup(uint8_t* esp_mac, behavior_output_interface interface) {

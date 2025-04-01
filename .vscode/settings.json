@@ -3,9 +3,9 @@
     "idf.espIdfPathWin": "C:\\Users\\uni\\esp\\v5.4\\esp-idf",
     "idf.pythonInstallPath": "C:\\Users\\uni\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
     "idf.openOcdConfigs": [
-        "board/esp32-wrover-kit-3.3v.cfg"
+        "board/esp32c3-builtin.cfg"
     ],
-    "idf.portWin": "COM10",
+    "idf.portWin": "COM11",
     "idf.toolsPathWin": "C:\\Users\\uni\\.espressif",
     "files.associations": {
         "led_toggle.h": "c",
@@ -179,6 +179,6 @@
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
-        "IDF_TARGET": "esp32"
+        "IDF_TARGET": "esp32c3"
     }
 }
