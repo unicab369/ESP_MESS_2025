@@ -13,7 +13,7 @@ idf_component_register(SRCS "main.c"
                             "devices/i2c/sensors.c"
                             "devices/spi/spi_devices.c"
                             "devices/app_serial.c"
-
+                            "devices/gpio/app_gpio.c"
                             "sx127x/mod_sx127x.c"
                             "sx127x/sx127x_esp_spi.c"
                             "sx127x/sx127x.c"

@@ -104,6 +104,11 @@
         #define SDA_PIN2        32
         #define SCL_PIN2        33
 
+
+        #define GPIO_35         35
+        #define GPIO_36         36
+        #define GPIO_39         39
+
         // #define SPI2_BUSY   0         //# todo
     #endif
 #endif

@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define FLAG_APP_CONSOLE 0
 
 void app_console_setup(void);
 void app_console_deinit(void);

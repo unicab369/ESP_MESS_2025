@@ -172,7 +172,10 @@
         "mod_sd.h": "c",
         "esp_utils.h": "c",
         "inttypes.h": "c",
-        "uart_driver.h": "c"
+        "uart_driver.h": "c",
+        "app_gpio.h": "c",
+        "mod_ws2812.h": "c",
+        "mod_mbedtls.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

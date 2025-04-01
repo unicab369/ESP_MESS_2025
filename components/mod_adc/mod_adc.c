@@ -2,6 +2,8 @@
 
 const static char *TAG = "MOD_ADC";
 
+#define FLAG_MOD_ADC 1
+
 #if FLAG_MOD_ADC
     // Function to get ADC1 channel from GPIO pin
     static uint8_t gpio_to_adc1_channel(int gpio_num) {
