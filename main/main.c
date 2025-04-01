@@ -96,6 +96,9 @@ static void http_request_handler(uint16_t **data, size_t *size) {
 #include "sx127x/mod_sx127x.c"
 #include "mod_spi.h"
 
+static void on_handle_uart(const char* data, uint8_t len) {
+    app_serial_add_print(data, 3);
+}
 
 void app_main(void) {
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
@@ -108,11 +111,8 @@ void app_main(void) {
 
     ESP_LOGI(MTAG, "APP START");
 
-    #if CONFIG_IDF_TARGET_ESP32C3
-        cdc_setup();
-    #endif
 
-    // app_serial_i2c_setup(SCL_PIN, SDA_PIN, 0);
+    app_serial_i2c_setup(SCL_PIN, SDA_PIN, 0);
     // app_serial_i2c_setup(SCL_PIN2, SDA_PIN2, 1);
     
     // #if WIFI_ENABLED
@@ -205,8 +205,6 @@ void app_main(void) {
 
     // rotary_setup(ROTARY_CLK, ROTARY_DT, rotary_event_handler);
 
-    // uart_setup(uart_read_handler);
-
     behavior_output_interface output_interface;
     // output_interface.on_gpio_set = 
 
@@ -227,6 +225,10 @@ void app_main(void) {
     uint64_t interval_ref = 0;
     uint64_t interval_ref2 = 0;
 
+    #if CONFIG_IDF_TARGET_ESP32C3
+        cdc_setup();
+    #endif
+
     // #include "mod_nimBLE.h"
     #include "mod_BLEScan.h"
 
@@ -243,9 +245,14 @@ void app_main(void) {
     // app_gpio_ws2812(WS2812_PIN);
 
     led_fade_setup(LED_FADE_PIN);
-    led_fade_restart(1023, 600);        // Brightness, fade_duration                
+    led_fade_restart(1023, 500);        // Brightness, fade_duration                
 
-    app_console_setup();
+    // app_console_setup(0, TX_PIN, RX_PIN, 115200);
+
+    // uart_setup(uart_read_handler);
+
+    #include "mod_uart.h"    
+    mod_uart_setup(TX_PIN, RX_PIN, 9600);
 
     while (1) {
         uint64_t current_time = esp_timer_get_time();
@@ -258,7 +265,7 @@ void app_main(void) {
         #endif
         
         #if CONFIG_IDF_TARGET_ESP32C3
-            cdc_read_task();
+            // cdc_read_task();
         #endif
             
         // gpio_digital_loop(current_time);
@@ -269,6 +276,8 @@ void app_main(void) {
 
         // app_gpio_task(current_time);
         // app_console_task();
+
+        mod_uart_task(on_handle_uart);
 
         // Small delay to avoid busy-waiting
         vTaskDelay(pdMS_TO_TICKS(10));

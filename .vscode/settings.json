@@ -175,7 +175,13 @@
         "uart_driver.h": "c",
         "app_gpio.h": "c",
         "mod_ws2812.h": "c",
-        "mod_mbedtls.h": "c"
+        "mod_mbedtls.h": "c",
+        "linenoise.h": "c",
+        "cmd_espnow.h": "c",
+        "soc_caps.h": "c",
+        "uart_vfs.h": "c",
+        "esp_vfs_cdcacm.h": "c",
+        "esp_vfs_common.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {

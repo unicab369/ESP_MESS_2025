@@ -17,7 +17,6 @@
 
 #include "led_toggle.h"
 #include "led_fade.h"
-#include "uart_driver.h"
 #include "behavior/behavior.h"
 #include "timer_pulse.h"
 #include "console/app_console.h"
@@ -31,8 +30,14 @@
 
 #if CONFIG_IDF_TARGET_ESP32C3
     #include "cdc_driver.h"
-    #define LED_FADE_PIN 12
-    #define BUTTON_PIN 9
+    #define LED_FADE_PIN    12
+    #define TX_PIN          20
+    #define RX_PIN          21
+
+    #define SCL_PIN         5
+    #define SDA_PIN         4
+    
+    // #define BUTTON_PIN 9
 
 #elif CONFIG_IDF_TARGET_ESP32
     #if ESP32_BOARD_V3

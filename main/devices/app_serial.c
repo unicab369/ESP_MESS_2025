@@ -38,7 +38,7 @@ void app_serial_setMode(uint8_t direction) {
     printf("print_mode: %d\n", ssd1306_print_mode);
 }
 
-static void handle_print(const char* buff, uint8_t line) {
+void app_serial_add_print(const char* buff, uint8_t line) {
     if (ssd1306_print_mode != 1) return;
 
     M_Print msg = { .line = line };
@@ -57,51 +57,51 @@ static void handle_print(const char* buff, uint8_t line) {
 
 static void on_resolve_bh1750(float lux) {
     snprintf(display_buff, sizeof(display_buff), "BH1750 %.2f", lux);
-    handle_print(display_buff, 2);
+    app_serial_add_print(display_buff, 2);
 }
 
 static void on_resolve_ap3216(uint16_t ps, uint16_t als) {
     snprintf(display_buff, sizeof(display_buff), "prox %u, als %u", ps, als);
-    handle_print(display_buff, 5);
+    app_serial_add_print(display_buff, 5);
 }
 
 static void on_resolve_apds9960(uint8_t prox, uint16_t clear,
     uint16_t red, uint16_t green, uint16_t blue) {
     snprintf(display_buff, sizeof(display_buff), "ps %u, w %u, r %u, g %u, b %u", prox, clear, red, green, blue);
-    handle_print(display_buff, 6);
+    app_serial_add_print(display_buff, 6);
 }
 
 static void on_resolve_max4400(float lux) {
     snprintf(display_buff, sizeof(display_buff), "lux %.2f", lux);
-    // handle_print(display_buff, 7);
+    // app_serial_add_print(display_buff, 7);
 }
 
 static void on_resolve_vl53lox(uint8_t distance) {
     snprintf(display_buff, sizeof(display_buff), "dist: %u", distance);
-    // handle_print(display_buff, 7);
+    // app_serial_add_print(display_buff, 7);
 }
 
 static void on_resolve_mpu6050(int16_t accel_x, int16_t accel_y, int16_t accel_z) {
     snprintf(display_buff, sizeof(display_buff), "x %u, y %u, z %u", accel_x, accel_y, accel_z);
-    handle_print(display_buff, 4);
+    app_serial_add_print(display_buff, 4);
 }
 
 static void on_resolve_ina219(int16_t shunt, int16_t bus_mV, int16_t current, int16_t power) {
     snprintf(display_buff, sizeof(display_buff),"sh %hu, bus %hu, cur %hd, p %hu", 
                 shunt, bus_mV, current, power);
-                handle_print(display_buff, 7);
+                app_serial_add_print(display_buff, 7);
 }
 
 static void on_resolve_ds3231(ds3231_dateTime_t *datetime) {
     snprintf(display_buff, sizeof(display_buff), "%u/%u/%u %u:%u:%u", 
             datetime->month, datetime->date, datetime->year,
             datetime->hr, datetime->min, datetime->sec);
-    handle_print(display_buff, 1);
+    app_serial_add_print(display_buff, 1);
 }
 
 static void on_resolve_sht31(float temp, float hum) {
     snprintf(display_buff, sizeof(display_buff), "Temp %.2f, hum %.2f", temp, hum);
-    handle_print(display_buff, 3);
+    app_serial_add_print(display_buff, 3);
 }
 
 M_Device_Handlers device_handlers = {

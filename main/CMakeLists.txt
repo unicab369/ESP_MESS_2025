@@ -1,7 +1,7 @@
 idf_component_register(SRCS "main.c"
                             "littlefs/littlefs.c"
                             "behavior/behavior.c"
-                            "console/base_console.c"
+                            "console/mod_console.c"
                             "console/app_console.c"
                             "console/cmd_wifi/cmd_wifi.c"
                             "console/cmd_nvs/cmd_nvs.c"
@@ -44,11 +44,12 @@ idf_component_register(SRCS "main.c"
                         mod_i2s
                         mod_audio
                         mod_bluetooth
-                    REQUIRES
+                        mod_uart
                         driver
-                        uart_driver
                         cdc_driver
-                        # sx127x
+                        esp_driver_usb_serial_jtag
+                        esp_driver_uart 
+                    REQUIRES
                     )
 
 # Note: you must have a partition named the first argument (here it's "littlefs")

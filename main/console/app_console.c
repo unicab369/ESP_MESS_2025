@@ -19,7 +19,7 @@ static const char *TAG = "APP_CONSOLE";
     #include "nvs.h"
     #include "nvs_flash.h"
     #include "soc/soc_caps.h"
-    #include "base_console.h"
+    #include "mod_console.h"
     #include "driver/uart.h"
 
     #include "cmd_wifi/cmd_wifi.h"
@@ -34,7 +34,7 @@ static const char *TAG = "APP_CONSOLE";
     static uint8_t history_index = 0;
     static char cmd_history[MAX_HISTORY_PAGE][MAX_CMD_LEN];
 
-    void app_console_setup(void) {
+    void app_console_setup(uint8_t port, int8_t tx_pin, int8_t rx_pin, uint8_t baud) {
         #if CONFIG_CONSOLE_STORE_HISTORY
             initialize_filesystem();
             ESP_LOGI(TAG, "Command history enabled");
@@ -42,8 +42,8 @@ static const char *TAG = "APP_CONSOLE";
             ESP_LOGI(TAG, "Command history disabled");
         #endif
         
-        initialize_console_peripheral();            /* Initialize console output periheral (UART, USB_OTG, USB_JTAG) */
-        initialize_console_library(HISTORY_PATH);   /* Initialize linenoise library and esp_console*/
+        /* Initialize console output periheral (UART, USB_OTG, USB_JTAG) */
+        mod_console_setup(port, tx_pin, rx_pin, baud, HISTORY_PATH);
 
         cmd_system_register();
 
@@ -54,13 +54,13 @@ static const char *TAG = "APP_CONSOLE";
         
         register_nvs();
 
-        printf("\nType 'help' to get the list of commands.\n"
+        ESP_LOGW(TAG, "Type 'help' to get the list of commands.\n"
             "Use UP/DOWN arrows to navigate through command history.\n"
             "Press TAB when typing command name to auto-complete.\n"
             "Ctrl+C will terminate the console environment.\n");
 
         if (linenoiseIsDumbMode()) {
-            printf("\nYour terminal application does not support escape sequences.\n"
+            ESP_LOGW(TAG, "Your terminal application does not support escape sequences.\n"
                 "Line editing and history features are disabled.\n"
                 "On Windows, try using Putty instead.\n");
         }
@@ -100,11 +100,8 @@ static const char *TAG = "APP_CONSOLE";
         memset(input_buffer, 0, BUF_SIZE); // Fill the buffer with zeros
     }
 
-
     //! NOTE: NOT WORKING ... YET
     static void handle_history_paging(bool isKeyUp) {
-        ESP_LOGI(TAG, "IM HERE");
-
         if (isKeyUp) {
             strncpy(input_buffer, cmd_history[history_index--], MAX_CMD_LEN - 1);
             if (history_index < 0) {
