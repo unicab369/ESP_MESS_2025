@@ -171,7 +171,8 @@
         "esp_intr_alloc.h": "c",
         "mod_sd.h": "c",
         "esp_utils.h": "c",
-        "inttypes.h": "c"
+        "inttypes.h": "c",
+        "uart_driver.h": "c"
     },
     "idf.flashType": "UART",
     "idf.customExtraVars": {
