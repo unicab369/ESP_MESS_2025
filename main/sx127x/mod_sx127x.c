@@ -1,4 +1,4 @@
-
+#include "mod_sx127x.h"
 #include "sx127x/sx127x.c"
 
 #include "freertos/FreeRTOS.h"
@@ -8,8 +8,7 @@
 #include "esp_log.h"
 #include "esp_err.h"
 
-#include "mod_spi.h"
-#include "driver/gpio.h"
+
 
 static const char *TAG = "MOD_SX127";
 
@@ -49,21 +48,10 @@ void cad_callback(sx127x *device, int cad_detected) {
 }
 
 
-void setup_loRa() {
+void setup_loRa(M_Spi_Conf *config) {
     mod_spi_setup_rst(RST);
     ESP_LOGI(TAG, "sx127x was reset");
-
-    //# Init SPI1 peripherals
-    M_Spi_Conf spi_conf = {
-        .host = 1,
-        .mosi = 23,
-        .miso = 19,
-        .clk = 18,
-        .cs = 5,
-    };
-    mod_spi_init(&spi_conf, 4E6);
-
-    ESP_ERROR_CHECK(sx127x_create(spi_conf.spi_handle, &device));
+    ESP_ERROR_CHECK(sx127x_create(config->spi_handle, &device));
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_SLEEP, SX127x_MODULATION_LORA, &device));
     ESP_ERROR_CHECK(sx127x_set_frequency(915000000, &device));  // 915MHz
 
@@ -82,8 +70,8 @@ void setup_loRa() {
 
 
 //# mod_sx127_listen
-void mod_sx127_listen() {
-    setup_loRa();
+void mod_sx127_listen(M_Spi_Conf *config) {
+    setup_loRa(config);
 
     ESP_ERROR_CHECK(sx127x_rx_set_lna_boost_hf(true, &device));
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, &device));
@@ -134,8 +122,8 @@ void start_transmission(sx127x *device) {
 }
 
 //# mod_sx127_send
-void mod_sx127_send() {
-    setup_loRa();
+void mod_sx127_send(M_Spi_Conf *config) {
+    setup_loRa(config);
 
     ESP_ERROR_CHECK(sx127x_set_opmod(SX127x_MODE_STANDBY, SX127x_MODULATION_LORA, &device));
 

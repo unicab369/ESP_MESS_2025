@@ -97,10 +97,6 @@ static void http_request_handler(uint16_t **data, size_t *size) {
 
 
 void app_main(void) {
-    mod_sx127_listen();
-
-    return;
-
     //! nvs_flash required for WiFi, ESP-NOW, and other stuff.
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -131,39 +127,49 @@ void app_main(void) {
     #endif
 
     //# Init SPI1 peripherals
-    M_Spi_Conf spi_config_a = {
-        .host = 1,
-        .mosi = SPI_MOSI,
-        .miso = SPI_MISO,
-        .clk = SPI_CLK,
-        .cs = SPI_CS0,
-    };
+    // M_Spi_Conf spi_config_a = {
+    //     .host = 1,
+    //     .mosi = SPI_MOSI,
+    //     .miso = SPI_MISO,
+    //     .clk = SPI_CLK,
+    //     .cs = SPI_CS0,
+    // };
 
-    ret = mod_spi_init(&spi_config_a, 20E6);
-    if (ret == ESP_OK) {
-        // spi_setup_sdCard(spi_config_a.host, spi_config_a.cs);
+    // ret = mod_spi_init(&spi_config_a, 20E6);
+    // if (ret == ESP_OK) {
+    //     // spi_setup_sdCard(spi_config_a.host, spi_config_a.cs);
 
-        // //! DC and RST pins are required for ST7735
-        // spi_config_a.dc = SPI_DC;
-        // spi_config_a.rst = SPI_RST;
+    //     // //! DC and RST pins are required for ST7735
+    //     // spi_config_a.dc = SPI_DC;
+    //     // spi_config_a.rst = SPI_RST;
 
-        // //! Reset the device first
-        // // mod_spi_setup_rst(SPI_RST);
-        // spi_setup_st7735(&spi_config_a, SPI_CS_X0);
+    //     // //! Reset the device first
+    //     // // mod_spi_setup_rst(SPI_RST);
+    //     // spi_setup_st7735(&spi_config_a, SPI_CS_X0);
 
-        // setup_loRa(&spi_config_a.spi_handle);
-    }
+    //     // setup_loRa(&spi_config_a.spi_handle);
+    // }
 
     //# Init SPI2 peripherals
+    // M_Spi_Conf spi_config_b = {
+    //     .host = 2,
+    //     .mosi = SPI2_MOSI,
+    //     .miso = SPI2_MISO,
+    //     .clk = SPI2_CLK,
+    //     .cs = SPI2_CS0,
+    // };
+
+    //# Init SPI1 peripherals
     M_Spi_Conf spi_config_b = {
-        .host = 2,
-        .mosi = SPI2_MOSI,
-        .miso = SPI2_MISO,
-        .clk = SPI2_CLK,
-        .cs = SPI2_CS0,
+        .host = 1,
+        .mosi = 23,
+        .miso = 19,
+        .clk = 18,
+        .cs = 5,
     };
 
-    ret = mod_spi_init(&spi_config_b, 20E6);
+    ret = mod_spi_init(&spi_config_b, 4E6);
+
     if (ret == ESP_OK) {
         // spi_setup_sdCard(spi_config_b.host, spi_config_b.cs);
 
@@ -177,6 +183,10 @@ void app_main(void) {
 
         // mod_spi_setup_rst(SPI_RST);
         // setup_loRa(&spi_config_b.spi_handle);
+
+        // mod_sx127_listen(&spi_config_b);
+        
+        mod_sx127_send(&spi_config_b);
     }
 
 
