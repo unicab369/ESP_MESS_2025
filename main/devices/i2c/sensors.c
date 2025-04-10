@@ -26,6 +26,13 @@ static void print_error(esp_err_t ret, const char *text) {
 }
 
 void i2c_devices_setup(M_I2C_Devices_Set *devs_set, uint8_t port) {
+    // M_I2C_Device *test_dev = i2c_device_create(port, 0x09);
+    // uint8_t output[1];
+    // i2c_write_read_register(test_dev, 0x00, output, 1);
+    // printf("IM HERE = %u\n", output[0]);
+    
+    // i2c_write_register_byte(test_dev, 0x00, 1);
+
     //! ssd1306
     devs_set->ssd1306 = i2c_device_create(port, 0x3C);
     ssd1306_setup(devs_set->ssd1306);

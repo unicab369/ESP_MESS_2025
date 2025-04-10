@@ -46,7 +46,7 @@ void app_serial_add_print(const char* buff, uint8_t line) {
     
     BaseType_t stat = xQueueSend(msg_queue, &msg, 0);
     if (stat == errQUEUE_FULL) {
-        ESP_LOGW(TAG, "Queue is full");
+        // ESP_LOGW(TAG, "Queue is full");
     } else if (stat != pdPASS) {
         ESP_LOGW(TAG, "Queue failed");
     }
